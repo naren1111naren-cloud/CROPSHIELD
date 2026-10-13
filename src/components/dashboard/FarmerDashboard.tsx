@@ -15,6 +15,7 @@ import {
 } from '../../services/scanService';
 import { subscribeFarms } from '../../services/farmService';
 import { PersonalizedGuidance } from './PersonalizedGuidance';
+import { WeatherSeasonalIntelligence } from './WeatherSeasonalIntelligence';
 import {
   Compass,
   ArrowLeft,
@@ -33,7 +34,8 @@ import {
   ShieldCheck,
   Clock,
   AlertTriangle,
-  BookOpen
+  BookOpen,
+  CloudSun
 } from 'lucide-react';
 
 interface FarmerDashboardProps {
@@ -353,13 +355,14 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
 
             <button
               onClick={() => setActiveTab('risks')}
-              className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap ${
+              className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
                 activeTab === 'risks'
                   ? 'border-[#183B2A] text-[#183B2A] font-bold bg-[#FAF9F3]'
                   : 'border-transparent text-[#4A584D] hover:text-[#183B2A]'
               }`}
             >
-              {t('dashTabRisks')}
+              <CloudSun className="w-4 h-4" />
+              <span>{isTa ? 'வானிலை & பருவங்கள்' : 'Weather & Seasons'}</span>
             </button>
 
             <button
@@ -605,8 +608,19 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
           </div>
         )}
 
-        {/* Tab 4: District Risks */}
-        {activeTab === 'risks' && <DistrictRiskRegistry />}
+        {/* Tab 4: Real Weather & Seasonal Crop Intelligence */}
+        {activeTab === 'risks' && (
+          <WeatherSeasonalIntelligence
+            farms={farms}
+            activeFarm={primaryFarm}
+            onSelectFarm={(farm) => setSelectedFarm(farm)}
+            onNavigateToScan={(cropId) => {
+              if (cropId) setInitialScanCropId(cropId);
+              setActiveTab('scan');
+              window.scrollTo({ top: 350, behavior: 'smooth' });
+            }}
+          />
+        )}
 
         {/* Tab 5: Community Alerts */}
         {activeTab === 'alerts' && <CommunityAlertsView />}

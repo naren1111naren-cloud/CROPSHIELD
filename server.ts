@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
+import { getDistrictGeo } from './src/config/tamilNaduDistricts';
+import { parseOpenMeteoResponse, RealWeatherData } from './src/services/weatherService';
 
 dotenv.config();
 
@@ -559,6 +561,52 @@ Output strictly valid JSON matching this schema:
       error: 'ANALYSIS_SERVICE_UNAVAILABLE',
       message: err.message || 'The disease analysis service encountered an error. Please verify your connection and try again.',
       messageTamil: 'ஆய்வு சேவை தற்காலிகமாக பதிலளிக்கவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.',
+    });
+  }
+});
+
+// Server-side in-memory cache for live weather (30 min TTL per district)
+const serverWeatherCache = new Map<string, { timestamp: number; data: RealWeatherData }>();
+const SERVER_WEATHER_CACHE_TTL = 30 * 60 * 1000;
+
+// API Route: Live Meteorological Data & 5-Day Forecast via Open-Meteo
+app.get('/api/weather', async (req: Request, res: Response) => {
+  const districtQuery = (req.query.district as string) || 'Thanjavur';
+  const geo = getDistrictGeo(districtQuery);
+  const cacheKey = geo.name.toLowerCase();
+
+  const cached = serverWeatherCache.get(cacheKey);
+  const now = Date.now();
+  if (cached && now - cached.timestamp < SERVER_WEATHER_CACHE_TTL) {
+    return res.json({ success: true, data: cached.data });
+  }
+
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${geo.latitude}&longitude=${geo.longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,cloud_cover,wind_speed_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max&timezone=Asia%2FKolkata&forecast_days=5`;
+
+    const fetchRes = await fetch(url);
+    if (!fetchRes.ok) {
+      throw new Error(`Open-Meteo API returned HTTP status ${fetchRes.status}`);
+    }
+
+    const rawData = await fetchRes.json();
+    const weatherData = parseOpenMeteoResponse(rawData, geo);
+
+    serverWeatherCache.set(cacheKey, { timestamp: now, data: weatherData });
+    return res.json({ success: true, data: weatherData });
+  } catch (err: any) {
+    console.error(`Failed to fetch weather for district ${geo.name}:`, err);
+    if (cached) {
+      return res.json({
+        success: true,
+        data: { ...cached.data, isStale: true },
+        warning: 'Serving cached meteorological data due to upstream connectivity.',
+      });
+    }
+    return res.status(502).json({
+      success: false,
+      error: 'WEATHER_SERVICE_ERROR',
+      message: err.message || `Unable to fetch live meteorological data for ${geo.name}.`,
     });
   }
 });

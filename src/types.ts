@@ -178,3 +178,8 @@ export interface ScanRecord {
   thumbnailUrl: string;
   status?: 'pending' | 'processing' | 'completed' | 'failed';
 }
+
+export type { RealWeatherData, CurrentWeatherState, DailyForecastDay } from './services/weatherService';
+export type { CropWeatherRecommendation, RecommendationContext } from './services/cropRecommendationEngine';
+export type { SeasonalCropWindow } from './config/seasonalRegistry';
+export type { DistrictGeo } from './config/tamilNaduDistricts';
