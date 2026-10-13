@@ -1,0 +1,219 @@
+import React, { useState } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
+import { CloudRain, Wind, Thermometer, MapPin, ArrowRight } from 'lucide-react';
+
+export const SectionLocalRisk: React.FC<{ onOpenDashboard: () => void }> = ({ onOpenDashboard }) => {
+  const { language, t } = useLanguage();
+  const [selectedDistrict, setSelectedDistrict] = useState<'Thanjavur' | 'Tiruvarur' | 'Mayiladuthurai'>('Thanjavur');
+
+  const districtData = {
+    Thanjavur: {
+      name: 'Thanjavur',
+      nameTamil: 'தஞ்சாவூர்',
+      zone: 'Cauvery Lower Delta Basin',
+      riskLevel: 'Elevated' as const,
+      rh: 88,
+      dewHours: 6.5,
+      temp: '28.4°C',
+      blastRisk: 'High',
+      blbRisk: 'Moderate',
+      advisoryEn: 'Morning dew duration exceeding 6.5 hours combined with relative humidity >85% elevates blast spore germination risk across tillering crops.',
+      advisoryTa: '6.5 மணி நேரத்திற்கு மேலான இரவுப் பனிப்பொழிவு மற்றும் 85%க்கும் அதிகமான காற்றின் ஈரப்பதம் காரணமாக இலைக் குலை நோய் பரவ அதிக வாய்ப்புள்ளது.',
+    },
+    Tiruvarur: {
+      name: 'Tiruvarur',
+      nameTamil: 'திருவாரூர்',
+      zone: 'Cauvery Central Delta Basin',
+      riskLevel: 'Elevated' as const,
+      rh: 91,
+      dewHours: 7.0,
+      temp: '29.1°C',
+      blastRisk: 'Moderate',
+      blbRisk: 'High',
+      advisoryEn: 'Tail-end waterlogging and overcast skies create conditions for bacterial leaf blight propagation. Drain standing water where feasible.',
+      advisoryTa: 'தேங்கிய நீர் மற்றும் மேகமூட்டம் பாக்டீரியா இலைக்கருகல் நோயின் தாக்கத்தை அதிகரிக்கக்கூடும். வயல்களில் உள்ள தேவையற்ற நீரை வடிக்கவும்.',
+    },
+    Mayiladuthurai: {
+      name: 'Mayiladuthurai',
+      nameTamil: 'மயிலாடுதுறை',
+      zone: 'Coastal Delta Basin',
+      riskLevel: 'Moderate' as const,
+      rh: 84,
+      dewHours: 5.0,
+      temp: '29.5°C',
+      blastRisk: 'Moderate',
+      blbRisk: 'Moderate',
+      advisoryEn: 'Micro-nutrient deficiencies in saline patches require potash top-dressing to prevent brown spot foliar spread.',
+      advisoryTa: 'உவர் நில பாக்கெட்டுகள் மற்றும் ஊட்டச்சத்து குறைபாடு காரணமாக இலைப்புள்ளி நோய் வர வாய்ப்புள்ளது. சாம்பல் சத்து இடுவது நல்லது.',
+    },
+  };
+
+  const curr = districtData[selectedDistrict];
+
+  return (
+    <section id="field-alerts" className="py-20 border-b border-[#D9DED3] bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="max-w-2xl mb-12">
+          <span className="text-xs font-mono tracking-wider text-[#426B43] uppercase block mb-3 font-semibold">
+            {t('secD_eyebrow')}
+          </span>
+          <h2 className="font-serif text-3xl sm:text-4xl text-[#183B2A] tracking-tight mb-4">
+            {t('secD_title')}
+          </h2>
+          <p className="text-base sm:text-lg text-[#4A584D] font-sans leading-relaxed">
+            {t('secD_subtitle')}
+          </p>
+        </div>
+
+        {/* Map-Inspired Grid Architecture */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* Left: District Selector & Stylized Cadastral Basin Layout */}
+          <div className="lg:col-span-5 bg-[#FAF9F3] border border-[#D9DED3] p-6 shadow-xs">
+            <div className="flex items-center justify-between border-b border-[#D9DED3] pb-3 mb-4 text-xs font-mono text-[#4A584D]">
+              <span className="font-semibold text-[#183B2A]">DELTA DISTRICT SELECTOR</span>
+              <span>SAMBA 2026</span>
+            </div>
+
+            {/* District Buttons */}
+            <div className="space-y-2 mb-6">
+              {(['Thanjavur', 'Tiruvarur', 'Mayiladuthurai'] as const).map((dist) => {
+                const isSelected = selectedDistrict === dist;
+                const d = districtData[dist];
+                return (
+                  <button
+                    key={dist}
+                    onClick={() => setSelectedDistrict(dist)}
+                    className={`w-full p-4 text-left border flex items-center justify-between transition-colors cursor-pointer rounded-xs ${
+                      isSelected
+                        ? 'bg-white border-[#183B2A] shadow-xs'
+                        : 'bg-transparent border-[#D9DED3] hover:bg-white text-[#4A584D]'
+                    }`}
+                  >
+                    <div>
+                      <div className={`font-serif text-base sm:text-lg font-medium ${isSelected ? 'text-[#183B2A]' : 'text-[#202B22]'}`}>
+                        {language === 'ta' ? d.nameTamil : d.name}
+                      </div>
+                      <div className="text-xs font-mono text-[#4A584D] mt-0.5">{d.zone}</div>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs font-mono font-semibold px-2 py-0.5 ${d.riskLevel === 'Elevated' ? 'bg-[#B67B2A]/10 text-[#B67B2A]' : 'bg-[#426B43]/10 text-[#426B43]'}`}>
+                        {d.riskLevel}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Stylized Basin Contour Grid */}
+            <div className="relative aspect-16/9 bg-white border border-[#E5EBDD] p-3 flex flex-col justify-between overflow-hidden">
+              <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-30" xmlns="http://www.w3.org/2000/svg">
+                <path d="M 0 40 Q 100 20 200 45 T 400 30" stroke="#426B43" strokeWidth="1.2" fill="none" />
+                <path d="M 0 80 Q 150 90 250 70 T 400 95" stroke="#426B43" strokeWidth="1.2" fill="none" />
+                <path d="M 0 120 Q 80 130 220 110 T 400 130" stroke="#426B43" strokeWidth="1.2" fill="none" />
+              </svg>
+              <div className="relative z-10 flex items-center justify-between text-xs font-mono text-[#4A584D]">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-[#183B2A]" />
+                  <span>CAUVERY DELTA AGRO-ZONE</span>
+                </div>
+                <span>MET GRID</span>
+              </div>
+              <div className="relative z-10 text-[11px] font-mono text-[#4A584D]">
+                THANJAVUR · TIRUVARUR · MAYILADUTHURAI
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Selected District Weather & Agro-meteorological Advisory */}
+          <div className="lg:col-span-7 bg-[#FAF9F3] border border-[#D9DED3] p-6 lg:p-8 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="border-b border-[#D9DED3] pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <span className="text-xs font-mono text-[#426B43] uppercase tracking-wider block font-semibold">
+                    REGIONAL AGRO-CLIMATIC DOSSIER
+                  </span>
+                  <h3 className="font-serif text-2xl sm:text-3xl font-medium text-[#183B2A] mt-1">
+                    {language === 'ta' ? curr.nameTamil : curr.name} · {curr.zone}
+                  </h3>
+                </div>
+                <div className="text-xs font-mono text-[#B67B2A] font-semibold bg-[#B67B2A]/10 px-2.5 py-1 self-start sm:self-auto">
+                  RISK: {curr.riskLevel.toUpperCase()}
+                </div>
+              </div>
+
+              {/* Environmental Factors Grid */}
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+                <div className="bg-white border border-[#D9DED3] p-3.5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#4A584D] uppercase mb-1">
+                    <CloudRain className="w-3.5 h-3.5 text-[#426B43]" />
+                    <span>Canopy RH</span>
+                  </div>
+                  <div className="text-2xl font-mono font-semibold text-[#183B2A] tabular-nums">
+                    {curr.rh}%
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#D9DED3] p-3.5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#4A584D] uppercase mb-1">
+                    <Wind className="w-3.5 h-3.5 text-[#426B43]" />
+                    <span>Overnight Dew</span>
+                  </div>
+                  <div className="text-2xl font-mono font-semibold text-[#183B2A] tabular-nums">
+                    {curr.dewHours} <span className="text-xs font-normal text-[#4A584D]">hrs</span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#D9DED3] p-3.5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#4A584D] uppercase mb-1">
+                    <Thermometer className="w-3.5 h-3.5 text-[#426B43]" />
+                    <span>Temperature</span>
+                  </div>
+                  <div className="text-2xl font-mono font-semibold text-[#183B2A] tabular-nums">
+                    {curr.temp}
+                  </div>
+                </div>
+              </div>
+
+              {/* Official Advisory Text */}
+              <div className="p-4 bg-white border-l-3 border-[#183B2A] mb-6">
+                <div className="text-xs font-mono font-semibold text-[#183B2A] uppercase mb-1">
+                  Official Meteorological Advisory
+                </div>
+                <p className="text-sm sm:text-base text-[#202B22]/95 font-sans leading-relaxed">
+                  {language === 'ta' ? curr.advisoryTa : curr.advisoryEn}
+                </p>
+              </div>
+
+              {/* Disease Risk Vectors */}
+              <div className="grid grid-cols-2 gap-3 text-xs font-mono mb-6">
+                <div className="p-3 bg-white border border-[#D9DED3] flex justify-between items-center">
+                  <span className="text-[#4A584D]">LEAF BLAST RISK:</span>
+                  <span className="font-semibold text-[#A94338]">{curr.blastRisk}</span>
+                </div>
+                <div className="p-3 bg-white border border-[#D9DED3] flex justify-between items-center">
+                  <span className="text-[#4A584D]">BACTERIAL BLIGHT:</span>
+                  <span className="font-semibold text-[#B67B2A]">{curr.blbRisk}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#D9DED3] pt-4">
+              <span className="text-xs font-mono text-[#4A584D]">
+                SOURCE: IMD Agromet Advisory & TNAU Portal
+              </span>
+              <button
+                onClick={onOpenDashboard}
+                className="px-4 py-2 min-h-[44px] text-xs font-mono font-semibold text-[#183B2A] hover:bg-[#E5EBDD] border border-[#183B2A] rounded-xs cursor-pointer flex items-center justify-center gap-1.5 self-start sm:self-auto"
+              >
+                <span>{t('secD_viewRiskDetails')}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};

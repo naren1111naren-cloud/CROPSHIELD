@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-tamil: "Noto Sans Tamil", "Manrope", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --color-forest: #183B2A;
+  --color-agri: #426B43;
+  --color-leaf: #78965C;
+  --color-sage: #E5EBDD;
+  --color-paper: #F7F6EF;
+  --color-ink: #202B22;
+  --color-muted-ink: #4A584D;
+  --color-rule: #D9DED3;
+  --color-ochre: #B67B2A;
+  --color-alert: #A94338;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #F7F6EF;
+  color: #202B22;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Tamil font rendering adjustments - generous line height, no artificial tracking */
+[lang="ta"], .font-tamil {
+  font-family: "Noto Sans Tamil", "Manrope", sans-serif;
+  letter-spacing: normal !important;
+  line-height: 1.75;
+}
+
+/* Reduced-motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Accessible visible focus ring default */
+:focus-visible {
+  outline: 2px solid #183B2A;
+  outline-offset: 2px;
+}
+
+/* Subtle botanical grid paper pattern */
+.bg-field-grid {
+  background-image: 
+    linear-gradient(to right, rgba(217, 222, 211, 0.45) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(217, 222, 211, 0.45) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+
+.bg-field-dots {
+  background-image: radial-gradient(rgba(66, 107, 67, 0.2) 1px, transparent 1px);
+  background-size: 20px 20px;
+}

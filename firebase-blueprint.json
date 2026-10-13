@@ -1,0 +1,134 @@
+{
+  "entities": {
+    "FarmerProfile": {
+      "title": "FarmerProfile",
+      "description": "Profile information for an authenticated rice farmer.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Authenticated user ID." },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Farmer display name." },
+        "email": { "type": "string", "maxLength": 150, "description": "Farmer email address." },
+        "preferredLanguage": { "type": "string", "enum": ["en", "ta"], "description": "Preferred interface language." },
+        "district": { "type": "string", "maxLength": 50, "description": "District in Tamil Nadu." },
+        "locality": { "type": "string", "maxLength": 100, "description": "Village or taluk." },
+        "primaryCrop": { "type": "string", "maxLength": 50, "description": "Primary crop (Paddy/Rice)." },
+        "activeVariety": { "type": "string", "maxLength": 50, "description": "Cultivated rice variety." },
+        "plantingDate": { "type": "string", "maxLength": 25, "description": "Sowing or transplanting date." },
+        "cropStage": { "type": "string", "maxLength": 50, "description": "Current crop phenological stage." },
+        "landSizeAcres": { "type": "number", "description": "Land holding in acres." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Profile creation timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Profile update timestamp." }
+      },
+      "required": ["uid", "displayName", "preferredLanguage", "district"]
+    },
+    "FarmRecord": {
+      "title": "FarmRecord",
+      "description": "Specific farm plot managed by a farmer.",
+      "type": "object",
+      "properties": {
+        "farmName": { "type": "string", "maxLength": 100, "description": "Plot or farm parcel name." },
+        "cropType": { "type": "string", "maxLength": 50, "description": "Crop type (Rice/Paddy)." },
+        "riceVariety": { "type": "string", "maxLength": 50, "description": "Rice variety." },
+        "district": { "type": "string", "maxLength": 50, "description": "District." },
+        "locality": { "type": "string", "maxLength": 100, "description": "Locality or taluk." },
+        "plantingDate": { "type": "string", "maxLength": 25, "description": "Planting date." },
+        "cropStage": { "type": "string", "maxLength": 50, "description": "Crop stage." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp." }
+      },
+      "required": ["farmName", "cropType", "district"]
+    },
+    "CropScan": {
+      "title": "CropScan",
+      "description": "Pathology evaluation record of a photographed rice crop.",
+      "type": "object",
+      "properties": {
+        "imagePath": { "type": "string", "maxLength": 500, "description": "Firebase Storage reference or image URL." },
+        "status": { "type": "string", "enum": ["completed", "pending", "failed"], "description": "Evaluation status." },
+        "possibleCondition": { "type": "string", "maxLength": 100, "description": "Diagnosed candidate disease or healthy condition." },
+        "possibleConditionTamil": { "type": "string", "maxLength": 100, "description": "Condition name in Tamil." },
+        "pathogen": { "type": "string", "maxLength": 100, "description": "Scientific causative agent." },
+        "severity": { "type": "string", "enum": ["low", "moderate", "high", "nominal"], "description": "Estimated severity level." },
+        "observations": { "type": "string", "description": "JSON stringified or text summary of observed leaf characteristics." },
+        "confidenceInformation": { "type": "string", "maxLength": 300, "description": "Qualitative diagnosis certainty statement." },
+        "recommendations": { "type": "string", "description": "Recommended cultural, bio-control, and chemical measures." },
+        "expertReviewRecommended": { "type": "boolean", "description": "Whether escalation to AEO / KVK is recommended." },
+        "analysisMethod": { "type": "string", "maxLength": 50, "description": "Method of evaluation (gemini-3.8-flash or tnau-library)." },
+        "modelVersion": { "type": "string", "maxLength": 50, "description": "Model version or guideline edition." },
+        "isHealthy": { "type": "boolean", "description": "Whether the crop was assessed as healthy." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Scan submission timestamp." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Scan update timestamp." }
+      },
+      "required": ["imagePath", "status", "possibleCondition", "createdAt"]
+    },
+    "FieldReport": {
+      "title": "FieldReport",
+      "description": "Community rice crop disease observation submitted by a farmer.",
+      "type": "object",
+      "properties": {
+        "submittedBy": { "type": "string", "maxLength": 128, "description": "Farmer UID or name." },
+        "farmerName": { "type": "string", "maxLength": 100, "description": "Reporting farmer display name." },
+        "district": { "type": "string", "maxLength": 50, "description": "District in Tamil Nadu." },
+        "locality": { "type": "string", "maxLength": 100, "description": "Village or taluk." },
+        "cropType": { "type": "string", "maxLength": 50, "description": "Crop type." },
+        "riceVariety": { "type": "string", "maxLength": 50, "description": "Rice variety." },
+        "growthStage": { "type": "string", "maxLength": 50, "description": "Growth stage." },
+        "suspectedCondition": { "type": "string", "maxLength": 100, "description": "Suspected condition." },
+        "suspectedConditionTamil": { "type": "string", "maxLength": 100, "description": "Suspected condition in Tamil." },
+        "description": { "type": "string", "maxLength": 1000, "description": "Field notes and symptoms." },
+        "imagePath": { "type": "string", "maxLength": 500, "description": "Optional image storage path." },
+        "verificationStatus": { "type": "string", "enum": ["Verified by TNAU Specialist", "Pending Field Review", "Sample Dispatched to Lab"], "description": "Verification status." },
+        "verificationStatusTamil": { "type": "string", "maxLength": 100, "description": "Verification status in Tamil." },
+        "riskLevel": { "type": "string", "enum": ["Low", "Moderate", "High"], "description": "Risk priority level." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission timestamp." },
+        "reviewedAt": { "type": "string", "format": "date-time", "description": "Review timestamp." }
+      },
+      "required": ["submittedBy", "district", "locality", "suspectedCondition", "verificationStatus", "createdAt"]
+    },
+    "RiskAssessment": {
+      "title": "RiskAssessment",
+      "description": "Regional agro-climatic disease risk advisory for a Tamil Nadu district.",
+      "type": "object",
+      "properties": {
+        "district": { "type": "string", "maxLength": 50, "description": "District name." },
+        "districtTamil": { "type": "string", "maxLength": 50, "description": "District name in Tamil." },
+        "basin": { "type": "string", "maxLength": 100, "description": "Basin hydrographic name." },
+        "cropType": { "type": "string", "maxLength": 50, "description": "Crop type." },
+        "activeSeason": { "type": "string", "maxLength": 50, "description": "Season (Samba, Kuruvai, Thaladi)." },
+        "overallRisk": { "type": "string", "enum": ["Low", "Moderate", "Elevated"], "description": "Overall risk level." },
+        "blastRisk": { "type": "string", "maxLength": 20, "description": "Blast risk level." },
+        "blbRisk": { "type": "string", "maxLength": 20, "description": "BLB risk level." },
+        "brownSpotRisk": { "type": "string", "maxLength": 20, "description": "Brown spot risk level." },
+        "sheathBlightRisk": { "type": "string", "maxLength": 20, "description": "Sheath blight risk level." },
+        "advisoryText": { "type": "string", "maxLength": 1000, "description": "Official advisory in English." },
+        "advisoryTamil": { "type": "string", "maxLength": 1000, "description": "Official advisory in Tamil." },
+        "inputSources": { "type": "string", "maxLength": 200, "description": "Agromet and weather stations." },
+        "assessedAt": { "type": "string", "format": "date-time", "description": "Assessment date." },
+        "expiresAt": { "type": "string", "format": "date-time", "description": "Advisory validity expiry." }
+      },
+      "required": ["district", "overallRisk", "assessedAt"]
+    }
+  },
+  "firestore": {
+    "/profiles/{uid}": {
+      "schema": { "$ref": "#/entities/FarmerProfile" },
+      "description": "Private profile document for each authenticated rice farmer."
+    },
+    "/profiles/{uid}/farms/{farmId}": {
+      "schema": { "$ref": "#/entities/FarmRecord" },
+      "description": "Farm plots registered under a farmer profile."
+    },
+    "/profiles/{uid}/scans/{scanId}": {
+      "schema": { "$ref": "#/entities/CropScan" },
+      "description": "Private leaf scans and diagnosis history for each farmer."
+    },
+    "/fieldReports/{reportId}": {
+      "schema": { "$ref": "#/entities/FieldReport" },
+      "description": "Community field reports shared across Tamil Nadu."
+    },
+    "/riskAssessments/{assessmentId}": {
+      "schema": { "$ref": "#/entities/RiskAssessment" },
+      "description": "District agro-meteorological disease risk advisories."
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "CropShield",
+  "description": "AI-powered crop-health and agricultural intelligence platform for rice farmers in Tamil Nadu, India. Know the risk. Protect the harvest.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
