@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Raw image datasets (Prompt: Do not place large datasets inside the frontend repository)
+CropShield-ML/Rice_and_Maize_Dataset/
+*.zip
+*.tar.gz
+

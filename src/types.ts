@@ -37,6 +37,16 @@ export interface AnalysisResult {
   source: string;
   analysisMethod?: string;
   modelVersion?: string;
+  registryVersion?: string;
+  isSpecialistTrainedModel?: boolean;
+  calibratedConfidence?: number | null;
+  confidenceCalibrationNote?: string;
+  evidenceDistinction?: {
+    specialistPrediction: string;
+    multimodalReasoning: string;
+    weatherRiskIndicators: string;
+    verifiedAgronomicGuidance: string;
+  };
   analyzedAt?: string;
   isFallback?: boolean;
 }

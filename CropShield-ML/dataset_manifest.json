@@ -1,0 +1,618 @@
+{
+  "pipeline_version": "v1.0.0",
+  "status": "pipeline_verified_mock_demonstration",
+  "target_crop": "rice",
+  "split_counts": {
+    "train": 70,
+    "validation": 15,
+    "test": 15
+  },
+  "splits": {
+    "train": [
+      {
+        "file_path": "rice_blast/sample_019.jpg",
+        "sha256": "6b1d2d634b18936b5990eb3a318f9641ff300119354937fd1ae107a031c23717",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_005.jpg",
+        "sha256": "24d6c9b3e86ac9b6372f23fe572c623bdb2e5b86e1f2258639e160245be70d0b",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_014.jpg",
+        "sha256": "d1cbeccf3dfef7c1e85fe949f2979b4ccfd3f71c154542f35940193bd05fad01",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_004.jpg",
+        "sha256": "6a3d17ba214eb4778d36d00222c634d4add3306c0de9218131fbea417dd45736",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_009.jpg",
+        "sha256": "15d7b1fe3a8accb242d09ee9511b555e83f517705944182a61e7429452e046d9",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_013.jpg",
+        "sha256": "f3abfc5d3bb7beab8927408074fa7a14d78870d96a326e59eab7f4857f8e4302",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_015.jpg",
+        "sha256": "dabeed64eb794317e2da9f5079d7f6b367dacfbfd32d4c9d1ddb761b9931b97f",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_018.jpg",
+        "sha256": "98c5a34fc97872dcb888a4cb8db69d3f607cf7f8eeb87f719fa77d1f39229d5c",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_006.jpg",
+        "sha256": "6d8b93b1648d4f393d1812cee321e4781961bbb43eb9595812f68687baac3721",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_012.jpg",
+        "sha256": "75bf66f1abacf5da089ec5ccf4a88e847fbe8d75087f41faf6acb09d65678063",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_017.jpg",
+        "sha256": "7b976ce5db2afc1ce95f3f0dae15b33d09e9d8132d20dadebcc60eebff4ce5bc",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_010.jpg",
+        "sha256": "a20db77f87b6ffd979a8208f2aaecc8baef2ff227128798c2695700afa0c06ad",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_001.jpg",
+        "sha256": "be854315d1ca8cbf19368a121081adabf3fca64d4d05a6f73f5ac5542e648489",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_011.jpg",
+        "sha256": "39202da4d2a2d6d1c074e9795d6290c6f76ca758dc23db3fee6fa6a82d2719f8",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_014.jpg",
+        "sha256": "ffcb834ebd5364f7f7fcc8f1dbac75bdb6d8e862461117531b71d79395ea02be",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_008.jpg",
+        "sha256": "457b18bc625ddd7c71642ca9078dcd4e2cdf777a7435b09138052abb9f3544a9",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_003.jpg",
+        "sha256": "eb5d841d22d7fb515d32445eee241f3015074f38515c356ed219b64ed7eb2d87",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_011.jpg",
+        "sha256": "a6cd4ef8703e54d44818df6fcee579ad970527be97fe3325f047dc23dfb082c0",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_010.jpg",
+        "sha256": "ef2764e1f10c72da38a3643ac0b22f80ec1529c8b290ee1399cbe4e4ae8bcfc4",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_016.jpg",
+        "sha256": "a51dc0b5d37795d024c2de5103096b6a0b288fa55a0797db41806fd924e44d38",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_001.jpg",
+        "sha256": "eda6bb3f65f8bbba51179f2dc2941fb958c500999f9dcb8f4410ed2b93b00fdd",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_012.jpg",
+        "sha256": "6ba22c5765fbf02d8f8d81803b31c8bffa5d9757e9e8b75352847c1347115634",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_005.jpg",
+        "sha256": "abd773fddba6581b011360b23165767fa78509f0b440ef91f0477edb301aeb39",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_018.jpg",
+        "sha256": "9e899822887746e5f77bac47a32c568948f297263db19289488a42d0d24aae0d",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_002.jpg",
+        "sha256": "0b2d01a784dd32a494138c0fd48ba89584a24d2929c6ee7ac4f67edfc19d5074",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_000.jpg",
+        "sha256": "eeabc5535ffc1748de0b5e06d89c98b6bcda49f10fd2c56a530a3efcf2856928",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_004.jpg",
+        "sha256": "b131f73153909bcb240cb4290fddad8b5e07aea0f5eb0407a229b358288f523b",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_009.jpg",
+        "sha256": "a2b6989cf60720c31a85a87ef8a17b36fc2c1c90daf7b4d95493391b3b8621a3",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "brown_spot/sample_009.jpg",
+        "sha256": "393b140d8e7c68af09f5d15a5c8596c0259b2c5e27d0dea2587d6257f9232389",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_000.jpg",
+        "sha256": "6c77e4fc2bda31e75f0d8f1d9c048cc3bc0fc0885715ea1ff34be4402d9d5916",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_019.jpg",
+        "sha256": "6bdba5b1fd0eafd257266917f37b715565a8dc1d28d0b29042918928975d1b76",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_002.jpg",
+        "sha256": "fbed953cb8f605844309fbda84f231ba714686a3dbaaec50206d4c8616ffa4e6",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_013.jpg",
+        "sha256": "458498fed5c0d15283e7f2a4e690dec8d588df0c81565d70b7d30f09e567f524",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_005.jpg",
+        "sha256": "0c79d278ed06d310628ca634b9c5479780a7bdabb24c7c7dc6df0ab998e76d05",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_010.jpg",
+        "sha256": "b3ebaf464386eb41a5cb65e92b6f09cbdb3b8f361f0c8d1faab90e475402cb68",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_004.jpg",
+        "sha256": "72895eb24502095805defd3596be7ea2c2e9af2b892b3576f3cd1516a92e4399",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_012.jpg",
+        "sha256": "cb0648403f19de8d77bf46cc17b7662c32147b92d58b58c1d67aee9316644eb5",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_014.jpg",
+        "sha256": "c5ab811c35ffa5562e556ecc5ca7103775a5685bbfa676905d603aad2b5d9837",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_006.jpg",
+        "sha256": "d41f1b43ee258d0633660185e90c3faeabd2c384cf725ef2255bef8cf6b86e94",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_015.jpg",
+        "sha256": "327fc040c262a8956f4c5cf4fd98eb5cd8cfb80aba03efd128814af63ea51afb",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_016.jpg",
+        "sha256": "b0ee9c76e9b58215d187968d90350f9c80a2b7c9ca9646c1f392d66ea3234b10",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_007.jpg",
+        "sha256": "ae7a9f77fd7ec4258c3ed09bd99b0517dd8e47b174ce3976aab3167b6e23581c",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "sheath_blight/sample_010.jpg",
+        "sha256": "01066a0b16dfe0433f67b999f50d0f6b16c6f585767b692408df960375b1cdf1",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_000.jpg",
+        "sha256": "8a8e67cda04f52d97f996e9119f5586ed4d1a289aaf340110f3185c89768a4e4",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_014.jpg",
+        "sha256": "5e571b5d31e731692536d15798f87b0d068027e325d546d7a2bcfb852c789219",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_008.jpg",
+        "sha256": "57e34346d0801e355aa0924a1529367a58577bbb14dae7f98ffa55647b8ceb81",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_012.jpg",
+        "sha256": "db01de70b0b28a18151a425621dd8613cf6fbbe6d77a826f6f8510d9335ad2b8",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_011.jpg",
+        "sha256": "e817d633876a955384c2022973928ccbb63f3f44fa05735962a6d56588509ec1",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_016.jpg",
+        "sha256": "c3918de49b56a5d23a31adafd4bb580884df165785a7c72d6471be4e7d12f286",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_015.jpg",
+        "sha256": "9d4133620c58100d2a12e942c73f7daa8b4eb405af6cccc412d8520a36fe4173",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_005.jpg",
+        "sha256": "bf929d5ab8261ebd48008128f479e444dfa7b2af7b7e9a24a37da7e837d89b95",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_017.jpg",
+        "sha256": "d6ede784cf71e4387d17f2769ded0ebe5b2601edceb00ce55c7d656ce98f92a5",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_004.jpg",
+        "sha256": "c6d43930c6fc9d529cd0ac975d0b482510a471ba8286a618c83ea2534de36b7c",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_006.jpg",
+        "sha256": "8c2243ff264d72b5887fc49cda69d90fad8a384e6ab7af2bd6997fb9500882be",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_018.jpg",
+        "sha256": "01e3782770078e3522b5474a7da4b1cd105365235fb64ee33060b439afb87f9d",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_003.jpg",
+        "sha256": "98eb4b7a7451b48df51ba7f76f0c2524be31a73a9f3050d89ea4519c5ffbb8d0",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "healthy_rice/sample_012.jpg",
+        "sha256": "07fe436c2a597a4f380e375153215ed97e4d06a40c71c40726d34f859992f335",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_011.jpg",
+        "sha256": "cff65bdcbf27e66291f8a4b9b4ccae2a1c15e509cc9ac1fb5d662a799b4d98ea",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_013.jpg",
+        "sha256": "d2aec5df8d206de13c93a4bcaa2c98f19b7e06b2066f43c5608b0d6ccb9748af",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_009.jpg",
+        "sha256": "a8fe3847a276f24f1fc3e9f2ccbce12f4d1a6caf30f6a27f2b22f260443e3a31",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_002.jpg",
+        "sha256": "0eceb7c680d70d86f135544aa6c65a5d691d7542ea0272e6c5f0b598246734f0",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_014.jpg",
+        "sha256": "1ee259925943465d038055d0859688f27cb27d21b85f267c0832cfafe5c78ea1",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_001.jpg",
+        "sha256": "0369d1792a93d0253b7e68d80afb6c37e1eccadbb6df2c97e599e0e70644f628",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_000.jpg",
+        "sha256": "38d121b0dc916085a71a420a911f13aea4f52ed5a128cc8cedeeb82ae5a5d836",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_015.jpg",
+        "sha256": "c10f88d9c0ad1ecf33e30b5f24d250eea54665bf04ac11252e34ce0469830273",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_003.jpg",
+        "sha256": "2d1e33fce9f805e8538916a45169a79c82e93d26b1b17e990c771494a26f004f",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_008.jpg",
+        "sha256": "0a962fbcf0b71a4b139a61d0ca727daf0e1c891f388ef49b0332d80ee08af275",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_010.jpg",
+        "sha256": "f037402637784fb748671cb7ffcec9876585e0f85f8c466fdf260ad356988c8d",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_004.jpg",
+        "sha256": "c38d21a234daf3d0e7ba82e8092ee197e187cf7ae7f3b07cd6872944429d31e0",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_006.jpg",
+        "sha256": "69f7fbb790c3d8a3feba95914db1f1f4cf4003ea45f0b1df9abf62683017510d",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      }
+    ],
+    "validation": [
+      {
+        "file_path": "rice_blast/sample_002.jpg",
+        "sha256": "fd88649dca1bc1fe614d1fd92e8b1ecaf64cce0ef6eff910763f175bc94d2784",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_016.jpg",
+        "sha256": "fc5b6749f18a4d08793fc4720f31c0f89ea4322d590543eb58cf4d1af4501fe0",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_007.jpg",
+        "sha256": "cd099235fc5dc0cc6748f6bcc52f9a0da312c7a16dc73936a38313586dc5f2ea",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_015.jpg",
+        "sha256": "3bda922caa6177a3063332e5737e280687c32435a42ee3ab9dbde213f7407196",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_007.jpg",
+        "sha256": "98e057240360568a88f3b76d54d19162c417c2d1b88e82d2af3341d27b45f3e6",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_013.jpg",
+        "sha256": "fe8c4e1c9141ee9fc61b135d78098cb3e3fcf487015720f2f4cb878b9430616f",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "brown_spot/sample_017.jpg",
+        "sha256": "80c688c88836574309a9d9e0be742e656df61e08a1bf6f55ac6b511667099ac2",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_001.jpg",
+        "sha256": "d36206e81762d9c54fc5f5bee5c0e07d7810064d331ea12c94db0ab1c049bac6",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_008.jpg",
+        "sha256": "453b54c536009ad7d32e9c07a57b81cec767b569267b55a0f587cae23dd570f3",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "sheath_blight/sample_013.jpg",
+        "sha256": "7434c57e94c42d670ae93998a750537d1c684dc3b904c7e85d24380418ea407c",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_019.jpg",
+        "sha256": "781b225b45699a8e8891e282b11580843532209733eacc46a97227df3efdabba",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_009.jpg",
+        "sha256": "c3d6463990f38f6985f1947723def4a2139939fa4a3c6b7c486642849370b1cf",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "healthy_rice/sample_016.jpg",
+        "sha256": "261c8a811623108cf8a1b1f86206982d8d1ec8fc1fe5dfbb3ee73c9ad5bef34f",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_018.jpg",
+        "sha256": "477798d4272091e5aa0b7053520c1512a2c1ff44fa5d15d63bbab5ab871c276b",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_007.jpg",
+        "sha256": "23dcdb236a3e2b0984628f7ceac0fd0fbd0835d97352bc80519d5335756bb842",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      }
+    ],
+    "test": [
+      {
+        "file_path": "rice_blast/sample_008.jpg",
+        "sha256": "e6f2a2a0a8c1881f82227e07cd34766d9f4551116225a42197f28312d5c2f76d",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_000.jpg",
+        "sha256": "d8fb3ea7691fe07ac82520c4799e3c34f1ca8d2b857444eb116e98a50cc40e82",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "rice_blast/sample_003.jpg",
+        "sha256": "21fdd288ddee1ab3ba106decf3ad33123a5bef25cfd0b6a135425e03db7462c9",
+        "raw_class": "rice_blast",
+        "target_class": "rice_blast"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_019.jpg",
+        "sha256": "e35d85ce168f3278585eaba6d18c475cba06457efbf7b77e6b1e055d0ee29a6a",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_006.jpg",
+        "sha256": "02bb24991e043c8dcbfca33d823237bd066f6faaebc4a1c1a497a68c84b045a5",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "bacterial_leaf_blight/sample_017.jpg",
+        "sha256": "60dd2a1f263f05a31bbb7bda137265e23276553d443f519c4196a72def0c37c4",
+        "raw_class": "bacterial_leaf_blight",
+        "target_class": "bacterial_leaf_blight"
+      },
+      {
+        "file_path": "brown_spot/sample_018.jpg",
+        "sha256": "26eeefc20b1663799ab04831911f8dd1a1f9ea5461efbf20ad42919bb824ec45",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_011.jpg",
+        "sha256": "df06c04179ea1e504a416dfdfd82917b5b57f0081dce7ae1a29eb8c301c0bca7",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "brown_spot/sample_003.jpg",
+        "sha256": "54adc1578c5ac94da6fc48ccff77e7f3ab820ecc895d33ded2d17b59fdd355d4",
+        "raw_class": "brown_spot",
+        "target_class": "brown_spot"
+      },
+      {
+        "file_path": "sheath_blight/sample_007.jpg",
+        "sha256": "0acfc4c7b44137147049b05ff80bd652653e6ab056db41838e42f7dbf16b40ee",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_001.jpg",
+        "sha256": "f6b304aea034a9490932ec4b43770fbb9bf26e5e74f08753119a79ecb00c1165",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "sheath_blight/sample_002.jpg",
+        "sha256": "321f865d07012b6ef56b8af704427dc62fb6afa37fb68d9f134f0f2976a76004",
+        "raw_class": "sheath_blight",
+        "target_class": "sheath_blight"
+      },
+      {
+        "file_path": "healthy_rice/sample_017.jpg",
+        "sha256": "acd3de7d1707879589ca475fec3582a98db93e12cb894be8e30f79e011a9c8da",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_005.jpg",
+        "sha256": "46b1e0b907a4ea90107165c722666fd61b292473c76ad7b75cbc627186e5db01",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      },
+      {
+        "file_path": "healthy_rice/sample_019.jpg",
+        "sha256": "9a8b3dfd5ab3dd27876b3734842e988322f07691a65727e6eb022f4aeaede598",
+        "raw_class": "healthy_rice",
+        "target_class": "healthy_rice"
+      }
+    ]
+  }
+}

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { getDistrictGeo } from './src/config/tamilNaduDistricts';
 import { parseOpenMeteoResponse, RealWeatherData } from './src/services/weatherService';
+import { specialistEngine } from './server/specialistService';
 
 dotenv.config();
 
@@ -249,7 +250,7 @@ const districtRiskData = [
   },
 ];
 
-// API Route: Multi-Crop AI Disease Analysis Service
+// API Route: Multi-Crop AI Disease Analysis Service (Specialist Pathology Engine)
 app.post('/api/analyze-crop', async (req: Request, res: Response) => {
   try {
     const {
@@ -262,7 +263,6 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
       fieldNotes = '',
     } = req.body;
 
-    // 1. Validate Image Payload
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       return res.status(400).json({
         success: false,
@@ -272,7 +272,6 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
       });
     }
 
-    // Validate MIME Type
     const validMimes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validMimes.includes(mimeType)) {
       return res.status(400).json({
@@ -283,276 +282,19 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
       });
     }
 
-    // 2. Validate Multi-Crop Support Boundary
-    const supportedCrops = ['rice', 'tomato', 'chilli', 'cotton', 'maize'];
-    if (!supportedCrops.includes(cropId.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        error: 'UNSUPPORTED_CROP',
-        analysisStatus: 'unsupported_crop',
-        message: `Validated pathology evaluation for crop '${cropId}' is not yet active. CropShield maintains strict scientific discipline and does not apply mismatched classifiers.`,
-        messageTamil: `'${cropId}' பயிருக்கான மாதிரி இன்னும் பயன்பாட்டிற்கு வரவில்லை. தவறான கணிப்புகளைத் தவிர்க்க ஆய்வு நிறுத்தி வைக்கப்பட்டுள்ளது.`,
-      });
-    }
-
-    // Clean base64 string
-    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
-
-    // Approximate size check (15MB base64 is ~20MB string)
-    if (cleanBase64.length > 20 * 1024 * 1024) {
-      return res.status(400).json({
-        success: false,
-        error: 'IMAGE_TOO_LARGE',
-        message: 'Image payload exceeds the maximum 15 MB file size limit.',
-        messageTamil: 'படத்தின் அளவு 15 MB வரம்பைத் தாண்டியுள்ளது.',
-      });
-    }
-
-    // 3. Verify Server-Side Gemini API Configuration
-    if (!aiClient) {
-      return res.status(503).json({
-        success: false,
-        error: 'GEMINI_NOT_CONFIGURED',
-        message: 'Server-side Gemini AI service is not initialized. Please configure GEMINI_API_KEY in the server environment (.env).',
-        messageTamil: 'சர்வரில் Gemini API சாவி இணைக்கப்படவில்லை. நேரடி AI ஆய்வுக்கு GEMINI_API_KEY ஐ அமைக்கவும்.',
-      });
-    }
-
-    // 4. Build Crop-Specific Pathology System Prompt
-    let cropPromptContext = '';
-    let cropNameEnglish = 'Rice (Paddy)';
-    let cropNameTamil = 'நெல் (பயிர்)';
-
-    const normalizedCropId = cropId.toLowerCase();
-    if (normalizedCropId === 'rice') {
-      cropNameEnglish = 'Rice (Paddy)';
-      cropNameTamil = 'நெல் (பயிர்)';
-      cropPromptContext = `Crop: Rice / Paddy (Oryza sativa L.)
-Target Candidate Classes in Tamil Nadu (Cauvery Delta & agro-climatic basins):
-- Rice Blast (Magnaporthe oryzae / Pyricularia oryzae)
-- Bacterial Leaf Blight (Xanthomonas oryzae pv. oryzae)
-- Brown Spot (Bipolaris oryzae)
-- Sheath Blight (Rhizoctonia solani)
-- False Smut (Ustilaginoidea virens)
-- Healthy Rice Leaf (vigorous foliar condition)
-- Inconclusive Image (blurry, poor illumination, or non-rice foliage)`;
-    } else if (normalizedCropId === 'tomato') {
-      cropNameEnglish = 'Tomato';
-      cropNameTamil = 'தக்காளி';
-      cropPromptContext = `Crop: Tomato (Solanum lycopersicum)
-Target Candidate Classes:
-- Early Blight (Alternaria solani)
-- Septoria Leaf Spot (Septoria lycopersici)
-- Tomato Leaf Curl Virus
-- Bacterial Spot (Xanthomonas perforans)
-- Healthy Tomato Foliage
-- Inconclusive Image`;
-    } else if (normalizedCropId === 'chilli') {
-      cropNameEnglish = 'Chilli';
-      cropNameTamil = 'மிளகாய்';
-      cropPromptContext = `Crop: Chilli (Capsicum annuum L.)
-Target Candidate Classes:
-- Anthracnose / Die-back (Colletotrichum capsici)
-- Cercospora Leaf Spot (Frogeye)
-- Chilli Leaf Curl Virus
-- Powdery Mildew (Leveillula taurica)
-- Healthy Chilli Foliage
-- Inconclusive Image`;
-    } else if (normalizedCropId === 'cotton') {
-      cropNameEnglish = 'Cotton';
-      cropNameTamil = 'பருத்தி';
-      cropPromptContext = `Crop: Cotton (Gossypium hirsutum L.)
-Target Candidate Classes in Tamil Nadu:
-- Bacterial Blight / Angular Leaf Spot (Xanthomonas citri pv. malvacearum)
-- Alternaria Leaf Spot (Alternaria macrospora)
-- Cercospora Leaf Spot
-- Cotton Leaf Curl Virus
-- Grey Mildew / Dahiya Disease (Ramularia areola)
-- Healthy Cotton Foliage
-- Inconclusive Image`;
-    } else if (normalizedCropId === 'maize') {
-      cropNameEnglish = 'Maize (Corn)';
-      cropNameTamil = 'மக்காச்சோளம்';
-      cropPromptContext = `Crop: Maize (Zea mays L.)
-Target Candidate Classes in Tamil Nadu:
-- Turcicum Leaf Blight / Northern Corn Leaf Blight (Exserohilum turcicum)
-- Maydis Leaf Blight / Southern Corn Leaf Blight (Bipolaris maydis)
-- Common Rust (Puccinia sorghi)
-- Banded Leaf and Sheath Blight (Rhizoctonia solani f. sp. sasakii)
-- Healthy Maize Foliage
-- Inconclusive Image`;
-    }
-
-    const systemPrompt = `You are CropShield's agricultural pathology intelligence engine specialized in crops cultivated in Tamil Nadu, India.
-${cropPromptContext}
-
-Strict Instructions:
-1. Examine the provided foliage photograph critically.
-2. If the image does not show a leaf blade or sheath of ${cropNameEnglish}, or if the image is out of focus, blurry, too dark, or symptoms cannot be differentiated from general mechanical damage, return "analysisStatus": "inconclusive", "imageQualityStatus": "blurry" (or "off_target" / "poor_lighting"), and describe the limitation honestly.
-3. NEVER invent fake confidence percentages (e.g. do not say "94.2%"). Provide a qualitative diagnostic confidence statement explaining the visual evidence and limitations.
-4. Distinguish between primary condition and alternative conditions if lesions could indicate multiple pathogens.
-5. Provide actionable Integrated Pest Management (IPM) cultural, biological, and agronomic guidelines adhering to Tamil Nadu Agricultural University (TNAU) protocols. NEVER prescribe toxic or unverified chemical cocktail dosages. Always advise consultation with the local Village Agricultural Extension Officer (AEO) or Krishi Vigyan Kendra (KVK).
-6. Provide accurate Tamil names and recommendations alongside English.
-
-District context: ${district}, Tamil Nadu
-Cultivar: ${variety}
-Growth stage: ${cropStage || 'Not specified'}
-Farmer field notes: ${fieldNotes || 'Standard visual inspection'}
-
-Output strictly valid JSON matching this schema:
-{
-  "analysisStatus": "completed" | "inconclusive",
-  "possibleCondition": "English name of diagnosed condition or Healthy Foliage or Inconclusive Image",
-  "possibleConditionTamil": "Authentic Tamil name",
-  "alternativeConditions": ["alternative 1 if uncertainty exists", "alternative 2"],
-  "pathogen": "Scientific causative agent or None",
-  "severity": "low" | "moderate" | "high" | "nominal",
-  "observedSymptoms": ["specific visual feature 1 (lesion shape, margins, coloration)", "feature 2", "feature 3"],
-  "explanation": "Botanical and pathological reasoning explaining how the visual evidence supports this assessment",
-  "confidenceInformation": "Qualitative certainty statement and diagnostic boundaries",
-  "imageQualityStatus": "good" | "blurry" | "poor_lighting" | "off_target",
-  "inspectionSteps": ["Step 1 to inspect in the field right now", "Step 2", "Step 3"],
-  "immediateCare": ["Immediate agronomic/cultural action 1", "Immediate action 2"],
-  "immediateCareTamil": ["உடனடிப் பராமரிப்பு நடவடிக்கை 1", "உடனடி நடவடிக்கை 2"],
-  "preventivePractices": ["Long-term preventive practice 1", "Preventive practice 2"],
-  "preventivePracticesTamil": ["நீண்டகால தடுப்பு முறை 1", "தடுப்பு முறை 2"],
-  "recommendations": ["Actionable cultural / biological IPM step 1", "Actionable step 2", "Actionable step 3"],
-  "recommendationsTamil": ["தமிழ் பரிந்துரை 1", "தமிழ் பரிந்துரை 2", "தமிழ் பரிந்துரை 3"],
-  "expertReviewAdvice": "Clear advice on when and where to seek in-person AEO / KVK verification",
-  "expertReviewAdviceTamil": "தமிழ் கள ஆய்வு ஆலோசனை",
-  "expertReviewRecommended": true | false,
-  "uncertaintyNotice": "Explicit uncertainty/safety notice explaining that this is preliminary AI image analysis",
-  "uncertaintyNoticeTamil": "தமிழ் எச்சரிக்கை / பூர்வாங்க ஆய்வு அறிவிப்பு",
-  "isHealthy": true | false
-}`;
-
-    // 5. Invoke Gemini Multimodal API with resilient fallback across flash tiers
-    const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
-    let response: any = null;
-    let selectedModel = 'gemini-3.8-flash';
-    let lastError: any = null;
-
-    for (const modelName of candidateModels) {
-      try {
-        response = await aiClient.models.generateContent({
-          model: modelName,
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  inlineData: {
-                    mimeType,
-                    data: cleanBase64,
-                  },
-                },
-                {
-                  text: `Analyze this ${cropNameEnglish} foliage photograph. Adhere strictly to the requested schema. Return valid JSON only.`,
-                },
-              ],
-            },
-          ],
-          config: {
-            systemInstruction: systemPrompt,
-            responseMimeType: 'application/json',
-          },
-        });
-        selectedModel = modelName;
-        break;
-      } catch (callErr: any) {
-        lastError = callErr;
-        console.warn(`Model ${modelName} returned status ${callErr.status || callErr.message}, attempting next candidate...`);
-      }
-    }
-
-    if (!response) {
-      throw lastError || new Error('No candidate Gemini model succeeded.');
-    }
-
-    const rawText = response.text || '';
-    let parsed: any;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch (parseErr) {
-      console.error('Failed to parse Gemini pathology JSON output:', parseErr, rawText);
-      return res.status(502).json({
-        success: false,
-        error: 'MALFORMED_AI_RESPONSE',
-        message: 'The AI analysis engine returned a response that could not be validated against the pathology schema.',
-        messageTamil: 'ஆய்வு முடிவைச் சரிபார்க்க முடியவில்லை. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.',
-      });
-    }
-
-    // 6. Runtime Schema Validation
-    if (!parsed || !parsed.possibleCondition) {
-      return res.status(502).json({
-        success: false,
-        error: 'INVALID_PATHOLOGY_STRUCTURE',
-        message: 'AI response was missing essential pathology indicators.',
-      });
-    }
-
-    const isHealthy = Boolean(parsed.isHealthy || parsed.severity === 'nominal');
-    const analysisStatus = parsed.analysisStatus === 'inconclusive' ? 'inconclusive' : 'completed';
-
-    const immediateCare = Array.isArray(parsed.immediateCare) && parsed.immediateCare.length > 0
-      ? parsed.immediateCare
-      : (Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 2) : []);
-    const immediateCareTamil = Array.isArray(parsed.immediateCareTamil) && parsed.immediateCareTamil.length > 0
-      ? parsed.immediateCareTamil
-      : (Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil.slice(0, 2) : []);
-
-    const preventivePractices = Array.isArray(parsed.preventivePractices) && parsed.preventivePractices.length > 0
-      ? parsed.preventivePractices
-      : (Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(2) : []);
-    const preventivePracticesTamil = Array.isArray(parsed.preventivePracticesTamil) && parsed.preventivePracticesTamil.length > 0
-      ? parsed.preventivePracticesTamil
-      : (Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil.slice(2) : []);
-
-    // Build finalized structured field report
-    const formattedResult = {
-      analysisStatus,
-      cropId: cropId.toLowerCase(),
-      cropName: cropNameEnglish,
-      cropNameTamil,
-      conditionName: parsed.possibleCondition,
-      conditionNameTamil: parsed.possibleConditionTamil || parsed.possibleCondition,
-      alternativeConditions: Array.isArray(parsed.alternativeConditions) ? parsed.alternativeConditions : [],
-      pathogen: parsed.pathogen || 'Not specified',
-      severity: (['low', 'moderate', 'high', 'nominal'].includes(parsed.severity) ? parsed.severity : 'moderate') as 'low' | 'moderate' | 'high' | 'nominal',
-      observedCharacteristics: Array.isArray(parsed.observedSymptoms) ? parsed.observedSymptoms : (Array.isArray(parsed.observedCharacteristics) ? parsed.observedCharacteristics : []),
-      observedSymptoms: Array.isArray(parsed.observedSymptoms) ? parsed.observedSymptoms : [],
-      explanation: parsed.explanation || '',
-      confidenceAssessment: parsed.confidenceInformation || 'Preliminary visual interpretation.',
-      confidenceInformation: parsed.confidenceInformation || 'Preliminary visual interpretation.',
-      imageQualityStatus: (['good', 'blurry', 'poor_lighting', 'off_target'].includes(parsed.imageQualityStatus) ? parsed.imageQualityStatus : 'good') as 'good' | 'blurry' | 'poor_lighting' | 'off_target',
-      inspectionSteps: Array.isArray(parsed.inspectionSteps) ? parsed.inspectionSteps : [],
-      immediateCare,
-      immediateCareTamil,
-      preventivePractices,
-      preventivePracticesTamil,
-      managementGuidance: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-      managementGuidanceTamil: Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil : [],
-      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
-      recommendationsTamil: Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil : [],
-      expertReviewAdvice: parsed.expertReviewAdvice || 'Consult your local Village Agricultural Extension Officer before taking chemical action.',
-      expertReviewAdviceTamil: parsed.expertReviewAdviceTamil || 'ரசாயன மருந்துகளைப் பயன்படுத்துவதற்கு முன் வட்டார வேளாண்மை விரிவாக்க அலுவலரின் ஆலோசனையைப் பெறவும்.',
-      expertReviewRecommended: Boolean(parsed.expertReviewRecommended ?? (parsed.severity === 'high')),
-      uncertaintyNotice: parsed.uncertaintyNotice || 'Preliminary AI image analysis only. Not a certified laboratory diagnostic. Field symptoms may overlap between fungal and physiological stresses.',
-      uncertaintyNoticeTamil: parsed.uncertaintyNoticeTamil || 'இது AI துணையுடன் மேற்கொள்ளப்பட்ட பூர்வாங்க புகைப்பட கணிப்பு மட்டுமே. ஆய்வக பரிசோதனைக்கு மாற்றாகாது.',
-      isHealthy,
-      disclaimer: 'Preliminary AI visual interpretation. In-field verification by an authorized Agricultural Extension Officer (AEO) or Krishi Vigyan Kendra (KVK) is recommended before applying chemical inputs.',
-      disclaimerTamil: 'இது AI துணையுடன் மேற்கொள்ளப்பட்ட பூர்வாங்க கணிப்பு மட்டுமே. ரசாயன மருந்துகளை வாங்குவதற்கு முன் வட்டார வேளாண்மை அலுவலரின் நேரடி ஆலோசனையைப் பெறவும்.',
-      analysisMethod: `${selectedModel} (preliminary multimodal screening)`,
-      modelVersion: `cropshield-${cropId.toLowerCase()}-v3.0`,
-      source: selectedModel,
-      analyzedAt: new Date().toISOString(),
-      timestamp: new Date().toISOString(),
-    };
+    const result = await specialistEngine.analyze({
+      imageBase64,
+      mimeType,
+      cropId,
+      variety,
+      district,
+      cropStage,
+      fieldNotes,
+    });
 
     return res.json({
       success: true,
-      data: formattedResult,
+      data: result,
     });
   } catch (err: any) {
     console.error('Server error during crop pathology evaluation:', err);
