@@ -109,6 +109,36 @@ service cloud.firestore {
 
         allow delete: if isOwner(uid);
       }
+
+      // Subcollection: Field Cases: /profiles/{uid}/fieldCases/{caseId}
+      match /fieldCases/{caseId} {
+        // Strict ownership: Farmers can only access and modify their own field cases
+        allow read: if isOwner(uid);
+
+        allow create: if isOwner(uid) && isValidId(caseId)
+          && incoming().userId == request.auth.uid
+          && incoming().status in ['active', 'monitoring', 'resolved', 'escalated']
+          && incoming().cropId is string;
+
+        allow update: if isOwner(uid)
+          && incoming().userId == existing().userId
+          && incoming().status in ['active', 'monitoring', 'resolved', 'escalated'];
+
+        allow delete: if isOwner(uid);
+
+        // Subcollection: Observations: /profiles/{uid}/fieldCases/{caseId}/observations/{observationId}
+        match /observations/{observationId} {
+          allow read: if isOwner(uid);
+
+          allow create: if isOwner(uid) && isValidId(observationId)
+            && incoming().userId == request.auth.uid;
+
+          allow update: if isOwner(uid)
+            && incoming().userId == existing().userId;
+
+          allow delete: if isOwner(uid);
+        }
+      }
     }
 
     // 2. Community Field Reports: /fieldReports/{reportId}

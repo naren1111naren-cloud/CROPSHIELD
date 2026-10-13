@@ -304,3 +304,149 @@ export type { CropWeatherRecommendation, RecommendationContext } from './service
 export type { SeasonalCropWindow } from './config/seasonalRegistry';
 export type { DistrictGeo } from './config/tamilNaduDistricts';
 
+// ============================================================================
+// Field Case Intelligence Engine Types
+// ============================================================================
+
+export type FieldCaseStatus = 'active' | 'monitoring' | 'resolved' | 'escalated';
+
+export interface FieldObservationInput {
+  affectedParts: ('upper_leaf' | 'lower_leaf' | 'sheath_stem' | 'panicle_neck' | 'whole_plant')[];
+  fieldDistribution: 'isolated_spots' | 'patchy_areas' | 'widespread_field' | 'along_bunds_inlet';
+  estimatedIncidence: '<5% (low)' | '5-25% (moderate)' | '>25% (severe)';
+  growthStage?: string;
+  symptomSpread: 'rapid_few_days' | 'gradual_weeks' | 'static_no_change' | 'unknown';
+  weatherTriggersObserved?: string[];
+  farmerNotes?: string;
+}
+
+export interface DifferentialCandidate {
+  conditionId: string;
+  conditionName: string;
+  conditionNameTamil: string;
+  scientificName: string;
+  category: 'fungal' | 'bacterial' | 'viral' | 'pest' | 'nutritional' | 'physiological';
+  plausibilityLevel: 'high' | 'moderate' | 'unlikely_but_possible';
+  supportingEvidence: string[];
+  supportingEvidenceTamil: string[];
+  missingOrContradictoryEvidence: string[];
+  missingOrContradictoryEvidenceTamil: string[];
+  distinguishingObservation: string;
+  distinguishingObservationTamil: string;
+  trustedReference: {
+    title: string;
+    source: string;
+    url?: string;
+  };
+  assessmentLimitations: string;
+  assessmentLimitationsTamil: string;
+}
+
+export interface ActionPlan {
+  whatWeObserved: {
+    summary: string;
+    summaryTamil: string;
+    symptoms: string[];
+    symptomsTamil: string[];
+  };
+  whatMightExplainIt: DifferentialCandidate[];
+  whatToCheckNext: {
+    observationsToMake: string[];
+    observationsToMakeTamil: string[];
+    additionalPhotosSuggested?: string[];
+    additionalPhotosSuggestedTamil?: string[];
+  };
+  whatToDoNow: {
+    immediateCulturalCare: string[];
+    immediateCulturalCareTamil: string[];
+    preventivePractices: string[];
+    preventivePracticesTamil: string[];
+    strictlyAvoid: string[];
+    strictlyAvoidTamil: string[];
+  };
+  whenToSeekExpertHelp: {
+    triggers: string[];
+    triggersTamil: string[];
+    contactRecommendations: string[];
+    contactRecommendationsTamil: string[];
+  };
+  reinspectionAdvice: {
+    suggestedIntervalDays: number;
+    targetCheckpoints: string[];
+    targetCheckpointsTamil: string[];
+  };
+}
+
+export interface EvidenceSeparation {
+  geminiVisualInterpretation: {
+    summary: string;
+    lesionTypesDetected: string[];
+    uncertaintyStatement: string;
+  };
+  farmerFieldObservations: {
+    partsReported: string[];
+    distributionReported: string;
+    spreadRateReported: string;
+  };
+  specialistRulesOrModel: {
+    engineUsed: string;
+    datasetProvenance: string;
+  };
+  weatherContextApplied?: {
+    district: string;
+    humidity?: number;
+    dewHours?: number;
+    weatherRiskNote?: string;
+  };
+  verifiedAgronomicSources: {
+    institution: string;
+    title: string;
+    url?: string;
+  }[];
+}
+
+export interface FieldObservation {
+  id: string;
+  caseId: string;
+  userId: string;
+  observationIndex: number;
+  createdAt: string;
+  imageUrl: string;
+  secondaryImageUrl?: string;
+  imageStoragePath?: string;
+  cropStage: string;
+  farmerInput: FieldObservationInput;
+  differentialAssessment: DifferentialCandidate[];
+  actionPlan: ActionPlan;
+  evidenceSeparation: EvidenceSeparation;
+  isInconclusive: boolean;
+  inconclusiveReason?: string;
+  inconclusiveReasonTamil?: string;
+  farmerReportedProgressionNote?: string;
+}
+
+export interface FieldCaseRecord {
+  id: string;
+  caseToken: string;
+  userId: string;
+  farmId?: string;
+  farmName?: string;
+  cropId: 'rice' | 'tomato' | 'chilli' | 'cotton' | 'maize';
+  cropName: string;
+  cropNameTamil: string;
+  variety: string;
+  district: string;
+  initialDate: string;
+  latestObservationDate: string;
+  status: FieldCaseStatus;
+  primarySuspectedCondition: string;
+  primarySuspectedConditionTamil: string;
+  observationCount: number;
+  latestObservationId?: string;
+  latestActionPlan: ActionPlan;
+  latestDifferential: DifferentialCandidate[];
+  nextReinspectionDate?: string;
+  createdAt: any;
+  updatedAt: any;
+}
+

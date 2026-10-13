@@ -35,6 +35,7 @@ interface DiseaseFinderProps {
   farmerCrops?: string[];
   onSelectFarm?: (farm: FarmRecord) => void;
   onGetAgriculturalHelp?: (context: ScanContextHelp) => void;
+  onStartFieldCaseInvestigation?: (imagePreview: string, cropId: string, variety: string, farmId?: string) => void;
 }
 
 // Preset specimens for instant evaluation in demo/offline testing
@@ -128,6 +129,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
   farmerCrops = [],
   onSelectFarm,
   onGetAgriculturalHelp,
+  onStartFieldCaseInvestigation,
 }) => {
   const { language, t } = useLanguage();
   const isTa = language === 'ta';
@@ -1125,6 +1127,23 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                   <BookmarkCheck className="w-4 h-4" />
                   <span>{isSaved ? t('resultsSaved') : t('resultsSaveLog')}</span>
                 </button>
+
+                {onStartFieldCaseInvestigation && (
+                  <button
+                    onClick={() =>
+                      onStartFieldCaseInvestigation(
+                        imagePreview || '',
+                        selectedCropId,
+                        selectedVariety,
+                        selectedFarm?.id
+                      )
+                    }
+                    className="px-5 py-2.5 min-h-[44px] text-xs font-mono font-semibold rounded-xs cursor-pointer flex items-center gap-1.5 bg-[#FAF9F3] text-[#183B2A] border border-[#183B2A] hover:bg-[#E5EBDD] transition-colors shadow-2xs"
+                  >
+                    <Layers className="w-4 h-4 text-[#426B43]" />
+                    <span>{isTa ? 'கள ஆய்வு வழக்காகத் தொடங்கு' : 'Start Field Case Investigation'}</span>
+                  </button>
+                )}
 
                 <button
                   onClick={handleReset}

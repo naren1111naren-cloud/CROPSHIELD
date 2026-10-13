@@ -5,6 +5,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { getDistrictGeo } from './src/config/tamilNaduDistricts';
 import { parseOpenMeteoResponse, RealWeatherData } from './src/services/weatherService';
 import { specialistEngine } from './server/specialistService';
+import { evaluateFieldDifferential } from './src/services/differentialEngine';
 
 dotenv.config();
 
@@ -303,6 +304,115 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
       error: 'ANALYSIS_SERVICE_UNAVAILABLE',
       message: err.message || 'The disease analysis service encountered an error. Please verify your connection and try again.',
       messageTamil: 'ஆய்வு சேவை தற்காலிகமாக பதிலளிக்கவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.',
+    });
+  }
+});
+
+// API Route: Field Case Guided Differential Assessment Service
+app.post('/api/field-case/assess', async (req: Request, res: Response) => {
+  try {
+    const {
+      imageBase64,
+      mimeType = 'image/jpeg',
+      cropId = 'rice',
+      variety = 'Standard Cultivar',
+      district = 'Thanjavur',
+      farmerObservations = {},
+      existingObservationsCount = 0,
+      previousObservationNote = '',
+    } = req.body;
+
+    let visualSummary = 'Discrete necrotic lesions visible on foliar tissue.';
+    let detectedLesionTypes = ['foliar_spots'];
+    let imageQuality: 'good' | 'blurry' | 'poor_lighting' | 'off_target' = 'good';
+
+    // If Gemini client is active and image supplied, extract factual visual characteristics
+    if (aiClient && imageBase64 && typeof imageBase64 === 'string') {
+      try {
+        const prompt = `You are a crop pathology visual inspection assistant for farmers in Tamil Nadu.
+Analyze this crop leaf photograph strictly for VISUAL SYMPTOM CHARACTERISTICS.
+Do NOT guess or confirm a final disease diagnosis.
+Do NOT prescribe chemical pesticides or dosages.
+Answer in JSON with keys:
+"visualSummary": concise factual description of lesion shapes (spindle/oval/irregular), colors (ash center/brown margin/yellow halo), and location,
+"detectedLesionTypes": array of strings describing marks,
+"imageQuality": "good" | "blurry" | "poor_lighting" | "off_target"`;
+
+        const cleanBase64 = imageBase64.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+        
+        // Timeout promise to avoid blocking execution if upstream is slow
+        const callGemini = async () => {
+          return await aiClient!.models.generateContent({
+            model: 'gemini-3.8-flash',
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  { text: prompt },
+                  { inlineData: { mimeType, data: cleanBase64 } },
+                ],
+              },
+            ],
+            config: {
+              responseMimeType: 'application/json',
+            },
+          });
+        };
+
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Gemini inspection timeout (falling back to agronomic engine)')), 4000)
+        );
+
+        const response: any = await Promise.race([callGemini(), timeoutPromise]);
+
+        const parsed = JSON.parse(response.text || '{}');
+        if (parsed.visualSummary) visualSummary = parsed.visualSummary;
+        if (Array.isArray(parsed.detectedLesionTypes)) detectedLesionTypes = parsed.detectedLesionTypes;
+        if (parsed.imageQuality) imageQuality = parsed.imageQuality;
+      } catch (geminiErr) {
+        console.warn('Gemini visual inspection fallback:', geminiErr);
+      }
+    }
+
+    // Retrieve cached district weather if available
+    const geo = getDistrictGeo(district);
+    const cachedWeather = serverWeatherCache.get(geo.name.toLowerCase())?.data;
+
+    const differentialResult = evaluateFieldDifferential({
+      cropId,
+      variety,
+      district,
+      farmerInput: farmerObservations,
+      visualSummary,
+      detectedLesionTypes,
+      weatherSnapshot: cachedWeather
+        ? {
+            relativeHumidity: cachedWeather.current.relativeHumidity,
+            dewHours: cachedWeather.current.relativeHumidity > 85 ? 6 : 2,
+            rainfallMm: cachedWeather.current.rain,
+          }
+        : undefined,
+      previousObservationNote,
+    });
+
+    if (imageQuality === 'blurry' || imageQuality === 'off_target') {
+      differentialResult.isInconclusive = true;
+      differentialResult.inconclusiveReason =
+        'The uploaded leaf image is blurry or off-target, preventing reliable inspection of lesion margins.';
+      differentialResult.inconclusiveReasonTamil =
+        'பதிவேற்றப்பட்ட ஒளிப்படம் மங்கலாக உள்ளதால் புள்ளிகளின் விளிம்புகளை தெளிவாகக் காண முடியவில்லை. புதிய தெளிவான படத்தை எடுக்கவும்.';
+    }
+
+    return res.json({
+      success: true,
+      data: differentialResult,
+    });
+  } catch (err: any) {
+    console.error('Server error in field case differential evaluation:', err);
+    return res.status(502).json({
+      success: false,
+      error: 'DIFFERENTIAL_SERVICE_ERROR',
+      message: err.message || 'Unable to evaluate differential assessment. Falling back to agronomic guidelines.',
     });
   }
 });

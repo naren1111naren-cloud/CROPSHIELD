@@ -17,6 +17,8 @@ import { subscribeFarms } from '../../services/farmService';
 import { PersonalizedGuidance } from './PersonalizedGuidance';
 import { WeatherSeasonalIntelligence } from './WeatherSeasonalIntelligence';
 import { ExpertKnowledgeHub } from './ExpertKnowledgeHub';
+import { FieldCaseHub } from './FieldCaseHub';
+import { GuidedFieldAssessmentModal } from './GuidedFieldAssessmentModal';
 import {
   Compass,
   ArrowLeft,
@@ -53,9 +55,15 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   const { user, profile } = useAuth();
   const isTa = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'scan' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'cases' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert'>('scan');
   const [initialScanCropId, setInitialScanCropId] = useState<string>('rice');
   const [enquiryContextForHub, setEnquiryContextForHub] = useState<any>(null);
+  const [investigationPreload, setInvestigationPreload] = useState<{
+    imagePreview: string;
+    cropId: string;
+    variety: string;
+    farmId?: string;
+  } | null>(null);
 
   // Real-time Firestore state
   const [farms, setFarms] = useState<FarmRecord[]>([]);
@@ -315,6 +323,18 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('cases')}
+              className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'cases'
+                  ? 'border-[#183B2A] text-[#183B2A] font-bold bg-[#FAF9F3]'
+                  : 'border-transparent text-[#4A584D] hover:text-[#183B2A]'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>{isTa ? 'கள ஆய்வு வழக்குகள்' : 'Field Cases'}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('guidance')}
               className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
                 activeTab === 'guidance'
@@ -436,8 +456,27 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                 setActiveTab('expert');
                 window.scrollTo({ top: 350, behavior: 'smooth' });
               }}
+              onStartFieldCaseInvestigation={(image, crop, variety, farmId) => {
+                setInvestigationPreload({ imagePreview: image, cropId: crop, variety, farmId });
+              }}
             />
           </div>
+        )}
+
+        {/* Tab: Field Cases Intelligence Engine */}
+        {activeTab === 'cases' && (
+          <FieldCaseHub
+            farms={farms}
+            onEscalateToExpert={(token, crop, notes) => {
+              setEnquiryContextForHub({
+                caseToken: token,
+                cropId: crop,
+                description: `Field Case Escalation ${token}: ${notes}`,
+              });
+              setActiveTab('expert');
+              window.scrollTo({ top: 350, behavior: 'smooth' });
+            }}
+          />
         )}
 
         {/* Tab 2: Personalized Crop Guidance */}
@@ -676,6 +715,33 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             window.scrollTo({ top: 350, behavior: 'smooth' });
           }}
         />
+
+        {/* Guided Field Assessment Modal launched from DiseaseFinder */}
+        {investigationPreload && (
+          <GuidedFieldAssessmentModal
+            initialImagePreview={investigationPreload.imagePreview}
+            initialCropId={investigationPreload.cropId}
+            initialVariety={investigationPreload.variety}
+            selectedFarm={farms.find((f) => f.id === investigationPreload.farmId) || primaryFarm}
+            farms={farms}
+            onClose={() => setInvestigationPreload(null)}
+            onCaseCreated={(newCase) => {
+              setInvestigationPreload(null);
+              setActiveTab('cases');
+              window.scrollTo({ top: 350, behavior: 'smooth' });
+            }}
+            onEscalateToExpert={(token, crop, notes) => {
+              setInvestigationPreload(null);
+              setEnquiryContextForHub({
+                caseToken: token,
+                cropId: crop,
+                description: `Field Case Escalation ${token}: ${notes}`,
+              });
+              setActiveTab('expert');
+              window.scrollTo({ top: 350, behavior: 'smooth' });
+            }}
+          />
+        )}
       </div>
     </div>
   );
