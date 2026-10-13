@@ -13,7 +13,8 @@ import {
   Trash2,
   RefreshCw,
   ExternalLink,
-  Info
+  Info,
+  HelpCircle
 } from 'lucide-react';
 
 interface ScanDetailModalProps {
@@ -21,6 +22,7 @@ interface ScanDetailModalProps {
   scan: ScanData | null;
   onClose: () => void;
   onDelete?: (scanId: string) => Promise<void>;
+  onGetAgriculturalHelp?: (scan: ScanData) => void;
 }
 
 export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
@@ -28,6 +30,7 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
   scan,
   onClose,
   onDelete,
+  onGetAgriculturalHelp,
 }) => {
   const { language } = useLanguage();
   const isTa = language === 'ta';
@@ -307,6 +310,22 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            {onGetAgriculturalHelp && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (scan) {
+                    onClose();
+                    onGetAgriculturalHelp(scan);
+                  }
+                }}
+                className="px-4 py-2.5 text-xs font-mono font-semibold bg-[#FAF9F3] hover:bg-[#E5EBDD] text-[#183B2A] border border-[#183B2A] rounded-xs cursor-pointer flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <HelpCircle className="w-3.5 h-3.5 text-[#183B2A]" />
+                <span>{isTa ? 'விவசாய உதவி பெறுக' : 'Get Agricultural Help'}</span>
+              </button>
+            )}
+
             <button
               onClick={onClose}
               className="px-5 py-2.5 text-xs font-mono bg-[#183B2A] text-white hover:bg-[#122c20] rounded-xs cursor-pointer transition-colors shadow-2xs"

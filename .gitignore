@@ -9,6 +9,8 @@ coverage/
 
 # Raw image datasets (Prompt: Do not place large datasets inside the frontend repository)
 CropShield-ML/Rice_and_Maize_Dataset/
+CropShield-ML/PlantVillage-Dataset-master/
+CropShield-ML/Rice Leaf Disease Dataset/
 *.zip
 *.tar.gz
 

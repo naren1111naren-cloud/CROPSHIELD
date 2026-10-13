@@ -98,6 +98,7 @@ export interface FarmerProfile {
   uid: string;
   displayName: string;
   email?: string;
+  phone?: string;
   preferredLanguage: 'en' | 'ta';
   state?: string;
   district: string;
@@ -189,7 +190,117 @@ export interface ScanRecord {
   status?: 'pending' | 'processing' | 'completed' | 'failed';
 }
 
+// --- Phase 7: Knowledge Hub & Expert Support Types ---
+
+export type KnowledgeTopic =
+  | 'disease'
+  | 'pest'
+  | 'symptoms'
+  | 'growth_stage'
+  | 'prevention'
+  | 'weather_precautions'
+  | 'professional_help';
+
+export type KnowledgeContentType =
+  | 'verified_reference'
+  | 'general_guidance'
+  | 'ai_explanation';
+
+export interface KnowledgeArticle {
+  id: string;
+  title: string;
+  titleTamil: string;
+  summary: string;
+  summaryTamil: string;
+  content: string;
+  contentTamil: string;
+  cropId: 'rice' | 'tomato' | 'chilli' | 'cotton' | 'maize' | 'all';
+  topic: KnowledgeTopic;
+  targetConditionId?: string;
+  applicableGrowthStages: string[];
+  language: 'both' | 'ta' | 'en';
+  sourceName: string;
+  sourceUrl: string;
+  publicationDate?: string;
+  lastVerifiedDate: string;
+  contentType: KnowledgeContentType;
+  whenToSeekHelp: string;
+  whenToSeekHelpTamil: string;
+  actionableSteps: string[];
+  actionableStepsTamil: string[];
+  tags: string[];
+}
+
+export type ExpertServiceType =
+  | 'kvk'
+  | 'university_extension'
+  | 'district_jda'
+  | 'kisan_call_centre'
+  | 'research_station';
+
+export type VerificationStatusType =
+  | 'verified_public_record'
+  | 'awaiting_verification';
+
+export interface ExpertServiceEntry {
+  id: string;
+  name: string;
+  nameTamil: string;
+  institutionName: string;
+  institutionNameTamil: string;
+  serviceType: ExpertServiceType;
+  districtsServed: string[];
+  cropsOrTopicsCovered: string[];
+  contactPhone: string;
+  contactEmail?: string;
+  officeAddress: string;
+  officeAddressTamil: string;
+  operatingHours: string;
+  operatingHoursTamil: string;
+  sourceUrl: string;
+  lastVerifiedDate: string;
+  verificationStatus: VerificationStatusType;
+}
+
+export type EnquiryUrgency = 'standard' | 'high_priority';
+export type EnquiryStatus = 'submitted' | 'under_review' | 'response_available' | 'closed';
+
+export interface FarmerEnquiry {
+  id?: string;
+  enquiryId: string;
+  userId: string;
+  farmerName: string;
+  farmerPhone: string;
+  preferredLanguage: 'en' | 'ta';
+  farmId?: string;
+  farmName?: string;
+  cropId: string;
+  cropName: string;
+  district: string;
+  problemCategory: 'disease_identification' | 'pest_infestation' | 'nutrient_deficiency' | 'weather_damage' | 'general_agronomy';
+  description: string;
+  linkedScanId?: string;
+  linkedScanCondition?: string;
+  linkedScanSeverity?: string;
+  photoUrl?: string;
+  photoStoragePath?: string;
+  urgency: EnquiryUrgency;
+  status: EnquiryStatus;
+  statusNotes?: string;
+  statusNotesTamil?: string;
+  createdAt: any;
+  updatedAt: any;
+  expertResponse?: {
+    officerName?: string;
+    institution?: string;
+    comments?: string;
+    recommendedAction?: string;
+    respondedAt?: string;
+  };
+}
+
 export type { RealWeatherData, CurrentWeatherState, DailyForecastDay } from './services/weatherService';
 export type { CropWeatherRecommendation, RecommendationContext } from './services/cropRecommendationEngine';
 export type { SeasonalCropWindow } from './config/seasonalRegistry';
 export type { DistrictGeo } from './config/tamilNaduDistricts';
+

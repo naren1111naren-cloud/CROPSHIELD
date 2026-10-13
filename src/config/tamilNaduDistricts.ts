@@ -309,3 +309,6 @@ export function getDistrictGeo(districtName: string): DistrictGeo {
   // Default to Thanjavur (Cauvery Delta hub)
   return TN_DISTRICT_GEODATA.Thanjavur;
 }
+
+export const ALL_TAMIL_NADU_DISTRICTS: DistrictGeo[] = Object.values(TN_DISTRICT_GEODATA);
+

@@ -92,6 +92,23 @@ service cloud.firestore {
 
         allow delete: if isOwner(uid);
       }
+
+      // Subcollection: Enquiries: /profiles/{uid}/enquiries/{enquiryId}
+      match /enquiries/{enquiryId} {
+        // Confidentiality: Only the authenticated owner can access their own enquiries
+        allow read: if isOwner(uid);
+
+        allow create: if isOwner(uid) && isValidId(enquiryId)
+          && incoming().userId == request.auth.uid
+          && incoming().status in ['submitted', 'under_review', 'response_available', 'closed']
+          && incoming().cropId is string
+          && incoming().description is string && incoming().description.size() > 0 && incoming().description.size() <= 3000;
+
+        allow update: if isOwner(uid)
+          && incoming().userId == existing().userId;
+
+        allow delete: if isOwner(uid);
+      }
     }
 
     // 2. Community Field Reports: /fieldReports/{reportId}

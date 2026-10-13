@@ -16,6 +16,7 @@ import {
 import { subscribeFarms } from '../../services/farmService';
 import { PersonalizedGuidance } from './PersonalizedGuidance';
 import { WeatherSeasonalIntelligence } from './WeatherSeasonalIntelligence';
+import { ExpertKnowledgeHub } from './ExpertKnowledgeHub';
 import {
   Compass,
   ArrowLeft,
@@ -35,7 +36,8 @@ import {
   Clock,
   AlertTriangle,
   BookOpen,
-  CloudSun
+  CloudSun,
+  Building2
 } from 'lucide-react';
 
 interface FarmerDashboardProps {
@@ -51,8 +53,9 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   const { user, profile } = useAuth();
   const isTa = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'scan' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert'>('scan');
   const [initialScanCropId, setInitialScanCropId] = useState<string>('rice');
+  const [enquiryContextForHub, setEnquiryContextForHub] = useState<any>(null);
 
   // Real-time Firestore state
   const [farms, setFarms] = useState<FarmRecord[]>([]);
@@ -377,6 +380,18 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('expert')}
+              className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'expert'
+                  ? 'border-[#183B2A] text-[#183B2A] font-bold bg-[#FAF9F3]'
+                  : 'border-transparent text-[#4A584D] hover:text-[#183B2A]'
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>{isTa ? 'வல்லுநர் & அறிவு மையம்' : 'Expert & Knowledge Hub'}</span>
+            </button>
+
+            <button
               onClick={onBackToHome}
               className="ml-auto px-4 py-2 text-xs font-mono text-[#4A584D] hover:text-[#183B2A] hover:underline cursor-pointer flex items-center gap-1 shrink-0"
             >
@@ -416,6 +431,11 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
               farms={farms}
               farmerCrops={profile?.primaryCrops || (profile?.primaryCrop ? [profile.primaryCrop] : [])}
               onSelectFarm={(farm) => setSelectedFarm(farm)}
+              onGetAgriculturalHelp={(context) => {
+                setEnquiryContextForHub(context);
+                setActiveTab('expert');
+                window.scrollTo({ top: 350, behavior: 'smooth' });
+              }}
             />
           </div>
         )}
@@ -625,12 +645,36 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
         {/* Tab 5: Community Alerts */}
         {activeTab === 'alerts' && <CommunityAlertsView />}
 
+        {/* Tab 6: Agricultural Expert Support & Knowledge Hub */}
+        {activeTab === 'expert' && (
+          <ExpertKnowledgeHub
+            farms={farms}
+            activeFarm={primaryFarm}
+            scans={scans}
+            initialEnquiryContext={enquiryContextForHub}
+            onClearEnquiryContext={() => setEnquiryContextForHub(null)}
+          />
+        )}
+
         {/* Scan Detail Modal */}
         <ScanDetailModal
           isOpen={Boolean(selectedScanForDetail)}
           scan={selectedScanForDetail}
           onClose={() => setSelectedScanForDetail(null)}
           onDelete={handleDeleteScan}
+          onGetAgriculturalHelp={(scan) => {
+            setSelectedScanForDetail(null);
+            setEnquiryContextForHub({
+              scanId: scan.scanId,
+              cropId: scan.cropId,
+              cropName: scan.cropName,
+              conditionName: scan.possibleCondition,
+              severity: scan.severity,
+              imagePath: scan.imagePath,
+            });
+            setActiveTab('expert');
+            window.scrollTo({ top: 350, behavior: 'smooth' });
+          }}
         />
       </div>
     </div>

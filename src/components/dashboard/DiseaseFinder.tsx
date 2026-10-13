@@ -25,6 +25,8 @@ import {
   Check
 } from 'lucide-react';
 
+import { ContextualHelpModal, ScanContextHelp } from './ContextualHelpModal';
+
 interface DiseaseFinderProps {
   onSaveToLog: (result: AnalysisResult, imagePreview: string, file?: File | null, farmId?: string) => void;
   initialCropId?: string;
@@ -32,6 +34,7 @@ interface DiseaseFinderProps {
   farms?: FarmRecord[];
   farmerCrops?: string[];
   onSelectFarm?: (farm: FarmRecord) => void;
+  onGetAgriculturalHelp?: (context: ScanContextHelp) => void;
 }
 
 // Preset specimens for instant evaluation in demo/offline testing
@@ -124,6 +127,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
   farms = [],
   farmerCrops = [],
   onSelectFarm,
+  onGetAgriculturalHelp,
 }) => {
   const { language, t } = useLanguage();
   const isTa = language === 'ta';
@@ -158,6 +162,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
   const [expertConfirmed, setExpertConfirmed] = useState<boolean>(false);
   const [expertPhone, setExpertPhone] = useState<string>('');
   const [expertUrgency, setExpertUrgency] = useState<'Standard' | 'Urgent'>('Standard');
+  const [isContextualHelpOpen, setIsContextualHelpOpen] = useState<boolean>(false);
 
   // Sync when initialCropId changes
   useEffect(() => {
@@ -1075,6 +1080,32 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
+                  onClick={() => {
+                    const ctx: ScanContextHelp = {
+                      cropId: selectedCropId,
+                      cropName: currentCropConfig.cropNameEnglish,
+                      conditionName: analysisResult.conditionName,
+                      conditionNameTamil: analysisResult.conditionNameTamil,
+                      severity: analysisResult.severity,
+                      pathogen: analysisResult.pathogen,
+                      imagePath: imagePreview || undefined,
+                      observedSymptoms: analysisResult.observedSymptoms,
+                      district: selectedDistrict,
+                    };
+                    if (onGetAgriculturalHelp) {
+                      onGetAgriculturalHelp(ctx);
+                    } else {
+                      setIsContextualHelpOpen(true);
+                    }
+                  }}
+                  className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-semibold text-[#183B2A] border border-[#183B2A] bg-[#FAF9F3] hover:bg-[#E5EBDD] rounded-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <HelpCircle className="w-4 h-4 text-[#183B2A]" />
+                  <span>{isTa ? 'விவசாய உதவி பெறுக' : 'Get Agricultural Help'}</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowExpertModal(true)}
                   className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-semibold text-[#183B2A] border border-[#183B2A] bg-white hover:bg-[#E5EBDD] rounded-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 >
@@ -1257,6 +1288,34 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
           </div>
         </div>
       )}
+
+      {/* Contextual Crop-Care Help Modal */}
+      {isContextualHelpOpen && analysisResult && (
+        <ContextualHelpModal
+          isOpen={isContextualHelpOpen}
+          onClose={() => setIsContextualHelpOpen(false)}
+          scanContext={{
+            cropId: selectedCropId,
+            cropName: currentCropConfig.cropNameEnglish,
+            conditionName: analysisResult.conditionName,
+            conditionNameTamil: analysisResult.conditionNameTamil,
+            severity: analysisResult.severity,
+            pathogen: analysisResult.pathogen,
+            imagePath: imagePreview || undefined,
+            observedSymptoms: analysisResult.observedSymptoms,
+            district: selectedDistrict,
+          }}
+          onEscalateToEnquiry={(ctx) => {
+            setIsContextualHelpOpen(false);
+            if (onGetAgriculturalHelp) {
+              onGetAgriculturalHelp(ctx);
+            } else {
+              setShowExpertModal(true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
+
