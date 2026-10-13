@@ -156,9 +156,17 @@ export async function saveCropScanToFirestore(
       explanation: analysisResult.explanation || '',
       confidenceInformation: analysisResult.confidenceInformation || analysisResult.confidenceAssessment || 'Visual pathology assessment completed.',
       imageQualityStatus: analysisResult.imageQualityStatus || 'good',
+      immediateCare: analysisResult.immediateCare || [],
+      immediateCareTamil: analysisResult.immediateCareTamil || [],
+      preventivePractices: analysisResult.preventivePractices || [],
+      preventivePracticesTamil: analysisResult.preventivePracticesTamil || [],
+      uncertaintyNotice: analysisResult.uncertaintyNotice || '',
+      uncertaintyNoticeTamil: analysisResult.uncertaintyNoticeTamil || '',
       recommendations: analysisResult.recommendations || analysisResult.managementGuidance || [],
       recommendationsTamil: analysisResult.recommendationsTamil || analysisResult.managementGuidanceTamil || [],
       expertReviewRecommended: analysisResult.expertReviewRecommended ?? (analysisResult.severity === 'high'),
+      expertReviewAdvice: analysisResult.expertReviewAdvice || '',
+      expertReviewAdviceTamil: analysisResult.expertReviewAdviceTamil || '',
       analysisMethod: analysisResult.analysisMethod || analysisResult.source || 'gemini-3.8-flash (preliminary screening)',
       modelVersion: analysisResult.modelVersion || 'cropshield-v3-multicrop',
       isHealthy: analysisResult.isHealthy ?? (analysisResult.severity === 'nominal'),
@@ -322,3 +330,23 @@ export async function deleteScan(uid: string, scanId: string): Promise<void> {
     throw error;
   }
 }
+
+/**
+ * Retrieve a specific saved scan record by ID
+ */
+export async function getScanById(uid: string, scanId: string): Promise<ScanData | null> {
+  assertOwner(uid);
+  if (!db) return null;
+
+  const scansPath = `profiles/${uid}/scans/${scanId}`;
+  try {
+    const scanRef = doc(db, 'profiles', uid, 'scans', scanId);
+    const snap = await getDoc(scanRef);
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...(snap.data() as ScanData) };
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, scansPath);
+    throw error;
+  }
+}
+

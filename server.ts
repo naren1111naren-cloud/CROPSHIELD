@@ -282,7 +282,7 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
     }
 
     // 2. Validate Multi-Crop Support Boundary
-    const supportedCrops = ['rice', 'tomato', 'chilli'];
+    const supportedCrops = ['rice', 'tomato', 'chilli', 'cotton', 'maize'];
     if (!supportedCrops.includes(cropId.toLowerCase())) {
       return res.status(400).json({
         success: false,
@@ -321,7 +321,8 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
     let cropNameEnglish = 'Rice (Paddy)';
     let cropNameTamil = 'நெல் (பயிர்)';
 
-    if (cropId.toLowerCase() === 'rice') {
+    const normalizedCropId = cropId.toLowerCase();
+    if (normalizedCropId === 'rice') {
       cropNameEnglish = 'Rice (Paddy)';
       cropNameTamil = 'நெல் (பயிர்)';
       cropPromptContext = `Crop: Rice / Paddy (Oryza sativa L.)
@@ -333,7 +334,7 @@ Target Candidate Classes in Tamil Nadu (Cauvery Delta & agro-climatic basins):
 - False Smut (Ustilaginoidea virens)
 - Healthy Rice Leaf (vigorous foliar condition)
 - Inconclusive Image (blurry, poor illumination, or non-rice foliage)`;
-    } else if (cropId.toLowerCase() === 'tomato') {
+    } else if (normalizedCropId === 'tomato') {
       cropNameEnglish = 'Tomato';
       cropNameTamil = 'தக்காளி';
       cropPromptContext = `Crop: Tomato (Solanum lycopersicum)
@@ -341,17 +342,42 @@ Target Candidate Classes:
 - Early Blight (Alternaria solani)
 - Septoria Leaf Spot (Septoria lycopersici)
 - Tomato Leaf Curl Virus
+- Bacterial Spot (Xanthomonas perforans)
 - Healthy Tomato Foliage
 - Inconclusive Image`;
-    } else if (cropId.toLowerCase() === 'chilli') {
+    } else if (normalizedCropId === 'chilli') {
       cropNameEnglish = 'Chilli';
       cropNameTamil = 'மிளகாய்';
       cropPromptContext = `Crop: Chilli (Capsicum annuum L.)
 Target Candidate Classes:
 - Anthracnose / Die-back (Colletotrichum capsici)
 - Cercospora Leaf Spot (Frogeye)
-- Chilli Leaf Curl
+- Chilli Leaf Curl Virus
+- Powdery Mildew (Leveillula taurica)
 - Healthy Chilli Foliage
+- Inconclusive Image`;
+    } else if (normalizedCropId === 'cotton') {
+      cropNameEnglish = 'Cotton';
+      cropNameTamil = 'பருத்தி';
+      cropPromptContext = `Crop: Cotton (Gossypium hirsutum L.)
+Target Candidate Classes in Tamil Nadu:
+- Bacterial Blight / Angular Leaf Spot (Xanthomonas citri pv. malvacearum)
+- Alternaria Leaf Spot (Alternaria macrospora)
+- Cercospora Leaf Spot
+- Cotton Leaf Curl Virus
+- Grey Mildew / Dahiya Disease (Ramularia areola)
+- Healthy Cotton Foliage
+- Inconclusive Image`;
+    } else if (normalizedCropId === 'maize') {
+      cropNameEnglish = 'Maize (Corn)';
+      cropNameTamil = 'மக்காச்சோளம்';
+      cropPromptContext = `Crop: Maize (Zea mays L.)
+Target Candidate Classes in Tamil Nadu:
+- Turcicum Leaf Blight / Northern Corn Leaf Blight (Exserohilum turcicum)
+- Maydis Leaf Blight / Southern Corn Leaf Blight (Bipolaris maydis)
+- Common Rust (Puccinia sorghi)
+- Banded Leaf and Sheath Blight (Rhizoctonia solani f. sp. sasakii)
+- Healthy Maize Foliage
 - Inconclusive Image`;
     }
 
@@ -384,38 +410,62 @@ Output strictly valid JSON matching this schema:
   "confidenceInformation": "Qualitative certainty statement and diagnostic boundaries",
   "imageQualityStatus": "good" | "blurry" | "poor_lighting" | "off_target",
   "inspectionSteps": ["Step 1 to inspect in the field right now", "Step 2", "Step 3"],
+  "immediateCare": ["Immediate agronomic/cultural action 1", "Immediate action 2"],
+  "immediateCareTamil": ["உடனடிப் பராமரிப்பு நடவடிக்கை 1", "உடனடி நடவடிக்கை 2"],
+  "preventivePractices": ["Long-term preventive practice 1", "Preventive practice 2"],
+  "preventivePracticesTamil": ["நீண்டகால தடுப்பு முறை 1", "தடுப்பு முறை 2"],
   "recommendations": ["Actionable cultural / biological IPM step 1", "Actionable step 2", "Actionable step 3"],
   "recommendationsTamil": ["தமிழ் பரிந்துரை 1", "தமிழ் பரிந்துரை 2", "தமிழ் பரிந்துரை 3"],
   "expertReviewAdvice": "Clear advice on when and where to seek in-person AEO / KVK verification",
   "expertReviewAdviceTamil": "தமிழ் கள ஆய்வு ஆலோசனை",
   "expertReviewRecommended": true | false,
+  "uncertaintyNotice": "Explicit uncertainty/safety notice explaining that this is preliminary AI image analysis",
+  "uncertaintyNoticeTamil": "தமிழ் எச்சரிக்கை / பூர்வாங்க ஆய்வு அறிவிப்பு",
   "isHealthy": true | false
 }`;
 
-    // 5. Invoke Gemini 3.8 Flash Multimodal API
-    const response = await aiClient.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: [
-        {
-          role: 'user',
-          parts: [
+    // 5. Invoke Gemini Multimodal API with resilient fallback across flash tiers
+    const candidateModels = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-latest'];
+    let response: any = null;
+    let selectedModel = 'gemini-3.8-flash';
+    let lastError: any = null;
+
+    for (const modelName of candidateModels) {
+      try {
+        response = await aiClient.models.generateContent({
+          model: modelName,
+          contents: [
             {
-              inlineData: {
-                mimeType,
-                data: cleanBase64,
-              },
-            },
-            {
-              text: `Analyze this ${cropNameEnglish} foliage photograph. Adhere strictly to the requested schema. Return valid JSON only.`,
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    mimeType,
+                    data: cleanBase64,
+                  },
+                },
+                {
+                  text: `Analyze this ${cropNameEnglish} foliage photograph. Adhere strictly to the requested schema. Return valid JSON only.`,
+                },
+              ],
             },
           ],
-        },
-      ],
-      config: {
-        systemInstruction: systemPrompt,
-        responseMimeType: 'application/json',
-      },
-    });
+          config: {
+            systemInstruction: systemPrompt,
+            responseMimeType: 'application/json',
+          },
+        });
+        selectedModel = modelName;
+        break;
+      } catch (callErr: any) {
+        lastError = callErr;
+        console.warn(`Model ${modelName} returned status ${callErr.status || callErr.message}, attempting next candidate...`);
+      }
+    }
+
+    if (!response) {
+      throw lastError || new Error('No candidate Gemini model succeeded.');
+    }
 
     const rawText = response.text || '';
     let parsed: any;
@@ -443,6 +493,20 @@ Output strictly valid JSON matching this schema:
     const isHealthy = Boolean(parsed.isHealthy || parsed.severity === 'nominal');
     const analysisStatus = parsed.analysisStatus === 'inconclusive' ? 'inconclusive' : 'completed';
 
+    const immediateCare = Array.isArray(parsed.immediateCare) && parsed.immediateCare.length > 0
+      ? parsed.immediateCare
+      : (Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(0, 2) : []);
+    const immediateCareTamil = Array.isArray(parsed.immediateCareTamil) && parsed.immediateCareTamil.length > 0
+      ? parsed.immediateCareTamil
+      : (Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil.slice(0, 2) : []);
+
+    const preventivePractices = Array.isArray(parsed.preventivePractices) && parsed.preventivePractices.length > 0
+      ? parsed.preventivePractices
+      : (Array.isArray(parsed.recommendations) ? parsed.recommendations.slice(2) : []);
+    const preventivePracticesTamil = Array.isArray(parsed.preventivePracticesTamil) && parsed.preventivePracticesTamil.length > 0
+      ? parsed.preventivePracticesTamil
+      : (Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil.slice(2) : []);
+
     // Build finalized structured field report
     const formattedResult = {
       analysisStatus,
@@ -461,6 +525,10 @@ Output strictly valid JSON matching this schema:
       confidenceInformation: parsed.confidenceInformation || 'Preliminary visual interpretation.',
       imageQualityStatus: (['good', 'blurry', 'poor_lighting', 'off_target'].includes(parsed.imageQualityStatus) ? parsed.imageQualityStatus : 'good') as 'good' | 'blurry' | 'poor_lighting' | 'off_target',
       inspectionSteps: Array.isArray(parsed.inspectionSteps) ? parsed.inspectionSteps : [],
+      immediateCare,
+      immediateCareTamil,
+      preventivePractices,
+      preventivePracticesTamil,
       managementGuidance: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
       managementGuidanceTamil: Array.isArray(parsed.recommendationsTamil) ? parsed.recommendationsTamil : [],
       recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
@@ -468,12 +536,14 @@ Output strictly valid JSON matching this schema:
       expertReviewAdvice: parsed.expertReviewAdvice || 'Consult your local Village Agricultural Extension Officer before taking chemical action.',
       expertReviewAdviceTamil: parsed.expertReviewAdviceTamil || 'ரசாயன மருந்துகளைப் பயன்படுத்துவதற்கு முன் வட்டார வேளாண்மை விரிவாக்க அலுவலரின் ஆலோசனையைப் பெறவும்.',
       expertReviewRecommended: Boolean(parsed.expertReviewRecommended ?? (parsed.severity === 'high')),
+      uncertaintyNotice: parsed.uncertaintyNotice || 'Preliminary AI image analysis only. Not a certified laboratory diagnostic. Field symptoms may overlap between fungal and physiological stresses.',
+      uncertaintyNoticeTamil: parsed.uncertaintyNoticeTamil || 'இது AI துணையுடன் மேற்கொள்ளப்பட்ட பூர்வாங்க புகைப்பட கணிப்பு மட்டுமே. ஆய்வக பரிசோதனைக்கு மாற்றாகாது.',
       isHealthy,
       disclaimer: 'Preliminary AI visual interpretation. In-field verification by an authorized Agricultural Extension Officer (AEO) or Krishi Vigyan Kendra (KVK) is recommended before applying chemical inputs.',
       disclaimerTamil: 'இது AI துணையுடன் மேற்கொள்ளப்பட்ட பூர்வாங்க கணிப்பு மட்டுமே. ரசாயன மருந்துகளை வாங்குவதற்கு முன் வட்டார வேளாண்மை அலுவலரின் நேரடி ஆலோசனையைப் பெறவும்.',
-      analysisMethod: 'gemini-3.8-flash (preliminary multimodal screening)',
+      analysisMethod: `${selectedModel} (preliminary multimodal screening)`,
       modelVersion: `cropshield-${cropId.toLowerCase()}-v3.0`,
-      source: 'gemini-3.8-flash',
+      source: selectedModel,
       analyzedAt: new Date().toISOString(),
       timestamp: new Date().toISOString(),
     };

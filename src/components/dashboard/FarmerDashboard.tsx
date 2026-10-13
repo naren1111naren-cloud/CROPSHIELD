@@ -6,8 +6,15 @@ import { DiseaseFinder } from './DiseaseFinder';
 import { DistrictRiskRegistry } from './DistrictRiskRegistry';
 import { CommunityAlertsView } from './CommunityAlertsView';
 import { FarmManagement } from './FarmManagement';
-import { subscribeFarmerScans, saveCropScanToFirestore } from '../../services/scanService';
+import { ScanDetailModal } from './ScanDetailModal';
+import {
+  subscribeFarmerScans,
+  saveCropScanToFirestore,
+  deleteScan,
+  uploadCropImage,
+} from '../../services/scanService';
 import { subscribeFarms } from '../../services/farmService';
+import { PersonalizedGuidance } from './PersonalizedGuidance';
 import {
   Compass,
   ArrowLeft,
@@ -25,7 +32,8 @@ import {
   ChevronRight,
   ShieldCheck,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  BookOpen
 } from 'lucide-react';
 
 interface FarmerDashboardProps {
@@ -41,7 +49,8 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   const { user, profile } = useAuth();
   const isTa = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'scan' | 'farms' | 'history' | 'risks' | 'alerts'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts'>('scan');
+  const [initialScanCropId, setInitialScanCropId] = useState<string>('rice');
 
   // Real-time Firestore state
   const [farms, setFarms] = useState<FarmRecord[]>([]);
@@ -52,6 +61,9 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
 
   // Selected Farm for Scan context
   const [selectedFarm, setSelectedFarm] = useState<FarmRecord | null>(null);
+
+  // Selected Scan for Detail Dossier Modal
+  const [selectedScanForDetail, setSelectedScanForDetail] = useState<ScanData | null>(null);
 
   // Subscribe to real-time Farms
   useEffect(() => {
@@ -117,30 +129,66 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   const activeCrop = primaryFarm?.cropType || profile?.primaryCrop || 'Rice (Paddy)';
   const activeVariety = primaryFarm?.riceVariety || profile?.activeVariety || 'CR 1009 Sub 1 (Samba)';
   const activeStage = primaryFarm?.cropStage || profile?.cropStage;
-  const activeAcres = primaryFarm?.landSizeAcres || profile?.landSizeAcres;
+  const activeAcres = primaryFarm?.landSizeArea ?? primaryFarm?.landSizeAcres ?? profile?.landSizeArea ?? profile?.landSizeAcres;
 
   // Check if profile or farm is incomplete
   const isProfileIncomplete = !profile?.district || farms.length === 0 || !activeStage;
 
-  // Save scan to Firestore subcollection
-  const handleSaveToLog = async (result: AnalysisResult, imagePreview: string) => {
+  // Save scan to Firestore subcollection (and upload image to Firebase Storage if file present)
+  const handleSaveToLog = async (
+    result: AnalysisResult,
+    imagePreview: string,
+    file?: File | null,
+    farmId?: string
+  ) => {
     if (!user) return;
     try {
+      let finalImagePath = imagePreview;
+      if (file) {
+        try {
+          const uploadRes = await uploadCropImage(user.uid, file);
+          if (uploadRes && uploadRes.downloadUrl) {
+            finalImagePath = uploadRes.downloadUrl;
+          }
+        } catch (uploadErr) {
+          console.warn('Storage upload fallback to preview dataUrl:', uploadErr);
+        }
+      }
+
+      const targetFarmId = farmId || primaryFarm?.id;
+      const associatedFarm = farms.find((f) => f.id === targetFarmId) || primaryFarm;
+
       await saveCropScanToFirestore(
         user.uid,
         result,
-        imagePreview,
-        activeVariety,
-        activeDistrict,
-        primaryFarm?.id
+        finalImagePath,
+        result.cropId ? `${result.cropName} (${associatedFarm?.riceVariety || activeVariety})` : activeVariety,
+        associatedFarm?.district || activeDistrict,
+        targetFarmId
       );
     } catch (err) {
       console.error('Failed to persist scan to Firestore:', err);
     }
   };
 
+  const handleDeleteScan = async (scanId: string) => {
+    if (!user) return;
+    try {
+      await deleteScan(user.uid, scanId);
+    } catch (err) {
+      console.error('Failed to delete scan record:', err);
+    }
+  };
+
   const handleLaunchScanForFarm = (farm: FarmRecord) => {
     setSelectedFarm(farm);
+    const lowerCrop = (farm.cropType || '').toLowerCase();
+    if (lowerCrop.includes('tomato')) setInitialScanCropId('tomato');
+    else if (lowerCrop.includes('chilli')) setInitialScanCropId('chilli');
+    else if (lowerCrop.includes('cotton')) setInitialScanCropId('cotton');
+    else if (lowerCrop.includes('maize')) setInitialScanCropId('maize');
+    else setInitialScanCropId('rice');
+
     setActiveTab('scan');
     window.scrollTo({ top: 350, behavior: 'smooth' });
   };
@@ -262,6 +310,18 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('guidance')}
+              className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'guidance'
+                  ? 'border-[#183B2A] text-[#183B2A] font-bold bg-[#FAF9F3]'
+                  : 'border-transparent text-[#4A584D] hover:text-[#183B2A]'
+              }`}
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>{isTa ? 'பயிர் வழிகாட்டல்' : 'Crop Care Guidance'}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('farms')}
               className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
                 activeTab === 'farms'
@@ -333,7 +393,7 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                   <span>
                     CURRENTLY INSPECTING:{' '}
                     <strong className="text-[#183B2A]">{primaryFarm.farmName}</strong>
-                    {' '}({primaryFarm.riceVariety || 'CR 1009 Sub 1'} · {primaryFarm.district})
+                    {' '}({primaryFarm.cropType} {primaryFarm.riceVariety ? `· ${primaryFarm.riceVariety}` : ''} · {primaryFarm.district})
                   </span>
                 </div>
                 {farms.length > 1 && (
@@ -346,13 +406,42 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                 )}
               </div>
             )}
-            <DiseaseFinder onSaveToLog={handleSaveToLog} />
+            <DiseaseFinder
+              onSaveToLog={handleSaveToLog}
+              initialCropId={initialScanCropId}
+              selectedFarm={selectedFarm}
+              farms={farms}
+              farmerCrops={profile?.primaryCrops || (profile?.primaryCrop ? [profile.primaryCrop] : [])}
+              onSelectFarm={(farm) => setSelectedFarm(farm)}
+            />
           </div>
         )}
 
-        {/* Tab 2: My Farm Section */}
+        {/* Tab 2: Personalized Crop Guidance */}
+        {activeTab === 'guidance' && (
+          <PersonalizedGuidance
+            farms={farms}
+            activeFarm={primaryFarm}
+            onSelectFarm={(farm) => setSelectedFarm(farm)}
+            onNavigateToScan={(farm, cropId) => {
+              if (farm) setSelectedFarm(farm);
+              if (cropId) setInitialScanCropId(cropId);
+              setActiveTab('scan');
+              window.scrollTo({ top: 350, behavior: 'smooth' });
+            }}
+          />
+        )}
+
+        {/* Tab 3: My Farm Section */}
         {activeTab === 'farms' && (
-          <FarmManagement onScanFarm={handleLaunchScanForFarm} />
+          <FarmManagement
+            onScanFarm={handleLaunchScanForFarm}
+            onSelectGuidance={(farm) => {
+              setSelectedFarm(farm);
+              setActiveTab('guidance');
+              window.scrollTo({ top: 350, behavior: 'smooth' });
+            }}
+          />
         )}
 
         {/* Tab 3: Real Scan History from Firestore profiles/{uid}/scans */}
@@ -430,7 +519,16 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                   return (
                     <div
                       key={item.scanId || item.id}
-                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#FAF9F3] px-3 transition-colors"
+                      onClick={() => setSelectedScanForDetail(item)}
+                      className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-[#FAF9F3] px-3 transition-colors cursor-pointer rounded-xs"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          setSelectedScanForDetail(item);
+                        }
+                      }}
+                      aria-label={`View inspection details for ${item.scanId}`}
                     >
                       <div className="flex items-start gap-4">
                         {item.imagePath && (
@@ -461,6 +559,8 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                           </div>
 
                           <div className="text-xs text-[#4A584D] font-mono flex flex-wrap gap-2">
+                            <span>Crop: {item.cropName || 'Rice (Paddy)'}</span>
+                            <span>·</span>
                             <span>Cultivar: {item.variety || activeVariety}</span>
                             {item.pathogen && item.pathogen !== 'None detected' && (
                               <>
@@ -482,12 +582,20 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                               : 'bg-[#B67B2A]/10 text-[#B67B2A] border border-[#B67B2A]/30'
                           }`}
                         >
-                          {item.severity || 'nominal'} severity
+                          {item.severity || 'nominal'} priority
                         </span>
 
-                        <span className="text-[11px] font-mono text-[#667166] uppercase bg-white border border-[#D9DED3] px-2 py-1">
-                          {item.status}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedScanForDetail(item);
+                          }}
+                          className="px-3 py-1.5 text-xs font-mono font-medium text-[#183B2A] bg-white hover:bg-[#E5EBDD] border border-[#D9DED3] rounded-xs cursor-pointer flex items-center gap-1 transition-colors"
+                        >
+                          <span>{isTa ? 'விவரங்கள்' : 'View Details'}</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
                   );
@@ -502,6 +610,14 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
 
         {/* Tab 5: Community Alerts */}
         {activeTab === 'alerts' && <CommunityAlertsView />}
+
+        {/* Scan Detail Modal */}
+        <ScanDetailModal
+          isOpen={Boolean(selectedScanForDetail)}
+          scan={selectedScanForDetail}
+          onClose={() => setSelectedScanForDetail(null)}
+          onDelete={handleDeleteScan}
+        />
       </div>
     </div>
   );

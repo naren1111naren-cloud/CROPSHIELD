@@ -83,7 +83,7 @@ service cloud.firestore {
 
         allow create: if isOwner(uid) && isValidId(scanId)
           && incoming().status in ['pending', 'processing', 'completed', 'inconclusive', 'failed']
-          && incoming().imagePath is string && incoming().imagePath.size() <= 1500
+          && incoming().imagePath is string && incoming().imagePath.size() <= 2000000
           && hasNoTamperedVerification(incoming());
 
         allow update: if isOwner(uid)
