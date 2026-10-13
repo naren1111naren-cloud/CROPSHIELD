@@ -1,0 +1,2576 @@
+{
+  "pipeline_version": "v1.1.0-real-rice-curated",
+  "dataset_name": "Rice_and_Maize_Dataset/Rice",
+  "target_crop": "rice",
+  "random_seed": 42,
+  "supported_target_classes": [
+    "bacterial_leaf_blight",
+    "brown_spot",
+    "false_smut",
+    "sheath_blight",
+    "healthy_rice"
+  ],
+  "sample_size_per_class_raw": 50,
+  "sample_size_limitation_warning": "CRITICAL: Dataset contains only ~50 images per target class (244 unique total). This very small sample size is insufficient for training a production classifier. Severe risk of overfitting to capture conditions. Independent field validation on external datasets (such as Paddy Doctor) is strictly required before any in-field use.",
+  "deduplication_methodology": "SHA-256 byte-level digest matching. Exact duplicate files were identified and excluded from split generation to prevent cross-split data leakage. NOTE: SHA-256 cannot detect perceptually similar images, burst shots, or slight variations in angle/illumination.",
+  "split_ratios": {
+    "train": 0.7,
+    "validation": 0.15,
+    "test": 0.15
+  },
+  "split_totals": {
+    "train": 171,
+    "validation": 38,
+    "test": 35,
+    "total_unique": 244
+  },
+  "split_counts_by_class": {
+    "bacterial_leaf_blight": {
+      "train": 32,
+      "validation": 7,
+      "test": 7,
+      "total_unique": 46
+    },
+    "brown_spot": {
+      "train": 35,
+      "validation": 8,
+      "test": 7,
+      "total_unique": 50
+    },
+    "false_smut": {
+      "train": 35,
+      "validation": 8,
+      "test": 7,
+      "total_unique": 50
+    },
+    "sheath_blight": {
+      "train": 35,
+      "validation": 8,
+      "test": 7,
+      "total_unique": 50
+    },
+    "healthy_rice": {
+      "train": 34,
+      "validation": 7,
+      "test": 7,
+      "total_unique": 48
+    }
+  },
+  "scan_statistics": {
+    "dataset_root": "C:\\Users\\Naren\\Downloads\\cropshield\\CropShield-ML\\Rice_and_Maize_Dataset\\Rice",
+    "total_files_scanned": 452,
+    "valid_images_scanned": 250,
+    "unique_images_retained": 244,
+    "exact_duplicates_detected": 6,
+    "invalid_corrupted_skipped": 0,
+    "excluded_insect_pests": 202,
+    "excluded_maize_or_other": 0,
+    "class_distribution_raw": {
+      "bacterial_leaf_blight": 50,
+      "brown_spot": 50,
+      "false_smut": 50,
+      "sheath_blight": 50,
+      "healthy_rice": 50
+    },
+    "class_distribution_unique": {
+      "bacterial_leaf_blight": 46,
+      "brown_spot": 50,
+      "false_smut": 50,
+      "sheath_blight": 50,
+      "healthy_rice": 48
+    },
+    "duplicates_by_class": {
+      "bacterial_leaf_blight": 4,
+      "brown_spot": 0,
+      "false_smut": 0,
+      "sheath_blight": 0,
+      "healthy_rice": 2
+    }
+  },
+  "exact_duplicates": [
+    {
+      "file_path": "Disease/01_Bacterial_leaf_blight/7d2f4003-613b-4882-aaa7-177d58ef8626.Jpg",
+      "sha256": "a4290cac89295ea2a3d67674529b47955c3bda95f7bc0f86628e428436b9b113",
+      "target_class": "bacterial_leaf_blight",
+      "canonical_file": "Disease/01_Bacterial_leaf_blight/7c1c5c16-ac7e-400b-9663-6f1e761ab387.Jpg"
+    },
+    {
+      "file_path": "Disease/01_Bacterial_leaf_blight/7fc7de25-909d-45d0-b544-9db54d294013.Jpg",
+      "sha256": "4174fe6b5c74861da8abf397d300c86bf8c4db7f44cd875aa7c2c1b4e1fc5b7f",
+      "target_class": "bacterial_leaf_blight",
+      "canonical_file": "Disease/01_Bacterial_leaf_blight/7f2d5ff6-1262-4304-be56-84de191babf0.Jpg"
+    },
+    {
+      "file_path": "Disease/01_Bacterial_leaf_blight/8c6ae996-2353-4cfa-8b93-7b252a01b0bc.Jpg",
+      "sha256": "a55cea0969ed8940019bc0ca810bb7c4da6aeff308dd6f25622586edae21e2f2",
+      "target_class": "bacterial_leaf_blight",
+      "canonical_file": "Disease/01_Bacterial_leaf_blight/8a7cd835-8311-4f96-be3b-74669b49a6bc.Jpg"
+    },
+    {
+      "file_path": "Disease/01_Bacterial_leaf_blight/8cdd598d-998a-4c73-9f7d-3afdcd6ccf9f.Jpg",
+      "sha256": "c39707cadc908b7d562bf2c281ae918b8c024defea643d8c19a1afdcfedcf4f5",
+      "target_class": "bacterial_leaf_blight",
+      "canonical_file": "Disease/01_Bacterial_leaf_blight/7d182f7e-ad60-44be-bf50-78aa28a1c9a7.Jpg"
+    },
+    {
+      "file_path": "Healthy/2a2ad0c4-6580-4539-b7de-6f698866db48.Jpg",
+      "sha256": "d6da1cc4d848c48b3fe45ea44e685b012e1d559c390ec638d75886440b04c7c4",
+      "target_class": "healthy_rice",
+      "canonical_file": "Healthy/0d4e4fed-e804-4ab2-843f-7e2652d947c4.Jpg"
+    },
+    {
+      "file_path": "Healthy/2ca77713-9b84-4deb-b721-1a2f80a30a6f.Jpg",
+      "sha256": "2840384899d131a3cc7da2864a3ccd7360e9d89f4cf0010607b5060d9df781b0",
+      "target_class": "healthy_rice",
+      "canonical_file": "Healthy/0e60d693-ab49-4891-89c6-0e611fe54815.Jpg"
+    }
+  ],
+  "splits": {
+    "train": [
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7d182f7e-ad60-44be-bf50-78aa28a1c9a7.Jpg",
+        "sha256": "c39707cadc908b7d562bf2c281ae918b8c024defea643d8c19a1afdcfedcf4f5",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7dc7f043-b80d-4c99-9a4f-1123c966e0af.Jpg",
+        "sha256": "8a152a79c0cc9f139b199d7283807952d3daf7e0daa33addb467e1cff88c1e33",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8a5a4935-7b1a-4e32-975f-e8908cbfc15c.Jpg",
+        "sha256": "2f30ded55a45db0f7f70667949ebbbfd4de4cfc45ded2c11443bc25efe1845d6",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1500,
+          2000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_199.jpg",
+        "sha256": "21947e62c91d6485a923611d5fea6e0d04b5eebdf2aed7eca1339e1f8b8441f9",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7ecb0779-46d5-40b5-bf17-7cca893bb9d2.Jpg",
+        "sha256": "c94b648d3c6ef37eb8fd6f9a52f6efdf3f2a5d3bb24066d84ec42efdc3511db7",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_186.jpg",
+        "sha256": "a3680282b161a477566c1e0ea5e64754ccf2113fd573f30319b810feecf79b22",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8a7cd835-8311-4f96-be3b-74669b49a6bc.Jpg",
+        "sha256": "a55cea0969ed8940019bc0ca810bb7c4da6aeff308dd6f25622586edae21e2f2",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8ab91677-e504-4444-bd54-324986c8f25e.Jpg",
+        "sha256": "746edc6176b44ee0ba78760b55814f205f59b7c4b6bb6c155afd4f5e0b14ee9d",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/08ae6321-1c72-4429-a841-c738c5609a77.Jpg",
+        "sha256": "2bf15003b245a9b4bcabba36dac6f465129df88805a18ad097ea41748b7f5bbf",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1156,
+          867
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_070.jpg",
+        "sha256": "2d6713ff646f66e8a448b11be8e58f8c6a907935ff656bbe3b1135fa40c5679a",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8c17642a-8609-4491-b0f1-bf8b10427fdf.Jpg",
+        "sha256": "4f2d19c3d2e48a8f9ce58c246e600e41cb7651fd3f0f12f466c884d8bd85ce54",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1600,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_072.jpg",
+        "sha256": "d29516f8f3a8f0cdb119f51deeb0e5c1b8f773ddc7b20b61f2d6ce8f633f4280",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8e92b995-6e66-4934-9eb2-5252a7b239d3.Jpg",
+        "sha256": "289d50097b507879825a4647cb47f4264046c06e912f995337e425e81504002e",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7f2d5ff6-1262-4304-be56-84de191babf0.Jpg",
+        "sha256": "4174fe6b5c74861da8abf397d300c86bf8c4db7f44cd875aa7c2c1b4e1fc5b7f",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_273.jpg",
+        "sha256": "60b75b77f550b009230a8cdce1d8793cebcf7d08d3fbe26935283171857dbfb4",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8aaa24a2-d3d6-43dd-94d0-9d4b850611df.Jpg",
+        "sha256": "9c2f48ab6dc789cc6fd7ba96eaaa9229a141522db453828b40a08da360e24946",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8b13a3ba-7e9c-44d5-845d-43595d192818.Jpg",
+        "sha256": "439cfae6249e911c2b4cc6752a3bffa6371bcbb1509d863381c2e34cb18f7170",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8d232687-318a-4d91-840e-163cdcfc706e.Jpg",
+        "sha256": "59a3586a58838e9e1f86648a593ac6ebbaaa8871558122a6f0e1dc45b5cc3299",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8fb0ed0b-6930-4c24-948d-d79c3929c583.Jpg",
+        "sha256": "bf71e9844da2c716599cd557f19b5241d658d3d52054df0a63f44d9af53f2461",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8a84b456-cb0a-43e5-964f-79988aa349c9.Jpg",
+        "sha256": "86cb960dbd9285e9e8e1a6416c0f76e3e709f1b438a63f91dcea7e724b2a0fca",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2000,
+          1500
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8aa589b7-2ab8-48e5-ba23-230cf4b2b3eb.Jpg",
+        "sha256": "bd68e189a2d139bb6ac636ac34b2d53eb78b20b7ff09d0fb46d2e24f55474965",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          4624,
+          3472
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7fb85795-31bc-4210-8072-78f5715fcdc5.Jpg",
+        "sha256": "3c4533cc100a279b4eb899932ff8c676f248f67ac8cc710a1e1ab42b974758bb",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1200,
+          1600
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7f1c2a75-8f7b-4032-9d87-147ea38b3849.Jpg",
+        "sha256": "dcaf6ec307a47ac2d69219f272c0b33df7d6846fa749e71491f9638f36c9b38a",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7d724a9a-b0e8-47fd-a4a1-2cd2e30a0172.Jpg",
+        "sha256": "81be5b75d1cf23b84be425b150c88e760247c2c5a47a1ab1ba09c158a03a2026",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7ec2ee7b-9801-4446-8734-b239b675e4f4.Jpg",
+        "sha256": "36a5fe7805d62364489141adf94349b43e7968293f73ebe867b2fbc841f00181",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8d15c0dc-091b-4162-957a-1eb20e554660.Jpg",
+        "sha256": "2af29fbd20c70a260911fff989a085a344c0d8a5931a638cf7afc4f5c0b9747e",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8ee8b05f-fcd0-458e-8f6c-d203b7175272.Jpg",
+        "sha256": "427a1264c02d149d353fa9a1ca1ea783ac8a20f09fcdb90ca15c8a3256e64cfa",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_003.jpg",
+        "sha256": "b38d33a190a409216dd9666cd1b43f9d9170c7f7478726fefd71d12aa902fcf2",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7d67f079-1c55-4e82-9989-b214e1823339.Jpg",
+        "sha256": "6b8b7f6fb97f401dd25c600b58027f05459fae3f8abf6ffd9c45cee517893c96",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7cc1eb87-c301-47fc-b236-ff4989a8b304.Jpg",
+        "sha256": "cbc6f33bec6c136b4af9be3235b27cc9eb7167727de5ca69ef9b39857d5fd30e",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8fafc837-ed86-4bbc-9aed-603bb05ec997.Jpg",
+        "sha256": "05f575a73705996a20dbe21c71dfc0b29b09e346509a78590effee9f3c2348df",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1800,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7bdd83e6-29d7-4fc1-af4c-f4f0e406bbff.Jpg",
+        "sha256": "5d06f95e61b8c97c2da3a3380c802c5261a3750479d87aeeeeb1010af12f27c4",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_089.jpg",
+        "sha256": "6fc431276e43490ab3ed61393adf8296af0877f51b11bd3cf4df51cbe81ed3b0",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_096.jpg",
+        "sha256": "6b40a720c24f5456df619cc3fa71a1f6f21b13ff3130dae79475661d54c2ea04",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e64f342-31e1-41a9-85c6-44a95427f861.Jpg",
+        "sha256": "1c5ca1550acc8f5490930f980a5aaa6d27777fc377430e27d401914b9613a30e",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1600,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_003.jpg",
+        "sha256": "1fa56a7dc36f9332ca23b572f9c77d0c66737fb22e46f9ff2fcef39c939e0e4b",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_002.jpg",
+        "sha256": "37bfe00eb52b8ba0bf5f4dce98bc5b891855d6e772ce3ca421c6f934d5c89cde",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3b426548-2b0f-4b6f-801d-d5500d942b43.Jpg",
+        "sha256": "9d644dfd919ddbd6c46045cb0431e005553cba0e739028684bc866542e3d4bf6",
+        "target_class": "brown_spot",
+        "dimensions": [
+          847,
+          1437
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3baba440-24f5-45a3-8b09-c35ccd92238f.Jpg",
+        "sha256": "46e5773ba5630c70e23ec42fd4a5a26f31f0f64a70c7a838b11abe5843a08c2d",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          1536
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3cab1777-b142-4a7a-9378-c60ccf67986c.Jpg",
+        "sha256": "a2bf34d522834f92ba21a38fc8643f93e9462f45bc1263693183a3ec10b1505e",
+        "target_class": "brown_spot",
+        "dimensions": [
+          612,
+          816
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e4526fa-adb0-4b8c-8ef0-386bd9ee838b.Jpg",
+        "sha256": "b19634cb1c4edddc1c54ed33083ca58407b2fd27b6acfe79221ab1e400154ad1",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3cf59501-48bb-4499-8f73-9162c1e4d084.Jpg",
+        "sha256": "905128e0804076851a3f03fda69e6527ad92cf115b7bed946f1047324074574c",
+        "target_class": "brown_spot",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e9032f6-b77f-4e9c-a9a3-32a8d8797083.Jpg",
+        "sha256": "fc5d92f6bc4ba694d7b0a925acdf21857a4ac04c159c97249ebd7c25c3d4733b",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3bbb0de9-60b9-455e-b46e-93bb222377c4.Jpg",
+        "sha256": "fe947d179d789f9243d8879cc6ee1fb01c1ea209eb6442ca080ff4d4ec1d515b",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3cdf4ba6-0f13-4d59-99ba-7a8b55f38a00.Jpg",
+        "sha256": "4385174f4c49cfa2741649dfac4a895206557ddded13ca4fc376322ae3ec6a97",
+        "target_class": "brown_spot",
+        "dimensions": [
+          957,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c3a83b0-2bb2-48b8-9831-1aca7afc398b.Jpg",
+        "sha256": "a6152d5d1f8e66dee60ffb24fe5cf2d07d37b03a763ea47fa4884a0ba7325795",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1800,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3befedf8-ddc6-4064-b5bd-42f98ee72da3.Jpg",
+        "sha256": "b8d6957fd662b5500589911c770fd558bbd61b45d0a573a2d3f77e6ad3ca1fb6",
+        "target_class": "brown_spot",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c5d47d3-01ac-4ba9-a473-452ae86479cc.Jpg",
+        "sha256": "f4d7be6b44d491a828903b6ca7a58ae546da35aa55de40da982fc7724dc87a78",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3ed25119-504c-457e-93c2-57b55ebdb6e9.Jpg",
+        "sha256": "e1213f36b9e14a7a8d4fa4c9ad5947bbdabdba076eab2d32beaebaf281488d2d",
+        "target_class": "brown_spot",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c8d1dd9-b328-48b4-9980-3c1b585bcf74.Jpg",
+        "sha256": "37f4173570a73181a91a36fb6774c3600998aed8027f682db334ce47df46f39e",
+        "target_class": "brown_spot",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_032.jpg",
+        "sha256": "ba538eed6cc8ef54549b11c37ec58ea62a6c106cb34286716dd9e0d1370f18ee",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3dce2e0d-a24c-4155-9cfc-cc33add3c41a.Jpg",
+        "sha256": "6356d284309c8fbb7a85c291c2c50d1fab3d84978dc20a78135f01a7e2d53a89",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c60a8d4-987f-4a2b-9115-ce96ece72e44.Jpg",
+        "sha256": "9a1b922f64f5eb0765be19573b0f94cd00c3a59a075161377784be4ae87df2b5",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          1536
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3cebab6e-5359-4ee6-b037-13694dc13366.Jpg",
+        "sha256": "a3856763a0f9717f61cfbafb23bfce466ac8220f6c81a61bc3d1b999283e3843",
+        "target_class": "brown_spot",
+        "dimensions": [
+          957,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_120.jpg",
+        "sha256": "3c825a0a959754b5b58b4a2b1f90fd22a6bb1280b17bbd7feac66a6719972ff8",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c4dc9e9-51db-4c94-8bb8-60259baf8b78.Jpg",
+        "sha256": "e8a58ee62beae97e8255fc5102423c6b3825fcc84f986a04c2c8cd276f84fb60",
+        "target_class": "brown_spot",
+        "dimensions": [
+          3072,
+          4096
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3d1929ea-b8e1-4c9a-9678-ea899a78cdb7.Jpg",
+        "sha256": "b68eeb8a51c8bd401629dce141433d1ef65ef06df6fbf3ac5b652d229d546e66",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_075.jpg",
+        "sha256": "c8ae42418b509bbcf0bbb64c0f84080069d4a711d4bcadd077891c3fae0fcf29",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3dbb7b7e-4aa2-4d6a-84f2-4703a0e00c9b.Jpg",
+        "sha256": "906d6bb103bdb98811861ff318045c393093b1fe9f9910fd32719712b88960fe",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_006.jpg",
+        "sha256": "0babdd050620214094d4257d00113e1a0a52909ebd5a9dee9ebd9577d1b3d4c7",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3ce70592-b99a-4288-82df-2dc1864f9814.Jpg",
+        "sha256": "3c5cfa5de9f97a2712b0bbad1f85acb1b653654c8e31bced96389d5b1108bcd7",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e6c3902-fe0d-4a5a-995c-ad79c8121767.Jpg",
+        "sha256": "244ac17154439fb5be0f8021c0122472f1b18c6b08fc3ade08082157a0731b31",
+        "target_class": "brown_spot",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3cc8a1f9-9c91-4b93-ad4d-1ac8f3fee54c.Jpg",
+        "sha256": "a262da498669f4247a1409c893417f6124d4385d8fb2f7e61fef5b558c4de5a1",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1800,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e62c884-b240-4aa5-8ba8-29fa99cc9f1e.Jpg",
+        "sha256": "bd0381582740c1be1cb8395c31096e601bf0100f1b04336b600a9b2e00caaaa3",
+        "target_class": "brown_spot",
+        "dimensions": [
+          612,
+          816
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e1d5f5a-9830-4ae9-b4fe-c7f2b4830921.Jpg",
+        "sha256": "4ca1e42d4a56bd12890d634e2f87c11803e2e49e5101acb848cbc8fef7b8d708",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3b5d88f3-7756-42f9-a8a6-7346a8234957.Jpg",
+        "sha256": "21107594f55ec2a7809d16f1d50340e5e1fb784d51424bbc1a17666793c2fa61",
+        "target_class": "brown_spot",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3ee1e5f6-0d6e-466c-924d-fe1b9cb6a2a2.Jpg",
+        "sha256": "4984a9d640a2642bb31c79290277d3c1e41133cfc4a9b348a447062600b67e60",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/2a8a4d5e-de12-4a07-bbae-5a94753b74a0.Jpg",
+        "sha256": "6faf4a8c6797f39f7cdeaa7e996fe24afe0645364d430ace5134db8324792b25",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/1f2dcdc8-91da-42d8-a44e-eaff7202c8f6.Jpg",
+        "sha256": "0f250b9c844cfc99ceeb4c6828fb2ffe3c48e1369dad84c9beddd7d77ff177d5",
+        "target_class": "false_smut",
+        "dimensions": [
+          1152,
+          864
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_084.jpg",
+        "sha256": "d09e4ae09437aeca29be96b436a0aeaa6f03c94ecece14f9d72a60ac56e76890",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/06a19ca1-8799-44e0-908a-6f1fd9fb5f21.Jpg",
+        "sha256": "5e6ca74988ffbf98c51be424f2d759f7df2c93fe4fbd57c47922c4cd184a05ad",
+        "target_class": "false_smut",
+        "dimensions": [
+          1152,
+          864
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/5e8dff99-8085-499b-8a5f-328cf9eb870f.Jpg",
+        "sha256": "f289e74d8aac4b8f3f6e02ed94677fdfd4f0c23b488f69b6992d37089824019c",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/1f392da3-b8ad-4cdf-b5d9-d666ac271355.Jpg",
+        "sha256": "8edc1b81f14aecc0b8bb658347953020457306cc1426f1ec90b24a5ed2ec79b0",
+        "target_class": "false_smut",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_047.jpg",
+        "sha256": "36ebbda6966fcfa62d6b13fdc5c44ede05e5aa6638f92c8465326fee2dae61a1",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3c8efc3b-d496-4d93-860b-35196d18d132.Jpg",
+        "sha256": "563aa5a689bd505d5d89c3e0e93ca2cbcd598a5562f2ac4a6a97d9ef42fda72b",
+        "target_class": "false_smut",
+        "dimensions": [
+          1599,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/2d39e623-ac0d-4b7f-8e33-9a532de7fe5e.Jpg",
+        "sha256": "bd7c1dd3bcf67b882818ac868db6649d104b8c80f5ac6da29a8848f5648c945e",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/02be86a2-a953-4725-9206-caebe03a162e.Jpg",
+        "sha256": "1dcfc69c4378b7e5a50cd41c3cbc1467ba831e663ebca9e8a1510953fa428046",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3b06e7fd-9614-4e2d-bb94-ed7a3819b924.Jpg",
+        "sha256": "fb05809a6a913ef9964c3bd4ba84e53fc5eb1897fe410e9f57bc35f72cfdf987",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/2a676423-5126-4aa3-b854-d3803466f30b.Jpg",
+        "sha256": "e877470f8dd79ebdd757bbe35d9f61c0b6604efbd52d53e0f4d025bacb6e4f7e",
+        "target_class": "false_smut",
+        "dimensions": [
+          1152,
+          864
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/5cf7d8af-6ef1-48a9-9202-ec8fbacdc304.Jpg",
+        "sha256": "39a3246ba5778f85353c330a5475a0990a6d9a5878980e5b47daff3c2df14a11",
+        "target_class": "false_smut",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/4a79d93d-4342-4564-8beb-76ddd0f3a6cc.Jpg",
+        "sha256": "a0f626ee8537907b42d44708c73da74be7716bfb8bdedb3e22174ce0c0615b89",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3f7c3ab9-ffab-4654-9c4e-2c24e7c101d7.Jpg",
+        "sha256": "d58c1a50c04cf5061bd7eaa4b3f1a28325c67201e288bd979e4819137dde26d2",
+        "target_class": "false_smut",
+        "dimensions": [
+          1599,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3d8e8391-fcfc-4f2a-8855-430165d23412.Jpg",
+        "sha256": "0ea7c0c197c99af004cd3aa6a9552a2773f33846fbe081eb80ffb6adb38b83eb",
+        "target_class": "false_smut",
+        "dimensions": [
+          1280,
+          960
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_149.jpg",
+        "sha256": "2ef883753bd9d5a1760271623750206047b6672f500a391f702079a978e31a3c",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/4d87d60c-11fe-4645-802f-ae0d7fee1ca7.Jpg",
+        "sha256": "ccf16d4ec264322923066d9f3ae77f9f9cf08f573b59e69fffbba67b8a0b5deb",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/4deca8a0-3928-4cdc-9ca2-2f1e9a2fb643.Jpg",
+        "sha256": "01a9eb89d95fe750f01678251479e101274a09aa8bf54616f1114c4e31f5c078",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_031.jpg",
+        "sha256": "096eb5e8f58dd22294e7ef3ec8e3b6c485b011ee37841e2a24f37160fa9cefe5",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/5ad496c0-0d44-4f15-a1ca-f8fe8cf07e72.Jpg",
+        "sha256": "13ea492274041047a5999c78377950ea465c86192f64930ad7ddc4834adfc8fc",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3c161e58-32a1-43c8-89a9-6816005f7b18.Jpg",
+        "sha256": "8db3e360b81cfc40d5ea74ece4403bc07183319a6ed358cee09906f35ead50ed",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_014.jpg",
+        "sha256": "6cfd571d8c0a4fb25477afb08f131ea6e8a2fa19e5ff3a05ad223d2e7a002bee",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_005.jpg",
+        "sha256": "abc4a0be3f68296e0c177ffa6cc8718cca07a1c819972ceb451ab7b8e08290ec",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/2e097f40-a36a-4c2a-8aea-1638ca69e15e.Jpg",
+        "sha256": "246f5fcf39afa966d1006cd5604d64f5e40fdb72b781dc18c90dbc7b00ec427c",
+        "target_class": "false_smut",
+        "dimensions": [
+          1152,
+          864
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_010.jpg",
+        "sha256": "e47a744f3026438b21283af26d5ccacdf0e4d166eb4c444b16b1705c0c988e9e",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3e9bc213-2ae7-4c87-b19a-ecb1e1b4fea8.Jpg",
+        "sha256": "9b04b5383951a3afe047994b18d3acee4c062b9232694863a69ee98c5e378bac",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3daf8257-3e94-4789-9ce6-29d4a053e8f1.Jpg",
+        "sha256": "bbe807e6da02580ca284854513835bf0a4c328dad3c68ac03595c020bd501296",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/5db9ba44-d20f-4d3f-bc1a-5d004fba638e.Jpg",
+        "sha256": "36b69d7e3370227ba897d43a3fd9cecb251239f72057e8b3aaea618369b722af",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_054.jpg",
+        "sha256": "8add2c0721069851126eedafb03440cd3d166e9c794f5f4fb3bc53411a73324b",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_095.jpg",
+        "sha256": "557cdaadc4a60d00c26629e25b5fcedc8d3e64541a35437048d73904953b7b44",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/4afd1c9b-fa24-4eeb-8325-2dcc17281f12.Jpg",
+        "sha256": "975409d0f2927ff7b8733454230ff40fc028ac028a752361b7dc132ce3c46a9a",
+        "target_class": "false_smut",
+        "dimensions": [
+          532,
+          1152
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3bde5f6f-da45-467b-bb45-1a05bf050b26.Jpg",
+        "sha256": "83a98aad678cb5285080c441115408ea0b5fc6cdb64c71220fc99c55019d8833",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3efa02f9-1b83-438a-82b7-3ad32efc6039.Jpg",
+        "sha256": "8b367d4eb97e9197856fdddba02bfb29d01133d32fb331386ee9f20e9e74ec7a",
+        "target_class": "false_smut",
+        "dimensions": [
+          1599,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3db52186-9624-4676-b68d-a60aa4ddc4ac.Jpg",
+        "sha256": "9bcbb93ca71dd1654ddb6038e81d3000d21e196cf3a9617a8fcf7a0f2273a0b3",
+        "target_class": "false_smut",
+        "dimensions": [
+          1040,
+          780
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9fa20616-b483-40f6-b466-49835678d420.Jpg",
+        "sha256": "acc6d7cf29c1750031e7f036e29abeb475a5c389db903a32a4ace5f2107927e9",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/23a1d8ff-e9ec-4cd8-95b4-4ada75d9c0e3.Jpg",
+        "sha256": "dc7e6edddc1e658d24568cfffc7d390b5952162c81069cd633e4771198ff2e7c",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_028.jpg",
+        "sha256": "806174edce0e855c16c13bd4b9769a8233646d7fa8d58e30f3542361c8791fb6",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/11dcb29a-2e11-42aa-a7b5-2029879e4363.Jpg",
+        "sha256": "d8e19b500a9613272e443ca200e6c3c26ada86cdfc794e10cd37652a95bb2c90",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9dc18330-2dca-4ea2-8c84-568126882bce.Jpg",
+        "sha256": "13398c4b651d457d07fbfcd003cbe17668ef77bbd8e60768f4c856b9172bc4a7",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/21bd33d6-90dc-441a-85b6-af7d606ca5dd.Jpg",
+        "sha256": "84d90665fa4874adb374e9936813e25c46fbf8727f6f137f68a81d82d18e5837",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/18bb8b12-99c7-4b14-82b3-b42f4058ce57.Jpg",
+        "sha256": "f7ff98d72334a3f49aaa8721a184d8b238d55782bb3e03ab14a6d7f4c84ede00",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9e38c20a-465e-4898-b07f-8490358d86d8.Jpg",
+        "sha256": "e7f5cc02c77a7537e0227607a433abadd4936bb22e9454910f31a5adf9a5d5d7",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          1280,
+          960
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/22e0506e-0519-4ff8-9c2b-6742298eda65.Jpg",
+        "sha256": "5965632249d0fe83366821a05d5a6142546d7c6cbb332078bcb649347b91434e",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/14ea0e11-b944-4c41-aa92-19617d63bf28.Jpg",
+        "sha256": "59ac71989ad29a4a64cad77b81a5cea3f055ba0954165c1c30924581fcc97851",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/12a84a87-18bf-4366-92e1-90dcc7bddaa5.Jpg",
+        "sha256": "d9f5f1b5f3b03384f8fae24610f0166aaed5ba81518b9ae347d18a54ab1b195e",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          720,
+          1600
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_079.jpg",
+        "sha256": "619ce8a2337d26bf3a45dbd3c53530b728075a9998635cb3ffb9e75ee989f207",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/17ee337b-73e3-4d03-a683-403361bf0e4f.Jpg",
+        "sha256": "b025d61a99a2354c3f9b585e24fc9360da57a9a3f86c1bb9357106824a7d7d5e",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9cc74bfd-1980-48b6-849a-2eeb53c6e503.Jpg",
+        "sha256": "6e131c006ac86703d67ae18ace8fd77e899ec26c8b41f591b933f903997bcb31",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9ed215fc-06cd-4b44-9ef8-1dcca5de6ea0.Jpg",
+        "sha256": "4101154561b9615e857ec0f8d30b40eaaaa3e593f01704ce58cfbbe2f13931f1",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_013.jpg",
+        "sha256": "d4e733250d70131a22fd6a1af6697375126443600e7ae640ec116bbf44a3b0d0",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/24b79f33-73e1-4a22-86f3-2cc81ab9b521.Jpg",
+        "sha256": "596dd3d5bc4ef592cafa1d52a8c82e6868febdb9c6e5374c26e368a20d9cf0ac",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/23e53c17-13e4-4fd7-8358-65c75d6882eb.Jpg",
+        "sha256": "de6d1c16d1337f0a3248e00ef5e45828483439014eeb4ffa363fa8db3755268c",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9e1cfbdb-8664-4e83-b394-7c93ffe12983.Jpg",
+        "sha256": "3436229e73b345145e52aceb3e7df64b6cc1a7d138d1df3819a3b993600844f0",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_004.jpg",
+        "sha256": "03ef55b766b709125dd41885facee151a3b9432ed1478cc9a5e3de69fbe7726f",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/14eb58f1-a6e0-48f5-9ad9-7fff8d3c4721.Jpg",
+        "sha256": "a4fa3bd900145f9dbd60ffb69292f037fbdafc2a08fb38046d48382d54ec7c37",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9d380890-c261-41c5-95ae-4f3c20579421.Jpg",
+        "sha256": "50f7ff8426b33fb6bb7e7f4a892b16cd48a524d0417ecd733b3a304331b6e7d4",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_002.jpg",
+        "sha256": "3ab19f80a6acdcaa08e8ce1314d77b74784c67fc306a03d1ddd67b878c38a6ee",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_060.jpg",
+        "sha256": "bdb561d4fb154037cfce46b8c182790927d1659407eee2479e3ffdc95a84d736",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9d7353c6-45e8-44f9-a211-a545ea02b73f.Jpg",
+        "sha256": "c2909990412620073d5f1f86ef5ad8d5d186460e9aad480ef1cda0c2ecdb769f",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          753,
+          1698
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/21d3baaf-28cb-4edb-a543-70cc1090738b.Jpg",
+        "sha256": "3e992bf041d42be4477db90f46e4869a4535fc637fab81beb4a945b8f38f1536",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          576,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/21d41487-becc-4923-8467-e1b08148c384.Jpg",
+        "sha256": "41c8642f023479fd2ff5e64ee869fbb1ddc25be87225cc3d33294deb19137ba0",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          864,
+          841
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9e5bdd96-b999-4665-99ee-4436ecf23206.Jpg",
+        "sha256": "049411f873737d87291ffe77f9b5f9bbe9a89b98b1877015be378148c4be3c08",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          720,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_011.jpg",
+        "sha256": "61bff3a22c04d66ae83d364f7e648ed41c7f487d1d4c1e0101b623c7eaf76228",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9debd97d-2c27-4d21-9307-ce7a4fb5aa15.Jpg",
+        "sha256": "930b8f359ab373a7daf3dc5ec3a0424196eaf4daad2bc1587feb14783117860e",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/13c20e42-2e34-4570-a9c1-d58257007985.Jpg",
+        "sha256": "4c0c283746199474642d50189a0552e094c9e437621ee6007ddf1bd557235b0d",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          648,
+          1152
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/16f93f7f-b93a-4813-9e30-091458e7d52f.Jpg",
+        "sha256": "2330219f4ebe57fb6c6c45bc72a2241658892404f401a8b3427de9609066cd7a",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          640,
+          480
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9f36ef09-7492-489f-8efc-e82f2dade2e1.Jpg",
+        "sha256": "8d27d2145bf787c85bc4acc5be578740631a804671daaecdae46b87cce4dcaed",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          1080,
+          2400
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9c986713-a2a2-4306-9557-7ae5b66094d7.Jpg",
+        "sha256": "c6abc4acd4929c85a6e5aa8caa939d4b15c2264c6e8f8854f187858db6ec7d4b",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          576,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9fb9454f-2f57-4657-8fbd-102c18e626e5.Jpg",
+        "sha256": "ac346e001399eac5402c1af02b391a48c5f14af067490d33a6c0fbe956354a53",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1b0696ed-f547-45ad-8472-c54906acf818.Jpg",
+        "sha256": "4ac446ee3bcdcfcbcc7a32a9c39090f21873a72de5c47e326c8e88f77845182f",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1e0bce36-7f71-4ccc-b0dd-ee961680d1c5.Jpg",
+        "sha256": "957db98801d85bd70be0b1a1a04410c66961694b15fdca2e27d85d979a7b54dc",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0c6e6c28-f376-46e8-b8cf-96db13a99250.Jpg",
+        "sha256": "fd77f09164c33e198fdb4f480c6113f2889f5df39efcd6dcadfc4ab69f8957ed",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0e60d693-ab49-4891-89c6-0e611fe54815.Jpg",
+        "sha256": "2840384899d131a3cc7da2864a3ccd7360e9d89f4cf0010607b5060d9df781b0",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4624,
+          3468
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0a9ff5a1-4fed-411a-8f35-6b6531417c4d.Jpg",
+        "sha256": "9ae6126847e8a43de5a4412e5f0cd22361aec437e02c76ef061a17df56a79bc1",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4128,
+          3096
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1c51558f-b9d7-40cc-b669-6e886668878d.Jpg",
+        "sha256": "ba8d0965f5ae52489dd0749292b9bf6499d4a016e5f6f8042e498a0fb5cf4476",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3000,
+          3584
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1c0d72ee-ce7e-4066-a163-1c2dcebc86df.Jpg",
+        "sha256": "587630842883f2bccd1d3fb1cf833adad6324b70a7a2eece09ec794a9e48b395",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0bd92149-bbc7-4b5b-9be1-693d613c3701.Jpg",
+        "sha256": "6c39671f921dbfccf226a8d2180a293d476ee03149331487a3f75f74e3cfa2f9",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0b2b0e79-1d5b-41b1-92b5-6a7f6b680164.Jpg",
+        "sha256": "043d08f7974c2459bfa578fe327e7057191b5273d32e28b4416ba9f177e90067",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          6944,
+          9248
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1ca0046b-22fd-4cbf-b5a5-175e1d3c7a99.Jpg",
+        "sha256": "bb302e95f2d220a116cbabf35884c86e40834817937ba051de43a3d8f426de85",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1d2252f7-c9bd-4cb1-8584-cc878d9405fa.Jpg",
+        "sha256": "e52766d6385de7f28e6cd6b9dc7b6b0b4e24cea74be07659cc1b7d241b1f8832",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0f375562-1dfc-47f3-9477-3f24a2130d49.Jpg",
+        "sha256": "9fd50632b830cc3856e61959d5bf2ee949590ee67f817369f06975984eade469",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          6144,
+          8160
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1d1fdc49-6bea-4722-a22a-2be9b2e2be31.Jpg",
+        "sha256": "87721cf864783ef2b1bac9d767bd23021c7dcf81fed1ed394eff1d6707a9e8a7",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4032,
+          3024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1bad2c5e-41d8-490c-843f-b66ba22f6faf.Jpg",
+        "sha256": "385f6ba795b207d8f2ccf516c6abc865708717571500506c9147d877ab0c0aba",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0c60af21-42a0-4e69-b957-a101c6a7d5c0.Jpg",
+        "sha256": "22dc5168a1efc126544eb101d37df1b219b88ed44979ebfd4b955ce5c805016a",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1b439910-04b0-4781-9630-5b089642146d.Jpg",
+        "sha256": "fce1b1787ea2ef15b60d86e21998ee30f5bc83964301ab6505ce0303abd96cb8",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0f509ff2-f7c1-45ed-8d5c-3c292b303c7d.Jpg",
+        "sha256": "673e1db6db04ed81fc3ccb2ad18facf74c69a1c80b0d5403b041e16388c799f9",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/2bcf192b-dc9c-4e5f-b04c-ef6a6d1069b0.Jpg",
+        "sha256": "463d8ed10f7c030bcfad353452fd66f96bf6a33e90e7446df07e3ecc978c85ac",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0e45e4ef-1b7d-4900-b6aa-fb627285d9d8.Jpg",
+        "sha256": "7fd8fc944afe5dc8d544f40b60ba934a9dd3f165851f7464f5798b2fc3807ecf",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3096,
+          4128
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0ab4ca68-a215-49de-b791-92b90a9cf385.Jpg",
+        "sha256": "31ec30901e64a0efd3c1f7803f6b551c06240f433e1581a7f600d106742adae4",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4128,
+          3096
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/2a4c7c35-22ef-4da6-b16b-27d535e6d4a2.Jpg",
+        "sha256": "015ca6bfb96de8e9aa84639c5827891dcedbc9ad94c266ec285bb94a738c1433",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1fd28e2d-3798-426e-a7c1-55786b3d48aa.Jpg",
+        "sha256": "bee19b36ddafd8dc61f8d5ec438de23f28387536760c8c011c6ebd3721fc4ed3",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0ac8cf5a-f403-4e5f-89f1-b312b93ee2ea.Jpg",
+        "sha256": "67c3e14928ac331e4fc901ef85e6008f31c45774380c68750ee9d9a9df5adda4",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/2adc00ec-5c26-4166-b474-1ea847da9abd.Jpg",
+        "sha256": "04e7f51f27635cfe960e410795fd8121e8b81d4508e53dbfaf287fa864d9ed2a",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0dbc9dcf-0034-4466-a41b-961e81add764.Jpg",
+        "sha256": "0d9efe46beb6d4d6708573a74b7245d3e5baaf9044ac944ea25a58c30c9f74f4",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1ceb82a3-2721-40e7-b124-a4971aec5e6e.Jpg",
+        "sha256": "31b3a304355cbca2480a6d275a00c8bd8aa35521bcd088b8134cbe3941387d65",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0b948bd6-11b2-4d5d-ba49-f0128b787109.Jpg",
+        "sha256": "c223127fd8f12f7c52626161d24b0dea116626a091fe8732538d872705396a31",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4624,
+          3468
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1c70c372-1a9f-4cb2-beb1-dd8ffc27cc9d.Jpg",
+        "sha256": "34c1801a23182045e8f9e993616d5d280801e110a222dc7ad99f24feffd1ece1",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1fc70857-96e0-425c-b71d-7fa296a2c10b.Jpg",
+        "sha256": "944f0b63a798452b9f24aaa20f8c5e01b432062e473db907036d7c7b3eae361a",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/2ae1082a-1150-4f59-b68c-a755786028b3.Jpg",
+        "sha256": "87720bb511ea4856e731c98f8cf6c2c9119173acf30e3be627b7f4815062d90e",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/00cc52f4-ba3c-4beb-8efc-b268a7ff3417.Jpg",
+        "sha256": "c26d13a7da8a03b94ebfacb0a7b60df3da0e5f9c266672673be796cc8d654f0c",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1fb99627-8d33-4ac2-bd18-eb6b9c0787b0.Jpg",
+        "sha256": "ce609dcde4b1e058ce78ac6af2c5427d4d2a6aa47a19cfa7722aefd9fc10c180",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0a53f87f-2139-428b-9366-a44d009652bd.Jpg",
+        "sha256": "ebe0abc87dfb50cf3af0d70ecdcc004c530b54f8f5af76354601ba93fa81e467",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1febdccf-a713-4b7e-925c-7fbbc0fa1855.Jpg",
+        "sha256": "890820878db85375c0bc6bff13946bfa719f7b3e5c6e2db9a743f5446f45464e",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      }
+    ],
+    "validation": [
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8bef70d7-d348-4957-9b40-616a619a7744.Jpg",
+        "sha256": "d2a606eda61b85242e4b700cba00cd4ba09b4435bc0eddc00a1ce10eadd07f71",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1156,
+          868
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8f7af6a9-7488-4e99-8230-c139217b6f43.Jpg",
+        "sha256": "bdde899a9c5345351bd71e1d86a036c03146ccae9f3bf9bd87596febd9bd6ea8",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_069.jpg",
+        "sha256": "db0549b08d83c2e60998dbc27ecc2813ba7d877ec6f5683e8b5f9d5a0c5f4e28",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8a165226-451c-4263-b8d4-0416e011c851.Jpg",
+        "sha256": "bead9e48c72ecf06d65ed1f9fecbe54a76ecfbe795f20d615d28fe5e827c2566",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1156,
+          867
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_087.jpg",
+        "sha256": "bce8c990de752f588fa48b77e43d08d4466ded2263e88bdb9f4e3bff2d3813ae",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8ae7c626-928e-4d9f-9f47-ade5b314526d.Jpg",
+        "sha256": "3208c07c00855a7f7068f9d94baae38bd183b60e074e6c29f28cb66fe577af40",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          3472,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_091.jpg",
+        "sha256": "441e487d90c81c101cb2194fd2c8577d01e7bf6c0da6c4f8efd96f313c40b9fc",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_018.jpg",
+        "sha256": "fea9e8c028e4485e6bd74ebd279adc4cbbf69b09ef1e84e30c1ef68b221e5be3",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3b040119-80de-4df7-89dd-853fab04c1c8.Jpg",
+        "sha256": "d075a0a2786842cb4975240d5c7839f180d41789c965630a1914accafb84bd96",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1800,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3db6e752-29cc-409f-9daf-47330fb9591b.Jpg",
+        "sha256": "695e06c4aa8f1007126bfe3629d6781e5a170959ade2ba0a438237b37219ee94",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1200,
+          1600
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c73de7b-649d-4d93-9da4-616f76203487.Jpg",
+        "sha256": "67c3f2d60215735a1fee321d1be811b32f4f19d090ea221634ea2f9e10bc17b1",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3dd0c3d4-df49-4fdb-887a-8180fff25579.Jpg",
+        "sha256": "98c60dba805bdbf5f75a86d7cd5943ff2f764b4344c330324b608a080c1ebc1f",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1632,
+          1224
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e10688c-f370-4b86-a855-0d41e4a5efac.Jpg",
+        "sha256": "5cd3e04689fc89f498644ca27277defa0d04e65ab11322fdec7242e87ee2b752",
+        "target_class": "brown_spot",
+        "dimensions": [
+          1760,
+          1191
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c14b170-bb6d-4ac8-b98f-57c62a71330e.Jpg",
+        "sha256": "0fd1414e30f8444bf5e1133021dd290a66197504285b6f2358199d212835b5c4",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3da458df-3e38-42b8-9ffb-070904c05a26.Jpg",
+        "sha256": "99c4840085c56f14a9d50509805896fb6bdb02ef50becb6726e03e7005cbf154",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/06bc8e25-a4de-49b7-ab7f-6e4fa68fd672.Jpg",
+        "sha256": "3475b4d3b9de1412f7e967d153b5fa380512100fe0fc58a702f234596c1df5eb",
+        "target_class": "false_smut",
+        "dimensions": [
+          780,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_069.jpg",
+        "sha256": "806c4a195ed0a26a69b43db1bba2e187d73d839221c2b3d7d35395ff9f7d3134",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/1e07f425-47ca-4ca3-a548-d52d608e2127.Jpg",
+        "sha256": "de9b081c4cda3980f060fa4ba306121220285dbd5fb240e47f889b44c6645217",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_072.jpg",
+        "sha256": "4af3a7e3b88457fe0683048da535c5bba4b9b4c8085ff1111c83342591a91174",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3c1c6608-b9ad-4c9a-b178-455ca8bc6163.Jpg",
+        "sha256": "3a1c53c9b67e25ad9195a6e7699473a92f8663a644c01126cd5927658e56d6fd",
+        "target_class": "false_smut",
+        "dimensions": [
+          1599,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/6a5cf0bf-4732-4438-b5ee-b54788b6ae50.Jpg",
+        "sha256": "fbdc929cf712aa8ea11fe2e5d7dde05f8a6cc5ad3f23b8e28a55897d4fb34dc3",
+        "target_class": "false_smut",
+        "dimensions": [
+          1040,
+          780
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3cb4b860-d98b-442d-9cde-91923378de23.Jpg",
+        "sha256": "a21b0c89baba06d21a22a8a3e07881e2bd1924d030900584a7b780f834fa6b77",
+        "target_class": "false_smut",
+        "dimensions": [
+          1599,
+          1200
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/4c519299-d4cb-4eb7-a78a-b85f32b25a2a.Jpg",
+        "sha256": "e5cdf396f36541263ab5d8f7f5bdb60380d736e710c4dec1efc791359a489462",
+        "target_class": "false_smut",
+        "dimensions": [
+          1040,
+          780
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/18d3c7b0-16c8-4d64-bc40-4b2e5f1e12fd.Jpg",
+        "sha256": "dbaf3a2721b4c0bd273230091cb527e9db8e1150dc0071d3e2da5a149dd5a702",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          1536
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_090.jpg",
+        "sha256": "e7ca7039337a319bc65479caf979904f953945f458e0c3d63e06d0ec5a751de0",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_127.jpg",
+        "sha256": "589e72bbf5a7d167de8d15aabdda97d112117a04f5f7b7bb0ea1169f84dadeb4",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9e449038-55ca-4396-b42b-05405ceaf2ab.Jpg",
+        "sha256": "6926b8f3178864a6df1ed75d9e764c049bd745c29e9004518473cfcf37c90546",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          1536
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/16ccd32e-25ac-4a0e-b96a-5e3bd7f3061a.Jpg",
+        "sha256": "1815010710d1e33a6d557595716e923717a1b053add7e09a5cd5488461708bcd",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9e313d2e-1609-4d58-8f24-c79738d41093.Jpg",
+        "sha256": "53d8ccd026a6213a91d9ba6477d2a3b8a4394648eeba6bf9cbf142861d9e84d9",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_040.jpg",
+        "sha256": "ddb8f777310d139de11eb14f8a06812935442f0ae340c619cbe983ffc36a1aaa",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9e9c1303-4c9d-44df-aec2-98f4c8c475c4.Jpg",
+        "sha256": "6f267fc6228fb91ae187b139d3c7401b82effc18cf8ca0e9e941573153680ea0",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          468,
+          1040
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/00a9fef8-e29b-4f10-a11e-449f9015a140.Jpg",
+        "sha256": "3d4c870ef5047a9b723f6d0216267056ed438a5d213355208a561a4f53c63f35",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1f100be5-f186-49dc-a773-4aae08a74e53.Jpg",
+        "sha256": "6d43e753c4633d03438bcaeb9d062e990c7017667524b06cf0e8039c4a0d418b",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/2a034e46-9a14-4366-84f0-5fb1ec0cac44.Jpg",
+        "sha256": "f9b3440cf08108527f6f9a7df85bc6e75f82f964bdabb3232ece5e889f01baa0",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1eb66454-594f-4a51-a728-c69c94a2c256.Jpg",
+        "sha256": "ffd631d89f83d5f69197302def8550f77d563847e5e85d8d77036c6c1e2ac2f3",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1f8fd5ea-32f5-4f5c-a4f6-b4bf006eb3a8.Jpg",
+        "sha256": "d164bf77fd51cac8ab67f20cdc52a346955602d371b2305866eed8dfdf7dd98f",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          6144,
+          8160
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/00c4e78d-21fb-425c-bdac-71b9bf00f010.Jpg",
+        "sha256": "551ad3165324f197029e1142c3e566a26dd78836600e524dfd53ccc17498b150",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0f555455-4df7-47bf-84a2-b6656d9b1ea9.Jpg",
+        "sha256": "10eb0c2a607bd3a5017594d48086665f78eff8220f8859ee11aac0a52c8615fa",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      }
+    ],
+    "test": [
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_115.jpg",
+        "sha256": "8fd298b0a814052f8462f5cf1bb86dc3737ed24e3b4c8a816109d54a99851333",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7c1c5c16-ac7e-400b-9663-6f1e761ab387.Jpg",
+        "sha256": "a4290cac89295ea2a3d67674529b47955c3bda95f7bc0f86628e428436b9b113",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7c3adcf1-d82f-4984-b67b-fbfee5d9f589.Jpg",
+        "sha256": "17b4b833ddc8880e7fc24b0443a0f6ac4bbf47fe86c1a1112e795dcc017022cf",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1156,
+          867
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/7cdbb41d-b59e-415f-9270-07b0a4461627.Jpg",
+        "sha256": "610aacb6842207de83131b4f38db382ea61f6823ed25a7922d05aeacc1a8ca87",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1500,
+          2000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_031.jpg",
+        "sha256": "991683025307d319222461d7541016b31d128b96b2e10e2c12585222f3ddce94",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/01_Bacterial_leaf_blight_104.jpg",
+        "sha256": "6519761383358baf728f591cbc495c79735f4ae227fc65074ab697b760b8834f",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/01_Bacterial_leaf_blight/8e75f880-60e6-40aa-a51e-8888806cb757.Jpg",
+        "sha256": "2c2e187d6f70c82715ba33e423ae908f4863ea462bf73583489c22d1af06905c",
+        "target_class": "bacterial_leaf_blight",
+        "dimensions": [
+          1156,
+          868
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_023.jpg",
+        "sha256": "a59786feaf1e2a19e72878fa37118bc43b2ecce476017709796f4051d0880abf",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3c8c5882-aaa2-42f1-8a1d-35fb141e6792.Jpg",
+        "sha256": "f7e2d8ec5e1c4bc733e7a270aaaa308feaac877f78f84f33e018928301ff0e83",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          1536
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_054.jpg",
+        "sha256": "86cf51cee838facebe10b719651d8e0f61740079d45ee17243ef49a6a66de78b",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3d474996-da83-4ddc-b07e-5c62f774ff14.Jpg",
+        "sha256": "e5249ee2ae8fc4e8df95b1e7b3c4ae0399529be78e735d3e5d7748823d79a764",
+        "target_class": "brown_spot",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3ce4a258-816e-416e-9a4a-58088f8e2061.Jpg",
+        "sha256": "6802f6cd89bcd5fc6bca6e6dce5e37fe697ef2900b6b10256a6508ba30ea1f95",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/3e840b3c-bb87-4409-907c-ae5dba6ea4a8.Jpg",
+        "sha256": "7d4786e86557ac19180fe22f91bce8b8621620e1f712c29257879ded18fa9c33",
+        "target_class": "brown_spot",
+        "dimensions": [
+          6000,
+          4000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/02_Brown_spot/02_Brown_spot_004.jpg",
+        "sha256": "e147353bf847c8a1665be9e8330777f95c712217964089f84bd419230613f62f",
+        "target_class": "brown_spot",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/5d921dc2-4db2-4cf4-940c-ac75596d2bc2.Jpg",
+        "sha256": "3dea1e2c100a7188f84ca4db29076ad85a281933708ebd71fdc9aa8d6fc9b5ee",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/2a4273ef-e2a7-48c9-a308-bc4ad556a3d5.Jpg",
+        "sha256": "31007f89e010ab0979f1ec2d1fdcf003a0e2a94d880cf006565db39206bd4315",
+        "target_class": "false_smut",
+        "dimensions": [
+          1152,
+          864
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/3eac9b0b-423d-4084-a8ab-dc17dac7e5ca.Jpg",
+        "sha256": "2fbf0ebdbc0d3202a00374cd68148ec5d84b4f13444fc35163aa32302733deab",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03ed175a-f463-46bb-bd13-54edca5d5ab6.Jpg",
+        "sha256": "2cb8a1faeeb9b03c86f3e4825da1189719a5793a61aa326c901a9b014fc79951",
+        "target_class": "false_smut",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/03_False_Smut_029.jpg",
+        "sha256": "7c7e1a15d22db61699c6a9cae6f6f0f67529fce499c9aed73fe20ffce802e030",
+        "target_class": "false_smut",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/1e91af4a-84cb-4a23-a63f-e5812e589f41.Jpg",
+        "sha256": "81242bfb6e471ec5b692e53a96cf7f161447f67248f9710054a13287fd727350",
+        "target_class": "false_smut",
+        "dimensions": [
+          1200,
+          1599
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/03_False_smut/2f2b1f48-4ca9-44a8-8a2e-09eaad663941.Jpg",
+        "sha256": "cce92cc02f2d3ca2a1d017478fa4ec448a46bfc8dd52cec743de37698a8ec60c",
+        "target_class": "false_smut",
+        "dimensions": [
+          1152,
+          864
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_115.jpg",
+        "sha256": "a8ade7e49c569c89e0f8abd4c52c729e5e1e4e168b08cc6ee5af356af44ccac6",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/24ebf672-8969-415b-94b3-731483046cf9.Jpg",
+        "sha256": "56d22795e5ccce61948b5055a30c4cbfdb9b7f6f98a64ab96b1042729040b118",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/13fbce68-1027-45ea-b2da-6944ddd530e2.Jpg",
+        "sha256": "7b97a8db4e653ee5df8b4917429cc8d043d4559997633c4afb1d613a4f23524b",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          768,
+          1024
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/9f07c5db-a303-46e7-8cb2-c8473ed20552.Jpg",
+        "sha256": "2d376efaa1e494f8a542272c9757338ebace79c4087abfd4b922373e9254cd86",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/024bfa1e-6e9a-48a2-87ba-006bdc354c66.Jpg",
+        "sha256": "0790e4edeb3ad55c267e97a3812862be60c7663533b4cba4f05351a52ec46941",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/23c553a6-7223-4bd2-b956-54f6670df3d9.Jpg",
+        "sha256": "986f012270616902bab38b3403bc3dd9060bd6970e11098a4b1b5c2e4386ea4d",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          960,
+          1280
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Disease/04_leaf_sheath_blight/05_leaf_sheath_blight_095.jpg",
+        "sha256": "277b7e96a0067fe47658b81d67f028f280964833703c512b7827e4698589b787",
+        "target_class": "sheath_blight",
+        "dimensions": [
+          2048,
+          2048
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0a85f59f-fc0d-4471-96ad-6500ea8b0c01.Jpg",
+        "sha256": "7ab1f328ce438047fcddc9add32986e5035cd0843141d35b209138561c0283e4",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4624,
+          3468
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0c814b29-58b8-4852-8b8f-2a229a0ab892.Jpg",
+        "sha256": "2b931c10123b786756a953069f85223965eddbab19b0748ac22677ce96e4dbad",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0d4e4fed-e804-4ab2-843f-7e2652d947c4.Jpg",
+        "sha256": "d6da1cc4d848c48b3fe45ea44e685b012e1d559c390ec638d75886440b04c7c4",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          867,
+          1156
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/0ac88bf1-e050-4f5f-bddf-8ece9e3fcfab.Jpg",
+        "sha256": "9024e65c034ab9585a012c67138c0e416480c2f6a14cccdf0afb1e00893a0390",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4000,
+          3000
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/2c90dcf4-4ac4-4eac-b0a2-01f20f02847c.Jpg",
+        "sha256": "046684a99649bd1bf083514dbd5efc817288d150caf55f95a2cf5f784d34b672",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1dfb679b-14df-4b9e-baa8-f77e5323ceae.Jpg",
+        "sha256": "3dd7cee56fe6402ec0b91486033b08b9219481b9c9cf285d053a4b624672f156",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          4624,
+          3468
+        ],
+        "color_mode": "RGB"
+      },
+      {
+        "file_path": "Healthy/1c85e161-407e-4f8d-9b34-89f87b826456.Jpg",
+        "sha256": "6b98e51100a07882ecf02cbb3b2fd1b7229fe6bb2ac51f669561141c3897eb99",
+        "target_class": "healthy_rice",
+        "dimensions": [
+          3468,
+          4624
+        ],
+        "color_mode": "RGB"
+      }
+    ]
+  }
+}
