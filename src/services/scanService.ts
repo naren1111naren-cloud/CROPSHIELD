@@ -288,8 +288,18 @@ export function subscribeFarmerScans(
   onScans: (scans: ScanData[]) => void,
   onError?: (err: any) => void
 ): () => void {
+  const localKey = `cropshield_scans_${uid}`;
+  const loadLocal = (): ScanData[] => {
+    try {
+      const cached = localStorage.getItem(localKey);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  };
+
   if (!isFirebaseConfigured || !db || !uid) {
-    onScans([]);
+    onScans(loadLocal());
     return () => {};
   }
 
@@ -304,12 +314,16 @@ export function subscribeFarmerScans(
       snapshot.forEach((docSnap) => {
         results.push({ id: docSnap.id, ...(docSnap.data() as ScanData) });
       });
+      try {
+        localStorage.setItem(localKey, JSON.stringify(results));
+      } catch {}
       onScans(results);
     },
     (error) => {
-      console.error('Error listening to farmer scans:', error);
+      console.warn('Real-time scans listener notice:', error);
       onError?.(error);
       handleFirestoreError(error, OperationType.LIST, scansPath);
+      onScans(loadLocal());
     }
   );
 }

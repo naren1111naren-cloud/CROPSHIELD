@@ -31,6 +31,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [variety, setVariety] = useState('CR 1009 Sub 1');
 
   const [isLoading, setIsLoading] = useState(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -39,19 +40,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+    setErrorCode(null);
     setSuccessMsg(null);
     setIsLoading(true);
 
     try {
+      const cleanEmail = email.trim();
       if (mode === 'signin') {
-        if (!email || !password) {
+        if (!cleanEmail || !password) {
           throw new Error('missing-fields');
         }
-        await signIn(email, password);
+        await signIn(cleanEmail, password);
         onSuccess?.();
         onClose();
       } else if (mode === 'register') {
-        if (!email || !password || !displayName) {
+        const cleanName = displayName.trim();
+        if (!cleanEmail || !password || !cleanName) {
           throw new Error('missing-fields');
         }
         if (password !== confirmPassword) {
@@ -61,24 +65,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           throw new Error('auth/weak-password');
         }
         await register({
-          email,
+          email: cleanEmail,
           password,
-          displayName,
+          displayName: cleanName,
           preferredLanguage: language,
           district,
-          locality,
+          locality: locality.trim(),
           activeVariety: variety,
         });
         setSuccessMsg(isTa ? 'கணக்கு வெற்றிகரமாக உருவாக்கப்பட்டது!' : 'Farmer account created successfully!');
         setTimeout(() => {
           onSuccess?.();
           onClose();
-        }, 1000);
+        }, 800);
       } else if (mode === 'reset') {
-        if (!email) {
+        if (!cleanEmail) {
           throw new Error('missing-email');
         }
-        await resetPassword(email);
+        await resetPassword(cleanEmail);
         setSuccessMsg(
           isTa
             ? 'கடவுச்சொல் மீட்டமைப்பு இணைப்பு உங்கள் மின்னஞ்சலுக்கு அனுப்பப்பட்டது.'
@@ -87,6 +91,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
     } catch (err: any) {
       console.error('Auth action failed:', err);
+      const code = err.code || err.message;
+      setErrorCode(code);
       if (err.message === 'missing-fields') {
         setErrorMsg(isTa ? 'அனைத்து தேவையான விவரங்களையும் நிரப்பவும்.' : 'Please fill in all required fields.');
       } else if (err.message === 'passwords-mismatch') {
@@ -94,7 +100,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       } else if (err.message === 'missing-email') {
         setErrorMsg(isTa ? 'மின்னஞ்சல் முகவரியை உள்ளிடவும்.' : 'Please enter your email address.');
       } else {
-        const code = err.code || err.message;
         setErrorMsg(formatAuthError(code, language));
       }
     } finally {
@@ -104,6 +109,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
   const handleDemoSignIn = async () => {
     setErrorMsg(null);
+    setErrorCode(null);
     setIsLoading(true);
     const demoEmail = 'muthu.farmer@cropshield.in';
     const demoPass = 'Paddy12345';
@@ -111,17 +117,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       try {
         await signIn(demoEmail, demoPass);
       } catch (signInErr: any) {
-        // If demo user does not exist yet, auto-register once
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-          await register({
-            email: demoEmail,
-            password: demoPass,
-            displayName: 'Muthu Ramanathan',
-            preferredLanguage: language,
-            district: 'Thanjavur',
-            locality: 'Valangaiman Taluk',
-            activeVariety: 'CR 1009 Sub 1',
-          });
+        // If demo user does not exist yet or credential error, auto-register once
+        if (
+          signInErr.code === 'auth/user-not-found' ||
+          signInErr.code === 'auth/invalid-credential'
+        ) {
+          try {
+            await register({
+              email: demoEmail,
+              password: demoPass,
+              displayName: 'Muthu Ramanathan',
+              preferredLanguage: language,
+              district: 'Thanjavur',
+              locality: 'Valangaiman Taluk',
+              activeVariety: 'CR 1009 Sub 1',
+            });
+          } catch (regErr: any) {
+            if (regErr.code === 'auth/email-already-in-use') {
+              throw signInErr;
+            }
+            throw regErr;
+          }
         } else {
           throw signInErr;
         }
@@ -130,7 +146,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Demo sign-in failed:', err);
-      setErrorMsg(formatAuthError(err.code || err.message, language));
+      const code = err.code || err.message;
+      setErrorCode(code);
+      setErrorMsg(formatAuthError(code, language));
     } finally {
       setIsLoading(false);
     }
@@ -167,6 +185,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => {
               setMode('signin');
               setErrorMsg(null);
+              setErrorCode(null);
             }}
             className={`flex-1 py-2 text-xs font-mono font-medium rounded-xs transition-colors cursor-pointer ${
               mode === 'signin'
@@ -181,6 +200,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             onClick={() => {
               setMode('register');
               setErrorMsg(null);
+              setErrorCode(null);
             }}
             className={`flex-1 py-2 text-xs font-mono font-medium rounded-xs transition-colors cursor-pointer ${
               mode === 'register'
@@ -196,7 +216,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {errorMsg && (
           <div className="mb-5 p-3.5 bg-[#FAF3F2] border border-[#A94338]/40 text-[#A94338] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-xs">
             <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
+            <div className="flex-1">
+              <span>{errorMsg}</span>
+              {mode === 'signin' && (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found') && (
+                <div className="mt-2 pt-2 border-t border-[#A94338]/20">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register');
+                      setErrorMsg(null);
+                      setErrorCode(null);
+                    }}
+                    className="text-xs font-semibold underline hover:text-[#782820] cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <span>{isTa ? 'புதிய விவசாயியா? கணக்கை உருவாக்க இங்கே சொடுக்கவும் →' : "Don't have an account yet? Register here →"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
         {successMsg && (

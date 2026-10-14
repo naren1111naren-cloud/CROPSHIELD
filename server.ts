@@ -6,6 +6,7 @@ import { getDistrictGeo } from './src/config/tamilNaduDistricts';
 import { parseOpenMeteoResponse, RealWeatherData } from './src/services/weatherService';
 import { specialistEngine } from './server/specialistService';
 import { evaluateFieldDifferential } from './src/services/differentialEngine';
+import { fetchMandiPrices } from './server/marketPriceService';
 
 dotenv.config();
 
@@ -524,6 +525,38 @@ app.post('/api/community-reports', (req: Request, res: Response) => {
   res.status(201).json({ success: true, data: newReport });
 });
 
+// API Route: Daily Crop Market Prices (AGMARKNET / data.gov.in)
+app.get('/api/market-prices', async (req: Request, res: Response) => {
+  try {
+    const { state, district, market, commodity, variety, limit, offset } = req.query;
+
+    const filters = {
+      state: typeof state === 'string' && state.trim() ? state.trim() : 'Tamil Nadu',
+      district: typeof district === 'string' && district.trim() ? district.trim() : undefined,
+      market: typeof market === 'string' && market.trim() ? market.trim() : undefined,
+      commodity: typeof commodity === 'string' && commodity.trim() ? commodity.trim() : undefined,
+      variety: typeof variety === 'string' && variety.trim() ? variety.trim() : undefined,
+      limit: limit ? parseInt(String(limit), 10) : 50,
+      offset: offset ? parseInt(String(offset), 10) : 0,
+    };
+
+    const result = await fetchMandiPrices(filters);
+    return res.json(result);
+  } catch (err: any) {
+    console.error('Error in /api/market-prices endpoint:', err);
+    return res.status(500).json({
+      success: false,
+      records: [],
+      totalRecords: 0,
+      fetchedAt: new Date().toISOString(),
+      isCached: false,
+      filtersApplied: {},
+      error: 'INTERNAL_SERVER_ERROR',
+      message: err.message || 'An unexpected error occurred while processing market prices.',
+    });
+  }
+});
+
 // Mount Vite or serve static assets
 async function startServer() {
   if (!isProduction) {
@@ -542,7 +575,11 @@ async function startServer() {
   }
 
   app.listen(PORT, () => {
-    console.log(`🌾 CropShield server operational on port ${PORT} (${isProduction ? 'production' : 'development'})`);
+    console.log(`\n🌾 CropShield AI Full-Stack Platform Operational!`);
+    console.log(`   ➜  Frontend (Vite + React SPA): http://localhost:${PORT}/`);
+    console.log(`   ➜  Backend (Express API):       http://localhost:${PORT}/api/`);
+    console.log(`   ➜  Daily Mandi Prices API:      http://localhost:${PORT}/api/market-prices`);
+    console.log(`   ➜  Weather Intelligence API:    http://localhost:${PORT}/api/weather\n`);
   });
 }
 

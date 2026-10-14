@@ -54,7 +54,8 @@ export async function submitCommunityReport(params: NewFieldReportParams): Promi
     });
     return docRef.id;
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, path);
+    const err = handleFirestoreError(error, OperationType.CREATE, path);
+    throw err;
   }
 }
 

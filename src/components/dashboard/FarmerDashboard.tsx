@@ -19,6 +19,7 @@ import { WeatherSeasonalIntelligence } from './WeatherSeasonalIntelligence';
 import { ExpertKnowledgeHub } from './ExpertKnowledgeHub';
 import { FieldCaseHub } from './FieldCaseHub';
 import { GuidedFieldAssessmentModal } from './GuidedFieldAssessmentModal';
+import { DailyMarketPrices } from './DailyMarketPrices';
 import {
   Compass,
   ArrowLeft,
@@ -39,7 +40,8 @@ import {
   AlertTriangle,
   BookOpen,
   CloudSun,
-  Building2
+  Building2,
+  IndianRupee,
 } from 'lucide-react';
 
 interface FarmerDashboardProps {
@@ -55,7 +57,7 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   const { user, profile } = useAuth();
   const isTa = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'scan' | 'cases' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'cases' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert' | 'prices'>('scan');
   const [initialScanCropId, setInitialScanCropId] = useState<string>('rice');
   const [enquiryContextForHub, setEnquiryContextForHub] = useState<any>(null);
   const [investigationPreload, setInvestigationPreload] = useState<{
@@ -412,6 +414,18 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveTab('prices')}
+              className={`px-5 py-3 min-h-[44px] text-xs font-mono font-medium transition-colors cursor-pointer border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                activeTab === 'prices'
+                  ? 'border-[#183B2A] text-[#183B2A] font-bold bg-[#FAF9F3]'
+                  : 'border-transparent text-[#4A584D] hover:text-[#183B2A]'
+              }`}
+            >
+              <IndianRupee className="w-4 h-4" />
+              <span>{isTa ? 'சந்தை விலைகள்' : 'Market Prices'}</span>
+            </button>
+
+            <button
               onClick={onBackToHome}
               className="ml-auto px-4 py-2 text-xs font-mono text-[#4A584D] hover:text-[#183B2A] hover:underline cursor-pointer flex items-center gap-1 shrink-0"
             >
@@ -692,6 +706,13 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             scans={scans}
             initialEnquiryContext={enquiryContextForHub}
             onClearEnquiryContext={() => setEnquiryContextForHub(null)}
+          />
+        )}
+
+        {/* Tab 7: Daily Crop Market Prices (OGD / AGMARKNET Mandi Feeds) */}
+        {activeTab === 'prices' && (
+          <DailyMarketPrices
+            activeDistrict={primaryFarm?.district || profile?.district || 'Thanjavur'}
           />
         )}
 

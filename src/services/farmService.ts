@@ -59,8 +59,18 @@ export function subscribeFarms(
   onFarms: (farms: FarmRecord[]) => void,
   onError?: (err: any) => void
 ): () => void {
+  const localKey = `cropshield_farms_${uid}`;
+  const loadLocal = (): FarmRecord[] => {
+    try {
+      const cached = localStorage.getItem(localKey);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  };
+
   if (!isFirebaseConfigured || !db || !uid) {
-    onFarms([]);
+    onFarms(loadLocal());
     return () => {};
   }
 
@@ -75,12 +85,16 @@ export function subscribeFarms(
       snapshot.forEach((snapDoc) => {
         results.push({ id: snapDoc.id, ...(snapDoc.data() as FarmRecord) });
       });
+      try {
+        localStorage.setItem(localKey, JSON.stringify(results));
+      } catch {}
       onFarms(results);
     },
     (error) => {
-      console.error('Error listening to farms:', error);
+      console.warn('Error listening to farms:', error);
       onError?.(error);
       handleFirestoreError(error, OperationType.LIST, path);
+      onFarms(loadLocal());
     }
   );
 }
@@ -93,7 +107,7 @@ export async function createFarm(
   farmData: Omit<FarmRecord, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<string> {
   assertOwner(uid);
-  if (!db) throw new Error('Firestore not initialized');
+  const localKey = `cropshield_farms_${uid}`;
 
   if (!farmData.farmName || farmData.farmName.trim().length === 0) {
     throw new Error('Farm name is required.');
@@ -102,43 +116,71 @@ export async function createFarm(
     throw new Error('District is required.');
   }
 
+  const localFarms = (() => {
+    try {
+      const cached = localStorage.getItem(localKey);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const fallbackId = `farm_${Date.now()}`;
+  const shouldBePrimary = farmData.isPrimary ?? (localFarms.length === 0);
+
+  const fallbackRecord: FarmRecord = {
+    id: fallbackId,
+    farmName: farmData.farmName.trim(),
+    cropType: farmData.cropType?.trim() || 'Rice (Paddy)',
+    riceVariety: farmData.riceVariety?.trim() || 'CR 1009 Sub 1',
+    district: farmData.district.trim(),
+    locality: farmData.locality?.trim() || '',
+    plantingDate: farmData.plantingDate || '',
+    cropStage: farmData.cropStage || 'Active Tillering (21-45 DAT)',
+    landSizeAcres: typeof farmData.landSizeAcres === 'number' ? farmData.landSizeAcres : 2.5,
+    landSizeArea: typeof farmData.landSizeArea === 'number' ? farmData.landSizeArea : (typeof farmData.landSizeAcres === 'number' ? farmData.landSizeAcres : 2.5),
+    areaUnit: farmData.areaUnit || 'Acres',
+    irrigationMethod: farmData.irrigationMethod || 'Canal / Cauvery Basin',
+    isPrimary: shouldBePrimary,
+    notes: farmData.notes?.trim() || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const persistLocal = () => {
+    try {
+      localFarms.unshift(fallbackRecord);
+      localStorage.setItem(localKey, JSON.stringify(localFarms));
+    } catch {}
+  };
+
+  if (!db) {
+    persistLocal();
+    return fallbackId;
+  }
+
   const path = `profiles/${uid}/farms`;
   try {
     const farmsColRef = collection(db, 'profiles', uid, 'farms');
 
-    // Check if any existing farms exist. If none, this farm becomes primary automatically.
-    const existingFarms = await getDocs(farmsColRef);
-    const shouldBePrimary = farmData.isPrimary ?? (existingFarms.empty);
-
     const payload: FarmRecord = {
-      farmName: farmData.farmName.trim(),
-      cropType: farmData.cropType?.trim() || 'Rice (Paddy)',
-      riceVariety: farmData.riceVariety?.trim() || 'CR 1009 Sub 1',
-      district: farmData.district.trim(),
-      locality: farmData.locality?.trim() || '',
-      plantingDate: farmData.plantingDate || '',
-      cropStage: farmData.cropStage || 'Active Tillering (21-45 DAT)',
-      landSizeAcres: typeof farmData.landSizeAcres === 'number' ? farmData.landSizeAcres : 2.5,
-      landSizeArea: typeof farmData.landSizeArea === 'number' ? farmData.landSizeArea : (typeof farmData.landSizeAcres === 'number' ? farmData.landSizeAcres : 2.5),
-      areaUnit: farmData.areaUnit || 'Acres',
-      irrigationMethod: farmData.irrigationMethod || 'Canal / Cauvery Basin',
-      isPrimary: shouldBePrimary,
-      notes: farmData.notes?.trim() || '',
+      ...fallbackRecord,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
     const docRef = await addDoc(farmsColRef, payload);
 
-    // If marked primary, update profile primaryFarmId and sync crop details
     if (shouldBePrimary) {
-      await setPrimaryFarm(uid, docRef.id);
+      await setPrimaryFarm(uid, docRef.id).catch(() => {});
     }
 
+    persistLocal();
     return docRef.id;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
-    throw error;
+    persistLocal();
+    return fallbackId;
   }
 }
 

@@ -450,3 +450,47 @@ export interface FieldCaseRecord {
   updatedAt: any;
 }
 
+// ============================================================================
+// Daily Crop Market Prices (OGD India / AGMARKNET) Types
+// ============================================================================
+
+export interface MandiPriceRecord {
+  id: string;
+  state: string;
+  district: string;
+  market: string;
+  commodity: string;
+  commodityTamil?: string;
+  variety: string;
+  grade: string;
+  arrivalDate: string; // The market reported arrival date (e.g., "13/10/2026")
+  minPrice: number;
+  maxPrice: number;
+  modalPrice: number;
+  priceUnit: string; // "₹/quintal"
+  source: string;
+}
+
+export interface MarketPriceFilters {
+  state?: string;
+  district?: string;
+  market?: string;
+  commodity?: string;
+  variety?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface MarketPricesResponse {
+  success: boolean;
+  records: MandiPriceRecord[];
+  totalRecords: number;
+  fetchedAt: string; // ISO timestamp when CropShield successfully fetched the data
+  isCached: boolean;
+  filtersApplied: MarketPriceFilters;
+  error?: string;
+  message?: string;
+  messageTamil?: string;
+  isConfigError?: boolean;
+}
+

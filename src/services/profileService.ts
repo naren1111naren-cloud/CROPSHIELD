@@ -7,15 +7,29 @@ import { FarmerProfile } from '../types';
  * Fetch a farmer's profile from Firestore
  */
 export async function getFarmerProfile(uid: string): Promise<FarmerProfile | null> {
-  if (!isFirebaseConfigured || !db) return null;
+  const localKey = `cropshield_profile_${uid}`;
+  const loadLocal = (): FarmerProfile | null => {
+    try {
+      const cached = localStorage.getItem(localKey);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  if (!isFirebaseConfigured || !db) return loadLocal();
   const path = `profiles/${uid}`;
   try {
     const snap = await getDoc(doc(db, 'profiles', uid));
-    if (!snap.exists()) return null;
-    return snap.data() as FarmerProfile;
+    if (!snap.exists()) return loadLocal();
+    const data = snap.data() as FarmerProfile;
+    try {
+      localStorage.setItem(localKey, JSON.stringify(data));
+    } catch {}
+    return data;
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
-    throw error;
+    return loadLocal();
   }
 }
 
@@ -27,13 +41,44 @@ export async function saveFarmerProfile(
   uid: string,
   data: Partial<FarmerProfile>
 ): Promise<FarmerProfile> {
-  if (!isFirebaseConfigured || !db) {
-    throw new Error('Firebase configuration is not available.');
-  }
+  const localKey = `cropshield_profile_${uid}`;
 
   // Security guard: Ensure we only mutate under the authenticated user's UID
   if (auth?.currentUser && auth.currentUser.uid !== uid) {
     throw new Error('Unauthorized: profile UID must match the authenticated session UID.');
+  }
+
+  const fallbackProfile: FarmerProfile = {
+    uid,
+    displayName: data.displayName?.trim() || auth?.currentUser?.displayName || 'Farmer',
+    preferredLanguage: data.preferredLanguage || 'en',
+    state: data.state || 'Tamil Nadu',
+    district: data.district?.trim() || 'Thanjavur',
+    locality: data.locality?.trim() || '',
+    primaryCrop: data.primaryCrop?.trim() || 'Rice (Paddy)',
+    primaryCrops: Array.isArray(data.primaryCrops) && data.primaryCrops.length > 0 ? data.primaryCrops : [data.primaryCrop?.trim() || 'Rice (Paddy)'],
+    activeVariety: data.activeVariety?.trim() || 'CR 1009 Sub 1',
+    plantingDate: data.plantingDate || '',
+    cropStage: data.cropStage || 'Active Tillering (21-45 DAT)',
+    landSizeAcres: typeof data.landSizeAcres === 'number' ? data.landSizeAcres : 2.5,
+    landSizeArea: typeof data.landSizeArea === 'number' ? data.landSizeArea : (typeof data.landSizeAcres === 'number' ? data.landSizeAcres : 2.5),
+    areaUnit: data.areaUnit || 'Acres',
+    irrigationMethod: data.irrigationMethod || 'Canal / Cauvery Basin',
+    farmNotes: data.farmNotes || '',
+    email: data.email || auth?.currentUser?.email || '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  const persistLocal = (p: FarmerProfile) => {
+    try {
+      localStorage.setItem(localKey, JSON.stringify(p));
+    } catch {}
+  };
+
+  if (!isFirebaseConfigured || !db) {
+    persistLocal(fallbackProfile);
+    return fallbackProfile;
   }
 
   const path = `profiles/${uid}`;
@@ -49,43 +94,30 @@ export async function saveFarmerProfile(
         uid, // Never permit changing the UID
         updatedAt: serverTimestamp(),
       };
-      // Prevent stripping required fields if partial update
       await setDoc(profileRef, updatePayload, { merge: true });
-      return {
+      const merged: FarmerProfile = {
         ...(existingSnap.data() as FarmerProfile),
         ...data,
         uid,
       };
+      persistLocal(merged);
+      return merged;
     } else {
-      // Create new profile with required fields and server timestamps
       const newProfile: FarmerProfile = {
-        uid,
-        displayName: data.displayName?.trim() || auth?.currentUser?.displayName || 'Farmer',
-        preferredLanguage: data.preferredLanguage || 'en',
-        state: data.state || 'Tamil Nadu',
-        district: data.district?.trim() || 'Thanjavur',
-        locality: data.locality?.trim() || '',
-        primaryCrop: data.primaryCrop?.trim() || 'Rice (Paddy)',
-        primaryCrops: Array.isArray(data.primaryCrops) && data.primaryCrops.length > 0 ? data.primaryCrops : [data.primaryCrop?.trim() || 'Rice (Paddy)'],
-        activeVariety: data.activeVariety?.trim() || 'CR 1009 Sub 1',
-        plantingDate: data.plantingDate || '',
-        cropStage: data.cropStage || 'Active Tillering (21-45 DAT)',
-        landSizeAcres: typeof data.landSizeAcres === 'number' ? data.landSizeAcres : 2.5,
-        landSizeArea: typeof data.landSizeArea === 'number' ? data.landSizeArea : (typeof data.landSizeAcres === 'number' ? data.landSizeAcres : 2.5),
-        areaUnit: data.areaUnit || 'Acres',
-        irrigationMethod: data.irrigationMethod || 'Canal / Cauvery Basin',
-        farmNotes: data.farmNotes || '',
-        email: data.email || auth?.currentUser?.email || '',
+        ...fallbackProfile,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
       await setDoc(profileRef, newProfile);
-      return newProfile;
+      persistLocal(fallbackProfile);
+      return fallbackProfile;
     }
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, path);
-    throw error;
+    // Offline resilience: save locally and return fallbackProfile so UI does not fail
+    persistLocal(fallbackProfile);
+    return fallbackProfile;
   }
 }
 
@@ -107,8 +139,18 @@ export function subscribeFarmerProfile(
   onProfile: (profile: FarmerProfile | null) => void,
   onError?: (err: any) => void
 ): () => void {
+  const localKey = `cropshield_profile_${uid}`;
+  const loadLocal = () => {
+    try {
+      const cached = localStorage.getItem(localKey);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  };
+
   if (!isFirebaseConfigured || !db) {
-    onProfile(null);
+    onProfile(loadLocal());
     return () => {};
   }
 
@@ -117,15 +159,25 @@ export function subscribeFarmerProfile(
     doc(db, 'profiles', uid),
     (snap) => {
       if (snap.exists()) {
-        onProfile(snap.data() as FarmerProfile);
+        const prof = snap.data() as FarmerProfile;
+        try {
+          localStorage.setItem(localKey, JSON.stringify(prof));
+        } catch {}
+        onProfile(prof);
       } else {
-        onProfile(null);
+        const local = loadLocal();
+        onProfile(local);
       }
     },
     (error) => {
-      console.error('Error listening to farmer profile:', error);
+      console.warn('Error listening to farmer profile:', error);
       onError?.(error);
       handleFirestoreError(error, OperationType.GET, path);
+      // Fallback to local profile on permission/network error
+      const local = loadLocal();
+      if (local) {
+        onProfile(local);
+      }
     }
   );
 }
