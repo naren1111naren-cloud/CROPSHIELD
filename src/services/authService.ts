@@ -4,6 +4,8 @@ import {
   signOut,
   sendPasswordResetEmail,
   updateProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
   User,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
@@ -76,6 +78,22 @@ export function formatAuthError(errorCode: string, lang: 'en' | 'ta' = 'en'): st
       return isTa
         ? 'மின்னஞ்சல் முகவரியை உள்ளிடவும்.'
         : 'Please enter your email address.';
+    case 'auth/popup-closed-by-user':
+      return isTa
+        ? 'கூகிள் உள்நுழைவு சாளரம் மூடப்பட்டது. தயவுசெய்து மீண்டும் முயற்சிக்கவும்.'
+        : 'Google sign-in popup was closed before completing. Please try again.';
+    case 'auth/popup-blocked':
+      return isTa
+        ? 'உங்கள் உலாவியில் சாளரம் (Popup) தடுக்கப்பட்டுள்ளது. தயவுசெய்து அனுமதித்து மீண்டும் முயற்சிக்கவும்.'
+        : 'Sign-in popup was blocked by browser. Please allow popups for this site.';
+    case 'auth/account-exists-with-different-credential':
+      return isTa
+        ? 'இந்த மின்னஞ்சலில் ஏற்கனவே வேறு உள்நுழைவு முறை மூலம் கணக்கு உள்ளது.'
+        : 'An account already exists with the same email using a different sign-in method.';
+    case 'auth/cancelled-popup-request':
+      return isTa
+        ? 'உள்நுழைவு கோரிக்கை ரத்து செய்யப்பட்டது.'
+        : 'Sign-in request was cancelled. Please try again.';
     case 'config-missing':
       return isTa
         ? 'Firebase அங்கீகாரக் கட்டமைப்பு முழுமையடையவில்லை.'
@@ -156,4 +174,42 @@ export async function signOutFarmer(): Promise<void> {
 export async function sendFarmerPasswordReset(email: string): Promise<void> {
   if (!auth) return;
   await sendPasswordResetEmail(auth, email);
+}
+
+/**
+ * Sign in using Google Auth Provider
+ */
+export async function signInWithGoogle(): Promise<User> {
+  if (!isFirebaseConfigured || !auth) {
+    throw new Error('config-missing');
+  }
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+
+  // Auto-sync or seed initial farmer profile in Firestore if first-time user
+  if (db) {
+    try {
+      const profileSnap = await getDoc(doc(db, 'farmers', user.uid));
+      if (!profileSnap.exists()) {
+        await saveFarmerProfile(user.uid, {
+          uid: user.uid,
+          displayName: user.displayName || user.email?.split('@')[0] || 'Farmer',
+          email: user.email || '',
+          preferredLanguage: 'en',
+          district: 'Thanjavur',
+          locality: '',
+          primaryCrop: 'Rice (Paddy)',
+          activeVariety: 'CR 1009 Sub 1',
+          cropStage: 'Active Tillering (21-45 DAT)',
+          landSizeAcres: 4.5,
+        });
+      }
+    } catch (profileErr) {
+      console.warn('Profile sync on Google sign in notice:', profileErr);
+    }
+  }
+
+  return user;
 }

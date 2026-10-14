@@ -4,6 +4,7 @@ import { auth, isFirebaseConfigured, validateFirestoreConnection } from '../lib/
 import {
   registerFarmer,
   signInFarmer,
+  signInWithGoogle,
   signOutFarmer,
   sendFarmerPasswordReset,
   RegisterParams,
@@ -19,6 +20,7 @@ interface AuthContextType {
   isProfileComplete: boolean;
   register: (params: RegisterParams) => Promise<User>;
   signIn: (email: string, pass: string) => Promise<User>;
+  signInWithGoogle: () => Promise<User>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: (data: Partial<FarmerProfile>) => Promise<FarmerProfile>;
@@ -100,6 +102,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return signedInUser;
   };
 
+  const signInGoogle = async () => {
+    const signedInUser = await signInWithGoogle();
+    return signedInUser;
+  };
+
   const handleSignOut = async () => {
     await signOutFarmer();
     setUser(null);
@@ -131,6 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isProfileComplete,
         register,
         signIn,
+        signInWithGoogle: signInGoogle,
         signOut: handleSignOut,
         resetPassword,
         updateProfile: handleUpdateProfile,

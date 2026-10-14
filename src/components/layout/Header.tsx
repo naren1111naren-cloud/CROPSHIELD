@@ -5,8 +5,8 @@ import { CropShieldLogo } from '../brand/CropShieldLogo';
 import { Menu, X, ArrowUpRight, User, Globe, CheckCircle2 } from 'lucide-react';
 
 interface HeaderProps {
-  currentView: 'home' | 'dashboard';
-  onNavigate: (view: 'home' | 'dashboard', sectionId?: string) => void;
+  currentView: 'home' | 'dashboard' | 'signin';
+  onNavigate: (view: 'home' | 'dashboard' | 'signin', sectionId?: string) => void;
   onOpenAuth: (mode?: 'signin' | 'register') => void;
   onOpenProfile: () => void;
 }
@@ -145,6 +145,13 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <span>{t('navScanCrop')}</span>
                 <ArrowUpRight className="w-4 h-4" />
+              </button>
+            ) : currentView === 'signin' ? (
+              <button
+                onClick={() => onNavigate('home')}
+                className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-medium tracking-wide text-[#183B2A] border border-[#183B2A] hover:bg-[#E5EBDD] transition-colors rounded-xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A]"
+              >
+                {language === 'ta' ? 'கள நுண்ணறிவு ஆய்வு →' : 'Explore Platform →'}
               </button>
             ) : (
               <button

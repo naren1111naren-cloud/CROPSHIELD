@@ -14,10 +14,11 @@ import { Footer } from './components/layout/Footer';
 import { FarmerDashboard } from './components/dashboard/FarmerDashboard';
 import { AuthModal } from './components/auth/AuthModal';
 import { FarmerProfileModal } from './components/auth/FarmerProfileModal';
+import { SignInPage } from './components/auth/SignInPage';
 
 function MainApp() {
   const { user, profile, isLoading, isProfileComplete } = useAuth();
-  const [currentView, setCurrentView] = useState<'home' | 'dashboard'>('home');
+  const [currentView, setCurrentView] = useState<'signin' | 'home' | 'dashboard'>('signin');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'register'>('signin');
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -32,8 +33,13 @@ function MainApp() {
   }, [user, isLoading, isProfileComplete, hasPromptedInitialSetup]);
 
   const handleOpenAuth = (mode: 'signin' | 'register' = 'signin') => {
-    setAuthModalMode(mode);
-    setAuthModalOpen(true);
+    if (mode === 'signin') {
+      setCurrentView('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      setAuthModalMode('register');
+      setAuthModalOpen(true);
+    }
   };
 
   const handleOpenProfile = () => {
@@ -43,17 +49,22 @@ function MainApp() {
   const handleNavigateToDashboard = () => {
     if (!user) {
       // Protected farmer dashboard route: prompt sign in first
-      setAuthModalMode('signin');
-      setAuthModalOpen(true);
+      setCurrentView('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       setCurrentView('dashboard');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  const handleNavigate = (view: 'home' | 'dashboard', sectionId?: string) => {
+  const handleNavigate = (view: 'signin' | 'home' | 'dashboard', sectionId?: string) => {
     if (view === 'dashboard') {
       handleNavigateToDashboard();
+      return;
+    }
+    if (view === 'signin') {
+      setCurrentView('signin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
@@ -70,12 +81,58 @@ function MainApp() {
     }
   };
 
-  // If user signs out while on dashboard, return to home
+  // If user signs in while on signin page, route immediately to dashboard
+  React.useEffect(() => {
+    if (user && currentView === 'signin') {
+      setCurrentView('dashboard');
+    }
+  }, [user]);
+
+  // If user signs out while on dashboard, return to signin
   React.useEffect(() => {
     if (!user && currentView === 'dashboard') {
-      setCurrentView('home');
+      setCurrentView('signin');
     }
   }, [user, currentView]);
+
+  if (currentView === 'signin') {
+    return (
+      <>
+        <SignInPage
+          onSuccess={() => {
+            setCurrentView('dashboard');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onExploreGuest={() => {
+            setCurrentView('home');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onOpenRegister={() => {
+            setAuthModalMode('register');
+            setAuthModalOpen(true);
+          }}
+        />
+
+        {/* Farmer Registration Modal */}
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          initialMode={authModalMode}
+          onSuccess={() => {
+            setCurrentView('dashboard');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+
+        {/* Farmer Profile Modal */}
+        <FarmerProfileModal
+          isOpen={profileModalOpen}
+          onClose={() => setProfileModalOpen(false)}
+          isInitialSetup={!isProfileComplete}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F7F6EF] text-[#202B22] overflow-x-hidden">
