@@ -47,17 +47,29 @@ import {
 interface FarmerDashboardProps {
   onBackToHome: () => void;
   onOpenProfile?: () => void;
+  onOpenAuth?: (mode?: 'signin' | 'register') => void;
+  initialTab?: 'scan' | 'cases' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert' | 'prices';
 }
 
 export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
   onBackToHome,
   onOpenProfile,
+  onOpenAuth,
+  initialTab = 'scan',
 }) => {
   const { language, t } = useLanguage();
   const { user, profile } = useAuth();
   const isTa = language === 'ta';
 
-  const [activeTab, setActiveTab] = useState<'scan' | 'cases' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert' | 'prices'>('scan');
+  const [activeTab, setActiveTab] = useState<'scan' | 'cases' | 'guidance' | 'farms' | 'history' | 'risks' | 'alerts' | 'expert' | 'prices'>(initialTab);
+
+  // Synchronize activeTab when initialTab changes from parent
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
   const [initialScanCropId, setInitialScanCropId] = useState<string>('rice');
   const [enquiryContextForHub, setEnquiryContextForHub] = useState<any>(null);
   const [investigationPreload, setInvestigationPreload] = useState<{
@@ -156,7 +168,12 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
     file?: File | null,
     farmId?: string
   ) => {
-    if (!user) return;
+    if (!user) {
+      if (onOpenAuth) {
+        onOpenAuth('signin');
+      }
+      return;
+    }
     try {
       let finalImagePath = imagePreview;
       if (file) {

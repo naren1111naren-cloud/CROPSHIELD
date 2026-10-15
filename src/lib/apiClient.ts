@@ -1,63 +1,148 @@
 /**
- * CropShield AI — Centralised API Client
+ * CropShield AI — Centralised API Client & Resilience Layer
  *
  * Resolves the correct backend base URL at runtime:
  *   - In Vercel production: uses VITE_API_URL (https://cropshield-cc.onrender.com)
  *   - In local development: empty string → relative paths → same-origin Express server
  *
- * NEVER import GEMINI_API_KEY or any server-side secret here.
- * Only VITE_* prefixed variables are safe to use in frontend code.
+ * Handles:
+ *   - Automatic timeout & abort handling (45s default for Render cold starts)
+ *   - Informative error reporting for asleep/starting backend
+ *   - Prevention of duplicate or hanging requests
+ *   - Safe header handling (never exposes client credentials or secrets)
  */
 
-/**
- * Base URL for all /api/* requests.
- *
- * When VITE_API_URL is set (Vercel deployment), all API calls are routed to
- * the Render backend. When it is not set (local monolith dev), relative paths
- * are used and Express serves the API on the same origin.
- */
 export const API_BASE_URL: string =
   (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
+export interface ApiFetchOptions extends RequestInit {
+  timeoutMs?: number;
+}
+
+export class CropShieldApiError extends Error {
+  public status?: number;
+  public statusText?: number | string;
+  public isTimeout?: boolean;
+  public isColdStart?: boolean;
+  public messageTamil: string;
+
+  constructor(
+    message: string,
+    options: {
+      status?: number;
+      statusText?: string;
+      isTimeout?: boolean;
+      isColdStart?: boolean;
+      messageTamil?: string;
+    } = {}
+  ) {
+    super(message);
+    this.name = 'CropShieldApiError';
+    this.status = options.status;
+    this.statusText = options.statusText;
+    this.isTimeout = options.isTimeout;
+    this.isColdStart = options.isColdStart;
+    this.messageTamil =
+      options.messageTamil ||
+      'சேவை தற்காலிகமாக பதிலளிக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.';
+  }
+}
+
 /**
  * Build a full API URL by appending the path to the base URL.
- *
- * @example
- *   apiUrl('/api/weather?district=Thanjavur')
- *   // → 'https://cropshield-cc.onrender.com/api/weather?district=Thanjavur'  (Vercel)
- *   // → '/api/weather?district=Thanjavur'                                     (local)
  */
 export function apiUrl(path: string): string {
-  // Ensure exactly one slash between base and path
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${API_BASE_URL}${normalizedPath}`;
 }
 
 /**
- * Thin wrapper around fetch() that:
- *   - Prepends the correct API base URL automatically
- *   - Logs the request URL on API failures (never logs request bodies or secrets)
- *   - Passes credentials only for same-origin requests (avoids CORS pre-flight issues with cookies)
+ * Resilient fetch wrapper with timeout and cold-start detection.
  */
-export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+export async function apiFetch(
+  path: string,
+  options: ApiFetchOptions = {}
+): Promise<Response> {
   const url = apiUrl(path);
   const isAbsolute = url.startsWith('http');
+  const timeoutMs = options.timeoutMs ?? 45000; // 45 seconds to accommodate Render instance spin-up
 
-  const response = await fetch(url, {
-    ...options,
-    // Do NOT send credentials cross-origin (Render backend uses no cookies)
-    credentials: isAbsolute ? 'omit' : 'same-origin',
-    headers: {
-      Accept: 'application/json',
-      ...(options.headers ?? {}),
-    },
-  });
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
 
-  if (!response.ok) {
-    console.error(
-      `[CropShield API] ${options.method ?? 'GET'} ${url} → HTTP ${response.status} ${response.statusText}`
-    );
+  const signal = options.signal || controller.signal;
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal,
+      credentials: isAbsolute ? 'omit' : 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        ...(options.headers ?? {}),
+      },
+    });
+
+    clearTimeout(id);
+
+    if (!response.ok) {
+      console.warn(
+        `[CropShield API] ${options.method ?? 'GET'} ${url} → HTTP ${response.status} ${response.statusText}`
+      );
+    }
+
+    return response;
+  } catch (err: any) {
+    clearTimeout(id);
+
+    const isAborted = err.name === 'AbortError' || signal.aborted;
+    const isNetworkError = err instanceof TypeError && err.message.includes('fetch');
+
+    if (isAborted) {
+      console.warn(`[CropShield API] Request timed out after ${timeoutMs}ms: ${url}`);
+      throw new CropShieldApiError(
+        'Server request timed out. The CropShield backend service may be waking up from sleep. Please try again in 15 seconds.',
+        {
+          isTimeout: true,
+          isColdStart: true,
+          messageTamil:
+            'சர்வர் பதிலளிக்க நேரம் அதிகமாகிறது (சேவை தொடங்குகிறது). தயவுசெய்து 15 வினாடிகள் கழித்து மீண்டும் முயற்சிக்கவும்.',
+        }
+      );
+    }
+
+    if (isNetworkError) {
+      console.warn(`[CropShield API] Network connection failed for ${url}`);
+      throw new CropShieldApiError(
+        'Unable to connect to the CropShield backend service. Please check your internet connection or backend status.',
+        {
+          isColdStart: true,
+          messageTamil:
+            'CropShield இணைய சேவையுடன் இணைக்க முடியவில்லை. இணைய இணைப்பைச் சரிபார்க்கவும்.',
+        }
+      );
+    }
+
+    throw err;
   }
+}
 
-  return response;
+/**
+ * Ping backend health endpoint to check readiness and wake sleeping Render instance.
+ */
+export async function checkBackendHealth(): Promise<{
+  ok: boolean;
+  statusText: string;
+  uptimeSeconds?: number;
+}> {
+  try {
+    const res = await apiFetch('/api/health', { timeoutMs: 8000 });
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, statusText: 'Online', uptimeSeconds: data.uptimeSeconds };
+    }
+    return { ok: false, statusText: `HTTP ${res.status}` };
+  } catch {
+    return { ok: false, statusText: 'Connecting...' };
+  }
 }

@@ -2,11 +2,24 @@ import React, { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { CropShieldLogo } from '../brand/CropShieldLogo';
-import { Menu, X, ArrowUpRight, User, Globe, CheckCircle2 } from 'lucide-react';
+import {
+  Menu,
+  X,
+  ArrowUpRight,
+  User,
+  Home,
+  Camera,
+  CloudSun,
+  Layers,
+  Sprout,
+  BookOpen
+} from 'lucide-react';
+
+export type AppNavView = 'home' | 'diagnose' | 'market-weather' | 'my-farm' | 'dashboard' | 'signin';
 
 interface HeaderProps {
-  currentView: 'home' | 'dashboard' | 'signin';
-  onNavigate: (view: 'home' | 'dashboard' | 'signin', sectionId?: string) => void;
+  currentView: AppNavView;
+  onNavigate: (view: AppNavView, sectionId?: string) => void;
   onOpenAuth: (mode?: 'signin' | 'register') => void;
   onOpenProfile: () => void;
 }
@@ -20,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { language, setLanguage, t } = useLanguage();
   const { user, profile } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isTa = language === 'ta';
 
   const handleNavClick = (sectionId: string) => {
     setMobileMenuOpen(false);
@@ -33,11 +47,35 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const navItems = [
+    {
+      id: 'home' as AppNavView,
+      label: t('navHome') || (isTa ? 'முகப்பு' : 'Home'),
+      icon: Home,
+    },
+    {
+      id: 'diagnose' as AppNavView,
+      label: t('navDiagnose') || (isTa ? 'பயிர் ஆய்வு' : 'Diagnose'),
+      icon: Camera,
+      highlight: true,
+    },
+    {
+      id: 'market-weather' as AppNavView,
+      label: t('navMarketWeather') || (isTa ? 'சந்தை & வானிலை' : 'Market & Weather'),
+      icon: CloudSun,
+    },
+    {
+      id: 'my-farm' as AppNavView,
+      label: t('navMyFarm') || (isTa ? 'என் பண்ணை' : 'My Farm'),
+      icon: Layers,
+    },
+  ];
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-[#F7F6EF]/95 backdrop-blur-md border-b border-[#D9DED3]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-6">
-          {/* Zone 1: Brand Wordmark (Single Element) */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+          {/* Zone 1: Brand Wordmark */}
           <button
             onClick={() => onNavigate('home')}
             className="cursor-pointer focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#183B2A] rounded-xs shrink-0 py-1"
@@ -46,40 +84,38 @@ export const Header: React.FC<HeaderProps> = ({
             <CropShieldLogo size="sm" />
           </button>
 
-          {/* Zone 2: Readable, Clean Navigation Links */}
+          {/* Zone 2: 4 Primary Destinations Navigation */}
           <nav
-            className="hidden lg:flex items-center gap-7 text-[15px] font-medium text-[#202B22]"
+            className="hidden md:flex items-center gap-1 sm:gap-2 text-[14px] font-mono text-[#202B22]"
             aria-label="Main Navigation"
           >
-            <button
-              onClick={() => handleNavClick('how-it-works')}
-              className="hover:text-[#183B2A] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A] px-1 py-2"
-            >
-              {t('navPlatform')}
-            </button>
-            <button
-              onClick={() => handleNavClick('disease-intelligence')}
-              className="hover:text-[#183B2A] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A] px-1 py-2"
-            >
-              {t('navDiseaseIntel')}
-            </button>
-            <button
-              onClick={() => handleNavClick('field-alerts')}
-              className="hover:text-[#183B2A] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A] px-1 py-2"
-            >
-              {t('navFieldAlerts')}
-            </button>
-            <button
-              onClick={() => handleNavClick('about-system')}
-              className="hover:text-[#183B2A] hover:underline underline-offset-4 transition-colors whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A] px-1 py-2"
-            >
-              {t('navAbout')}
-            </button>
+            {navItems.map((item) => {
+              const isActive =
+                currentView === item.id ||
+                (item.id === 'diagnose' && currentView === 'dashboard');
+              const Icon = item.icon;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                  className={`px-3 py-2 rounded-xs transition-colors cursor-pointer flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-[#183B2A] ${
+                    isActive
+                      ? 'bg-[#183B2A] text-white font-semibold shadow-xs'
+                      : 'text-[#202B22] hover:text-[#183B2A] hover:bg-[#E5EBDD]/60'
+                  }`}
+                  aria-current={isActive ? 'page' : undefined}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </nav>
 
-          {/* Zone 3: Language Switcher + Sign In + Primary Action Button */}
-          <div className="flex items-center gap-3 shrink-0">
-            {/* Prominent Bilingual Switcher */}
+          {/* Zone 3: Language Switcher + User Profile / Sign In */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Bilingual Switcher */}
             <div
               className="flex items-center bg-white border border-[#D9DED3] rounded-xs p-0.5 text-xs font-mono"
               role="group"
@@ -110,7 +146,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
 
-            {/* Sign In / Profile Switcher */}
+            {/* User Profile or Sign In */}
             {user ? (
               <button
                 onClick={onOpenProfile}
@@ -121,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="w-5 h-5 rounded-full bg-[#183B2A] text-white flex items-center justify-center text-[10px] font-bold">
                   {(profile?.displayName || user.displayName || user.email || 'F')[0].toUpperCase()}
                 </div>
-                <span className="max-w-[120px] truncate font-medium">
+                <span className="max-w-[110px] truncate font-medium">
                   {profile?.displayName || user.displayName || user.email?.split('@')[0]}
                 </span>
               </button>
@@ -136,36 +172,22 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Primary Action Button (Touch target >= 44px) */}
-            {currentView === 'home' ? (
+            {/* Quick Action button for desktop */}
+            {currentView !== 'diagnose' && (
               <button
-                onClick={() => onNavigate('dashboard')}
-                className="px-5 py-2.5 min-h-[44px] text-sm font-medium tracking-wide text-white bg-[#183B2A] hover:bg-[#122c20] transition-colors rounded-xs whitespace-nowrap shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[#183B2A]"
+                onClick={() => onNavigate('diagnose')}
+                className="hidden lg:flex items-center gap-1.5 px-4 py-2 text-xs font-mono font-bold tracking-wide text-white bg-[#183B2A] hover:bg-[#122c20] transition-colors rounded-xs cursor-pointer shadow-xs min-h-[40px]"
                 aria-label={t('navScanCrop')}
               >
+                <Camera className="w-3.5 h-3.5" />
                 <span>{t('navScanCrop')}</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
-            ) : currentView === 'signin' ? (
-              <button
-                onClick={() => onNavigate('home')}
-                className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-medium tracking-wide text-[#183B2A] border border-[#183B2A] hover:bg-[#E5EBDD] transition-colors rounded-xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A]"
-              >
-                {language === 'ta' ? 'கள நுண்ணறிவு ஆய்வு →' : 'Explore Platform →'}
-              </button>
-            ) : (
-              <button
-                onClick={() => onNavigate('home')}
-                className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-medium tracking-wide text-[#183B2A] border border-[#183B2A] hover:bg-[#E5EBDD] transition-colors rounded-xs whitespace-nowrap shrink-0 cursor-pointer focus-visible:ring-2 focus-visible:ring-[#183B2A]"
-              >
-                {language === 'ta' ? '← முகப்பு பக்கம்' : '← Overview'}
               </button>
             )}
 
-            {/* Mobile Menu Hamburger (Touch target >= 44px) */}
+            {/* Mobile Menu Hamburger */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#202B22] hover:text-[#183B2A] focus-visible:ring-2 focus-visible:ring-[#183B2A] rounded-xs cursor-pointer"
+              className="md:hidden p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#202B22] hover:text-[#183B2A] focus-visible:ring-2 focus-visible:ring-[#183B2A] rounded-xs cursor-pointer"
               aria-label="Toggle Menu"
               aria-expanded={mobileMenuOpen}
             >
@@ -176,43 +198,50 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Mobile Drawer */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-[#D9DED3] bg-[#F7F6EF] px-5 pt-4 pb-6 space-y-3 shadow-lg">
-            <button
-              onClick={() => handleNavClick('how-it-works')}
-              className="block w-full text-left py-3 text-base font-medium text-[#202B22] border-b border-[#D9DED3]/60 cursor-pointer"
-            >
-              {t('navPlatform')}
-            </button>
-            <button
-              onClick={() => handleNavClick('disease-intelligence')}
-              className="block w-full text-left py-3 text-base font-medium text-[#202B22] border-b border-[#D9DED3]/60 cursor-pointer"
-            >
-              {t('navDiseaseIntel')}
-            </button>
-            <button
-              onClick={() => handleNavClick('field-alerts')}
-              className="block w-full text-left py-3 text-base font-medium text-[#202B22] border-b border-[#D9DED3]/60 cursor-pointer"
-            >
-              {t('navFieldAlerts')}
-            </button>
-            <button
-              onClick={() => handleNavClick('about-system')}
-              className="block w-full text-left py-3 text-base font-medium text-[#202B22] border-b border-[#D9DED3]/60 cursor-pointer"
-            >
-              {t('navAbout')}
-            </button>
+          <div className="md:hidden border-t border-[#D9DED3] bg-[#F7F6EF] px-5 pt-4 pb-6 space-y-2 shadow-lg">
+            <div className="grid grid-cols-2 gap-2 pb-3 border-b border-[#D9DED3]">
+              {navItems.map((item) => {
+                const isActive =
+                  currentView === item.id ||
+                  (item.id === 'diagnose' && currentView === 'dashboard');
+                const Icon = item.icon;
 
-            <div className="pt-3 space-y-3">
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigate(item.id);
+                    }}
+                    className={`p-3 rounded-xs text-left text-xs font-mono flex items-center gap-2 cursor-pointer border ${
+                      isActive
+                        ? 'bg-[#183B2A] text-white border-[#183B2A] font-bold'
+                        : 'bg-white text-[#202B22] border-[#D9DED3]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2 space-y-2">
               <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onNavigate('dashboard');
-                }}
-                className="w-full py-3.5 min-h-[48px] text-center text-sm font-medium text-white bg-[#183B2A] rounded-xs cursor-pointer shadow-xs"
+                onClick={() => handleNavClick('how-it-works')}
+                className="block w-full text-left py-2 text-sm text-[#4A584D] hover:text-[#183B2A] cursor-pointer"
               >
-                {t('navScanCrop')}
+                {t('navPlatform')}
               </button>
+              <button
+                onClick={() => handleNavClick('disease-intelligence')}
+                className="block w-full text-left py-2 text-sm text-[#4A584D] hover:text-[#183B2A] cursor-pointer"
+              >
+                {t('navDiseaseIntel')}
+              </button>
+            </div>
 
+            <div className="pt-3 border-t border-[#D9DED3] space-y-2">
               {user ? (
                 <button
                   onClick={() => {
@@ -230,7 +259,7 @@ export const Header: React.FC<HeaderProps> = ({
                     setMobileMenuOpen(false);
                     onOpenAuth('signin');
                   }}
-                  className="w-full py-2.5 text-center text-xs font-mono text-[#183B2A] border border-[#D9DED3] bg-white rounded-xs cursor-pointer"
+                  className="w-full py-2.5 text-center text-xs font-mono text-[#183B2A] border border-[#D9DED3] bg-white rounded-xs cursor-pointer font-semibold"
                 >
                   {t('navSignIn')}
                 </button>

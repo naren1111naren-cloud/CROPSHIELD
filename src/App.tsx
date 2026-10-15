@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { Header } from './components/layout/Header';
+import { Header, AppNavView } from './components/layout/Header';
+import { MobileBottomNav, MainDestination } from './components/layout/MobileBottomNav';
 import { HeroSection } from './components/home/HeroSection';
 import { SectionProcess } from './components/home/SectionProcess';
 import { SectionObserved } from './components/home/SectionObserved';
@@ -15,17 +16,32 @@ import { FarmerDashboard } from './components/dashboard/FarmerDashboard';
 import { AuthModal } from './components/auth/AuthModal';
 import { FarmerProfileModal } from './components/auth/FarmerProfileModal';
 import { SignInPage } from './components/auth/SignInPage';
+import { checkBackendHealth } from './lib/apiClient';
 
 function MainApp() {
   const { user, profile, isLoading, isProfileComplete } = useAuth();
-  const [currentView, setCurrentView] = useState<'signin' | 'home' | 'dashboard'>('signin');
+  const [currentView, setCurrentView] = useState<AppNavView>('home');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'register'>('signin');
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [hasPromptedInitialSetup, setHasPromptedInitialSetup] = useState(false);
+  const [backendStatus, setBackendStatus] = useState<'connecting' | 'online' | 'offline'>('connecting');
+
+  // Background health check on initial mount to wake sleeping Render instance early
+  useEffect(() => {
+    let isMounted = true;
+    checkBackendHealth().then((health) => {
+      if (isMounted) {
+        setBackendStatus(health.ok ? 'online' : 'offline');
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Guide user through profile setup after first login/registration if incomplete
-  React.useEffect(() => {
+  useEffect(() => {
     if (user && !isLoading && !isProfileComplete && !hasPromptedInitialSetup) {
       setProfileModalOpen(true);
       setHasPromptedInitialSetup(true);
@@ -46,30 +62,16 @@ function MainApp() {
     setProfileModalOpen(true);
   };
 
-  const handleNavigateToDashboard = () => {
-    if (!user) {
-      // Protected farmer dashboard route: prompt sign in first
-      setCurrentView('signin');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      setCurrentView('dashboard');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
-
-  const handleNavigate = (view: 'signin' | 'home' | 'dashboard', sectionId?: string) => {
-    if (view === 'dashboard') {
-      handleNavigateToDashboard();
-      return;
-    }
+  const handleNavigate = (view: AppNavView, sectionId?: string) => {
     if (view === 'signin') {
       setCurrentView('signin');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    setCurrentView('home');
-    if (sectionId) {
+    setCurrentView(view);
+
+    if (view === 'home' && sectionId) {
       setTimeout(() => {
         const el = document.getElementById(sectionId);
         if (el) {
@@ -81,22 +83,14 @@ function MainApp() {
     }
   };
 
-  // If user signs in while on signin page, route immediately to dashboard
-  React.useEffect(() => {
+  // If user signs in while on signin page, route immediately to diagnose
+  useEffect(() => {
     if (user && currentView === 'signin') {
-      setCurrentView('dashboard');
+      setCurrentView('diagnose');
     }
   }, [user]);
 
-  // If user signs out while on dashboard, return to signin
-  React.useEffect(() => {
-    if (!user && currentView === 'dashboard') {
-      setCurrentView('signin');
-    }
-  }, [user, currentView]);
-
-  // Show a minimal loading screen while Firebase is initializing auth state.
-  // This prevents the sign-in page from briefly flashing for already-logged-in users.
+  // Loading state while Firebase is initializing
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F7F6EF] flex items-center justify-center">
@@ -121,7 +115,7 @@ function MainApp() {
       <>
         <SignInPage
           onSuccess={() => {
-            setCurrentView('dashboard');
+            setCurrentView('diagnose');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
           onExploreGuest={() => {
@@ -134,18 +128,16 @@ function MainApp() {
           }}
         />
 
-        {/* Farmer Registration Modal */}
         <AuthModal
           isOpen={authModalOpen}
           onClose={() => setAuthModalOpen(false)}
           initialMode={authModalMode}
           onSuccess={() => {
-            setCurrentView('dashboard');
+            setCurrentView('diagnose');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
         />
 
-        {/* Farmer Profile Modal */}
         <FarmerProfileModal
           isOpen={profileModalOpen}
           onClose={() => setProfileModalOpen(false)}
@@ -156,7 +148,7 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F6EF] text-[#202B22] overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-[#F7F6EF] text-[#202B22] overflow-x-hidden pb-16 md:pb-0">
       <Header
         currentView={currentView}
         onNavigate={handleNavigate}
@@ -165,36 +157,36 @@ function MainApp() {
       />
 
       <main className="flex-1">
-        {currentView === 'home' ? (
+        {currentView === 'home' && (
           <>
-            {/* 1. Hero with Clear Purpose & Primary Scan Action */}
+            {/* 1. Hero with Clear Primary Action: Check Your Crop Health */}
             <HeroSection
-              onScanCrop={handleNavigateToDashboard}
+              onScanCrop={() => handleNavigate('diagnose')}
               onExplore={() => {
                 const el = document.getElementById('how-it-works');
                 el?.scrollIntoView({ behavior: 'smooth' });
               }}
             />
 
-            {/* 2. How it works: 4-step protocol */}
+            {/* 2. 4-step protocol for field action */}
             <SectionProcess />
 
             {/* 3. The field, observed: Why early observation matters */}
             <SectionObserved />
 
-            {/* 4. Disease intelligence: Common Tamil Nadu rice diseases */}
+            {/* 4. Disease intelligence: Tamil Nadu rice and cash crops */}
             <SectionDiseaseIntelligence
-              onLaunchScanner={handleNavigateToDashboard}
+              onLaunchScanner={() => handleNavigate('diagnose')}
             />
 
             {/* 5. Local field intelligence: District weather & risk registry */}
             <SectionLocalRisk
-              onOpenDashboard={handleNavigateToDashboard}
+              onOpenDashboard={() => handleNavigate('market-weather')}
             />
 
             {/* 6. A network of field observations: Verified community alerts */}
             <SectionNetwork
-              onOpenAlerts={handleNavigateToDashboard}
+              onOpenAlerts={() => handleNavigate('market-weather')}
             />
 
             {/* 7. Built for the field: Tamil, mobile ergonomics, offline resilience */}
@@ -202,36 +194,66 @@ function MainApp() {
 
             {/* 8. Closing call to action: Deep forest green canvas */}
             <SectionCTA
-              onGetStarted={handleNavigateToDashboard}
+              onGetStarted={() => handleNavigate('diagnose')}
               onExplore={() => {
                 const el = document.getElementById('disease-intelligence');
                 el?.scrollIntoView({ behavior: 'smooth' });
               }}
             />
           </>
-        ) : (
+        )}
+
+        {/* Destination 2: Diagnose (Foliage Photo Upload, AI Analysis, TNAU Care Protocols) */}
+        {(currentView === 'diagnose' || currentView === 'dashboard') && (
           <FarmerDashboard
+            initialTab="scan"
             onBackToHome={() => handleNavigate('home')}
             onOpenProfile={handleOpenProfile}
+            onOpenAuth={handleOpenAuth}
+          />
+        )}
+
+        {/* Destination 3: Market & Weather (Live Mandi Prices + 5-Day Forecast + District Risks) */}
+        {currentView === 'market-weather' && (
+          <FarmerDashboard
+            initialTab="prices"
+            onBackToHome={() => handleNavigate('home')}
+            onOpenProfile={handleOpenProfile}
+            onOpenAuth={handleOpenAuth}
+          />
+        )}
+
+        {/* Destination 4: My Farm (Saved Inspections, Farm Parcels, Guidance, Expert Directory) */}
+        {currentView === 'my-farm' && (
+          <FarmerDashboard
+            initialTab={user ? 'farms' : 'history'}
+            onBackToHome={() => handleNavigate('home')}
+            onOpenProfile={handleOpenProfile}
+            onOpenAuth={handleOpenAuth}
           />
         )}
       </main>
 
-      {/* 9. Footer with disclaimers & extension contacts */}
+      {/* Footer */}
       <Footer onNavigate={handleNavigate} />
 
-      {/* Auth Modal (Sign In / Register / Reset Password) */}
+      {/* Accessible Mobile Bottom Navigation Bar (Android smartphone friendly) */}
+      <MobileBottomNav
+        currentView={currentView}
+        onNavigate={(dest: MainDestination) => handleNavigate(dest)}
+      />
+
+      {/* Auth Modal */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         initialMode={authModalMode}
         onSuccess={() => {
-          setCurrentView('dashboard');
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          setAuthModalOpen(false);
         }}
       />
 
-      {/* Farmer Profile Modal (Cadastral Info, District, Variety, Land Size) */}
+      {/* Farmer Profile Modal */}
       <FarmerProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}

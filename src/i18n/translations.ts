@@ -5,7 +5,11 @@ export const translations = {
     brandTagline: 'Know the risk. Protect the harvest.',
     regionTag: 'AGRICULTURAL INTELLIGENCE · TAMIL NADU',
 
-    // Nav
+    // Nav - 4 Primary Destinations
+    navHome: 'Home',
+    navDiagnose: 'Diagnose',
+    navMarketWeather: 'Market & Weather',
+    navMyFarm: 'My Farm',
     navPlatform: 'How It Works',
     navDiseaseIntel: 'Common Diseases',
     navFieldAlerts: 'District Risks',
@@ -170,7 +174,11 @@ export const translations = {
     brandTagline: 'அபாயத்தை அறிவோம். விளைச்சலைக் காப்போம்.',
     regionTag: 'வேளாண் நுண்ணறிவு · தமிழ்நாடு',
 
-    // Nav
+    // Nav - 4 Primary Destinations
+    navHome: 'முகப்பு',
+    navDiagnose: 'பயிர் ஆய்வு',
+    navMarketWeather: 'சந்தை & வானிலை',
+    navMyFarm: 'என் பண்ணை',
     navPlatform: 'செயல்முறை',
     navDiseaseIntel: 'முக்கிய நோய்கள்',
     navFieldAlerts: 'மாவட்ட அபாயங்கள்',

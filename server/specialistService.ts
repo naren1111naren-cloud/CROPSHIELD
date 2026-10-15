@@ -7,6 +7,9 @@
  * strict dataset provenance transparency, and TNAU agronomic registry hydration.
  */
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { GoogleGenAI } from '@google/genai';
 import {
   DISEASE_REGISTRY_VERSION,
@@ -165,10 +168,16 @@ export class TrainedSpecialistModelProvider implements ISpecialistModelProvider 
   }
 
   isAvailable(): boolean {
+    if (!this.endpointUrl && process.env.SPECIALIST_MODEL_ENDPOINT) {
+      this.endpointUrl = process.env.SPECIALIST_MODEL_ENDPOINT.trim();
+    }
     return Boolean(this.endpointUrl && this.endpointUrl.trim().length > 0);
   }
 
   async predict(request: SpecialistInferenceRequest, _meta: InferenceImageMeta): Promise<SpecialistInferenceResult> {
+    if (!this.endpointUrl && process.env.SPECIALIST_MODEL_ENDPOINT) {
+      this.endpointUrl = process.env.SPECIALIST_MODEL_ENDPOINT.trim();
+    }
     if (!this.endpointUrl) {
       throw new Error('Specialist model endpoint URL not configured.');
     }
@@ -208,10 +217,16 @@ export class MultimodalReasonerProvider implements ISpecialistModelProvider {
   }
 
   isAvailable(): boolean {
+    if (!this.aiClient && process.env.GEMINI_API_KEY) {
+      this.aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    }
     return Boolean(this.aiClient);
   }
 
   async predict(request: SpecialistInferenceRequest, meta: InferenceImageMeta): Promise<SpecialistInferenceResult> {
+    if (!this.aiClient && process.env.GEMINI_API_KEY) {
+      this.aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    }
     if (!this.aiClient) {
       throw new Error('Gemini API client not initialized. GEMINI_API_KEY required in server environment.');
     }
