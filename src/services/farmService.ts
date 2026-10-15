@@ -177,8 +177,12 @@ export async function createFarm(
 
     persistLocal();
     return docRef.id;
-  } catch (error) {
+  } catch (error: any) {
     handleFirestoreError(error, OperationType.CREATE, path);
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission-denied')) {
+      console.error(`[CropShield] Firestore permission denied creating farm at ${path}`);
+      throw new Error(`Firestore permission denied: Cannot create farm at ${path}. Please verify Firestore rules.`);
+    }
     persistLocal();
     return fallbackId;
   }

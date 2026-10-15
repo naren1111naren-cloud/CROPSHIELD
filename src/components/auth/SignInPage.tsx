@@ -137,8 +137,11 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             });
           } catch (regErr: any) {
             if (regErr.code === 'auth/email-already-in-use') {
-              // Account exists but sign-in failed — re-throw original sign-in error
-              throw signInErr;
+              throw new Error(
+                language === 'ta'
+                  ? 'டெமோ பயனர் கணக்கு ஏற்கனவே உள்ளது, ஆனால் கடவுச்சொல் பொருந்தவில்லை. உங்கள் சொந்த மின்னஞ்சல் மூலம் புதிய பதிவு செய்யவும்.'
+                  : 'The demo account already exists with different credentials in Firebase. Please register your own account using the Register tab.'
+              );
             }
             throw regErr;
           }

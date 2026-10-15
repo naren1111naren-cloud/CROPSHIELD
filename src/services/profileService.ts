@@ -117,9 +117,14 @@ export async function saveFarmerProfile(
       persistLocal(fallbackProfile);
       return fallbackProfile;
     }
-  } catch (error) {
+  } catch (error: any) {
     handleFirestoreError(error, OperationType.CREATE, path);
-    // Offline resilience: save locally and return fallbackProfile so UI does not fail
+    if (error?.code === 'permission-denied' || error?.message?.includes('permission-denied')) {
+      console.error(`[CropShield] Firestore permission denied writing to ${path}`);
+      throw new Error(`Firestore permission denied: Your account cannot write to ${path}. Please verify your Firestore security rules in Firebase Console.`);
+    }
+    // Genuine offline/network fallback
+    console.warn(`[CropShield] Network/offline fallback active for profile: ${error?.message}`);
     persistLocal(fallbackProfile);
     return fallbackProfile;
   }

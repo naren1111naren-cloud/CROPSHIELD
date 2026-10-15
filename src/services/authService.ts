@@ -114,9 +114,11 @@ export async function registerFarmer(params: RegisterParams): Promise<User> {
   }
 
   const { email, password, displayName, preferredLanguage, district, locality, activeVariety, plantingDate, cropStage } = params;
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = password.trim();
 
   // 1. Create Auth User
-  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
   const user = userCredential.user;
 
   // 2. Set Display Name on Auth Profile
@@ -131,7 +133,7 @@ export async function registerFarmer(params: RegisterParams): Promise<User> {
     await saveFarmerProfile(user.uid, {
       uid: user.uid,
       displayName,
-      email: user.email || '',
+      email: user.email || cleanEmail,
       preferredLanguage: preferredLanguage || 'en',
       district: district || 'Thanjavur',
       locality: locality || '',
@@ -143,7 +145,6 @@ export async function registerFarmer(params: RegisterParams): Promise<User> {
     });
   } catch (error) {
     console.error('Initial profile creation failed:', error);
-    // User account was created in Auth; let the user complete/retry profile setup in UI
   }
 
   return user;
@@ -156,7 +157,9 @@ export async function signInFarmer(email: string, password: string): Promise<Use
   if (!isFirebaseConfigured || !auth) {
     throw new Error('Firebase configuration is not available.');
   }
-  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = password.trim();
+  const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
   return userCredential.user;
 }
 
@@ -173,7 +176,8 @@ export async function signOutFarmer(): Promise<void> {
  */
 export async function sendFarmerPasswordReset(email: string): Promise<void> {
   if (!auth) return;
-  await sendPasswordResetEmail(auth, email);
+  const cleanEmail = email.trim().toLowerCase();
+  await sendPasswordResetEmail(auth, cleanEmail);
 }
 
 /**

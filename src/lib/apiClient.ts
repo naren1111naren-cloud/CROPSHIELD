@@ -12,8 +12,15 @@
  *   - Safe header handling (never exposes client credentials or secrets)
  */
 
+// Detect if running on Vercel frontend deployment
+const isVercelHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.includes('vercel.app') || window.location.hostname === 'cropshieldcc.vercel.app');
+
 export const API_BASE_URL: string =
-  (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+  (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ||
+  (isVercelHost ? 'https://cropshield-cc.onrender.com' : '');
+
 
 export interface ApiFetchOptions extends RequestInit {
   timeoutMs?: number;

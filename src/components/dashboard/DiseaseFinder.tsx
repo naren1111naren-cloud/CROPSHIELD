@@ -309,10 +309,16 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        let defaultMsg = `Server returned HTTP ${response.status}`;
+        if (response.status === 404) {
+          defaultMsg = isTa
+            ? 'பயிர் ஆய்வு சர்வர் முனைப்புள்ளி கிடைக்கவில்லை (HTTP 404). Render சர்வர் நிலையைச் சரிபார்க்கவும்.'
+            : 'Crop analysis service endpoint was not found on backend (HTTP 404). Please check Render backend deployment status.';
+        }
         throw new Error(
           (isTa && errorData.messageTamil) ||
             errorData.message ||
-            `Server returned HTTP ${response.status}`
+            defaultMsg
         );
       }
 

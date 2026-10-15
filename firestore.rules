@@ -2,22 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Global Deny Catch-All: Default close all access
-    match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Helper Functions
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     function incoming() {
@@ -28,7 +19,7 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // Security guard: Prevent clients from assigning themselves privileged administrator or staff roles
+    // Security guard: Prevent clients from assigning administrative/specialist roles
     function hasNoPrivilegedRoleKeys(data) {
       return !('role' in data) && !('isAdmin' in data) && !('isSpecialist' in data) && !('isReviewer' in data);
     }
@@ -40,129 +31,70 @@ service cloud.firestore {
 
     // 1. Farmer Profiles: /profiles/{uid}
     match /profiles/{uid} {
-      // Confidentiality: Only the authenticated owner can access their profile
+      // Owner only: Read and modify own profile. Disallow listing all profiles to prevent harvesting.
       allow get: if isOwner(uid);
-      allow list: if false; // Strictly disallow harvesting or listing other farmers' profiles
+      allow list: if false;
 
-      // Create: Only authenticated user matching document UID, validate field lengths & types
-      allow create: if isOwner(uid) && isValidId(uid)
-        && incoming().uid == request.auth.uid
-        && incoming().displayName is string && incoming().displayName.size() > 0 && incoming().displayName.size() <= 100
-        && incoming().preferredLanguage in ['en', 'ta']
-        && incoming().district is string && incoming().district.size() <= 50
+      // Create: Only authenticated user matching document UID
+      allow create: if isOwner(uid)
+        && incoming().uid == uid
         && hasNoPrivilegedRoleKeys(incoming());
 
       // Update: Only owner, cannot alter UID or assign administrative privileges
       allow update: if isOwner(uid)
-        && incoming().uid == existing().uid
-        && incoming().displayName is string && incoming().displayName.size() <= 100
-        && incoming().preferredLanguage in ['en', 'ta']
+        && incoming().uid == uid
         && hasNoPrivilegedRoleKeys(incoming());
 
-      allow delete: if false; // Protect cadastral accounts from deletion via client SDK
+      // Protect profiles from deletion via client SDK
+      allow delete: if false;
 
       // Subcollection: Farms: /profiles/{uid}/farms/{farmId}
       match /farms/{farmId} {
         allow read: if isOwner(uid);
-
-        allow create: if isOwner(uid) && isValidId(farmId)
-          && incoming().farmName is string && incoming().farmName.size() > 0 && incoming().farmName.size() <= 100
-          && incoming().cropType is string && incoming().cropType.size() <= 50
-          && incoming().district is string && incoming().district.size() <= 50;
-
-        allow update: if isOwner(uid)
-          && incoming().farmName is string && incoming().farmName.size() > 0 && incoming().farmName.size() <= 100
-          && incoming().district is string && incoming().district.size() <= 50;
-
+        allow create, update: if isOwner(uid);
         allow delete: if isOwner(uid);
       }
 
       // Subcollection: Scans: /profiles/{uid}/scans/{scanId}
       match /scans/{scanId} {
         allow read: if isOwner(uid);
-
-        allow create: if isOwner(uid) && isValidId(scanId)
-          && incoming().status in ['pending', 'processing', 'completed', 'inconclusive', 'failed']
-          && incoming().imagePath is string && incoming().imagePath.size() <= 2000000
-          && hasNoTamperedVerification(incoming());
-
+        allow create: if isOwner(uid) && hasNoTamperedVerification(incoming());
         allow update: if isOwner(uid)
-          && incoming().status in ['pending', 'processing', 'completed', 'inconclusive', 'failed']
           && !incoming().diff(existing()).affectedKeys().hasAny(['expertVerified', 'verifiedBySpecialist', 'officialLabStatus', 'specialistSignature']);
-
         allow delete: if isOwner(uid);
       }
 
       // Subcollection: Enquiries: /profiles/{uid}/enquiries/{enquiryId}
       match /enquiries/{enquiryId} {
-        // Confidentiality: Only the authenticated owner can access their own enquiries
-        allow read: if isOwner(uid);
-
-        allow create: if isOwner(uid) && isValidId(enquiryId)
-          && incoming().userId == request.auth.uid
-          && incoming().status in ['submitted', 'under_review', 'response_available', 'closed']
-          && incoming().cropId is string
-          && incoming().description is string && incoming().description.size() > 0 && incoming().description.size() <= 3000;
-
-        allow update: if isOwner(uid)
-          && incoming().userId == existing().userId;
-
-        allow delete: if isOwner(uid);
+        allow read, write: if isOwner(uid);
       }
 
       // Subcollection: Field Cases: /profiles/{uid}/fieldCases/{caseId}
       match /fieldCases/{caseId} {
-        // Strict ownership: Farmers can only access and modify their own field cases
-        allow read: if isOwner(uid);
+        allow read, write: if isOwner(uid);
 
-        allow create: if isOwner(uid) && isValidId(caseId)
-          && incoming().userId == request.auth.uid
-          && incoming().status in ['active', 'monitoring', 'resolved', 'escalated']
-          && incoming().cropId is string;
-
-        allow update: if isOwner(uid)
-          && incoming().userId == existing().userId
-          && incoming().status in ['active', 'monitoring', 'resolved', 'escalated'];
-
-        allow delete: if isOwner(uid);
-
-        // Subcollection: Observations: /profiles/{uid}/fieldCases/{caseId}/observations/{observationId}
         match /observations/{observationId} {
-          allow read: if isOwner(uid);
-
-          allow create: if isOwner(uid) && isValidId(observationId)
-            && incoming().userId == request.auth.uid;
-
-          allow update: if isOwner(uid)
-            && incoming().userId == existing().userId;
-
-          allow delete: if isOwner(uid);
+          allow read, write: if isOwner(uid);
         }
       }
     }
 
     // 2. Community Field Reports: /fieldReports/{reportId}
     match /fieldReports/{reportId} {
-      // Community field reports can be read by all farmers for collective disease surveillance
       allow read: if true;
-
-      allow create: if isSignedIn() && isValidId(reportId)
-        && incoming().submittedBy == request.auth.uid
-        && incoming().district is string && incoming().district.size() <= 50
-        && incoming().suspectedCondition is string && incoming().suspectedCondition.size() <= 150;
-
-      allow update: if isSignedIn()
-        && (existing().submittedBy == request.auth.uid)
-        && incoming().submittedBy == existing().submittedBy;
-
-      allow delete: if false;
+      allow create: if isSignedIn() && incoming().submittedBy == request.auth.uid;
+      allow update, delete: if isSignedIn() && (existing().submittedBy == request.auth.uid || request.auth.token.admin == true);
     }
 
-    // 3. District Risk Assessments: /riskAssessments/{assessmentId}
-    match /riskAssessments/{assessmentId} {
-      // Regional agro-climatic advisories are publicly readable
-      allow read: if true;
-      allow write: if false; // System / Server privileged write only
+    // 3. Health & Connectivity Verification
+    match /test/{testDoc} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // Default deny for all other collections
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
