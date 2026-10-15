@@ -52,8 +52,8 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // View state: 'list' for parcel cards, 'cadastre' for interactive satellite GIS map
-  const [activeView, setActiveView] = useState<'list' | 'cadastre'>('list');
+  // View state: 'cadastre' as first preference (interactive satellite GIS), 'list' for compact grid only
+  const [activeView, setActiveView] = useState<'cadastre' | 'list'>('cadastre');
   const [selectedMapFarm, setSelectedMapFarm] = useState<FarmRecord | null>(null);
 
   // Modal State
@@ -301,8 +301,19 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* View Mode Toggle: Parcels List vs Satellite Cadastre */}
+            {/* View Mode Toggle: Satellite Cadastre (1st Preference) vs Parcels List */}
             <div className="bg-[#FAF9F3] border border-[#DCE4D9] p-1 rounded-[10px] flex items-center gap-1 font-mono text-xs">
+              <button
+                onClick={() => setActiveView('cadastre')}
+                className={`px-3 py-1.5 rounded-[7px] flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  activeView === 'cadastre'
+                    ? 'bg-[#217451] text-white font-bold shadow-xs'
+                    : 'text-[#52665A] hover:text-[#0B211A]'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>{isTa ? 'செயற்கைக்கோள் வரைபடம் (முதன்மை)' : 'Satellite GIS Map (Primary)'}</span>
+              </button>
               <button
                 onClick={() => setActiveView('list')}
                 className={`px-3 py-1.5 rounded-[7px] flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -313,17 +324,6 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
               >
                 <Layers className="w-3.5 h-3.5" />
                 <span>{isTa ? 'பண்ணைகள் பட்டியல்' : 'Parcels List'} ({farms.length})</span>
-              </button>
-              <button
-                onClick={() => setActiveView('cadastre')}
-                className={`px-3 py-1.5 rounded-[7px] flex items-center gap-1.5 transition-colors cursor-pointer ${
-                  activeView === 'cadastre'
-                    ? 'bg-[#217451] text-white font-bold shadow-xs'
-                    : 'text-[#52665A] hover:text-[#0B211A]'
-                }`}
-              >
-                <Compass className="w-3.5 h-3.5" />
-                <span>{isTa ? 'செயற்கைக்கோள் வரைபடம்' : 'Satellite GIS Cadastre'}</span>
               </button>
             </div>
 
@@ -369,9 +369,9 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           </div>
         )}
 
-        {/* Satellite GIS Cadastre Workspace View */}
+        {/* Satellite GIS Cadastre Workspace View (FIRST PREFERENCE) */}
         {activeView === 'cadastre' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             <FarmGISMap
               farms={farms}
               selectedFarm={selectedMapFarm}
@@ -402,6 +402,83 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                 }
               }}
             />
+
+            {/* Registered Farm Parcels Quick Selector below Map */}
+            {farms.length > 0 && (
+              <div className="pt-4 border-t border-[#DCE4D9] space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-[#217451]" />
+                    <h3 className="font-['Plus_Jakarta_Sans'] text-sm sm:text-base font-bold text-[#0B211A]">
+                      {isTa ? 'பதிவு செய்யப்பட்ட பண்ணை நிலப்பரப்புகள்' : 'Registered Farm Parcels in Your Registry'} ({farms.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs font-mono text-[#52665A]">
+                    {isTa ? 'வரைபடத்தில் பெரிதாக்க பண்ணையைத் தேர்ந்தெடுக்கவும்' : 'Click parcel to highlight & zoom on satellite map'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {farms.map((farm) => {
+                    const isSelected = selectedMapFarm?.id === farm.id;
+                    return (
+                      <div
+                        key={farm.id}
+                        onClick={() => setSelectedMapFarm(farm)}
+                        className={`p-3.5 rounded-[10px] border transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-[#EAEFE5] border-[#217451] ring-2 ring-[#217451]/30 shadow-xs'
+                            : 'bg-white border-[#DCE4D9] hover:border-[#217451]'
+                        }`}
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <h4 className="font-bold text-sm text-[#0B211A] truncate">{farm.farmName}</h4>
+                            {farm.isPrimary && (
+                              <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-[#183B2A] text-white rounded-xs uppercase">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs font-mono text-[#52665A] flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 text-[#217451] shrink-0" />
+                            <span>{farm.locality ? `${farm.locality}, ` : ''}{farm.district}</span>
+                            <span>·</span>
+                            <span className="font-bold text-[#217451]">{farm.landSizeArea ?? farm.landSizeAcres} {farm.areaUnit || 'Ac'}</span>
+                          </div>
+                          {farm.boundary ? (
+                            <div className="text-[10px] font-mono text-[#217451] flex items-center gap-1 pt-0.5">
+                              <Compass className="w-3 h-3" />
+                              <span>Boundary Mapped ({farm.boundary.measuredAcres?.toFixed(2)} Ac)</span>
+                            </div>
+                          ) : (
+                            <div className="text-[10px] font-mono text-amber-700 flex items-center gap-1 pt-0.5">
+                              <span>Unmapped Boundary</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 mt-2 border-t border-[#DCE4D9]/60">
+                          <span className="text-[10px] font-mono text-[#52665A]">
+                            {farm.cropType}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(farm);
+                            }}
+                            className="px-2 py-1 text-[11px] font-mono text-[#52665A] hover:text-[#183B2A] hover:bg-white rounded-[4px] cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
