@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { DistrictRisk } from '../../types';
 import { CloudRain, Wind, Thermometer, RefreshCw } from 'lucide-react';
+import { apiFetch } from '../../lib/apiClient';
 
 export const DistrictRiskRegistry: React.FC = () => {
   const { language, t } = useLanguage();
@@ -12,13 +13,15 @@ export const DistrictRiskRegistry: React.FC = () => {
   useEffect(() => {
     async function loadRiskData() {
       try {
-        const res = await fetch('/api/risk-intelligence');
+        const res = await apiFetch('/api/risk-intelligence');
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setDistricts(json.data);
+        } else {
+          console.error('[CropShield] /api/risk-intelligence returned unexpected shape:', json);
         }
       } catch (err) {
-        console.error('Failed to load risk intelligence:', err);
+        console.error('[CropShield] Failed to load risk intelligence from backend:', err);
       } finally {
         setIsLoading(false);
       }

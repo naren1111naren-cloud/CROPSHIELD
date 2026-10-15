@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { ContextualHelpModal, ScanContextHelp } from './ContextualHelpModal';
+import { apiFetch } from '../../lib/apiClient';
 
 interface DiseaseFinderProps {
   onSaveToLog: (result: AnalysisResult, imagePreview: string, file?: File | null, farmId?: string) => void;
@@ -294,7 +295,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
     }, 1500);
 
     try {
-      const response = await fetch('/api/analyze-crop', {
+      const response = await apiFetch('/api/analyze-crop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

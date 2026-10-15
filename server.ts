@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -13,6 +14,45 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
+
+// ---------------------------------------------------------------------------
+// CORS — Allow Vercel frontend to reach this Render backend
+// ---------------------------------------------------------------------------
+const ALLOWED_ORIGINS = [
+  // Production Vercel deployment
+  'https://cropshieldcc.vercel.app',
+  // Any Vercel preview deployment for this project (branch/PR previews)
+  /^https:\/\/cropshieldcc-[a-z0-9-]+\.vercel\.app$/,
+  // Local development (Vite + Express monolith)
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173',
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no Origin header (e.g. curl, server-to-server, same-origin)
+      if (!origin) return callback(null, true);
+
+      const isAllowed = ALLOWED_ORIGINS.some((allowed) =>
+        typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
+      );
+
+      if (isAllowed) {
+        callback(null, true);
+      } else {
+        console.warn(`[CORS] Blocked request from unauthorised origin: ${origin}`);
+        callback(new Error(`CORS policy: origin ${origin} is not permitted.`));
+      }
+    },
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+    credentials: false, // No cookie/session auth — Firebase handles auth client-side
+    maxAge: 86400,      // Cache preflight for 24 h
+  })
+);
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));

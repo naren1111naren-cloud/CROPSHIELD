@@ -7,6 +7,7 @@
 
 import { MandiPriceRecord, MarketPriceFilters, MarketPricesResponse } from '../types';
 import { TN_DISTRICT_GEODATA } from '../config/tamilNaduDistricts';
+import { apiFetch } from '../lib/apiClient';
 
 export interface PriorityCommodity {
   id: string;
@@ -53,7 +54,7 @@ export async function fetchDailyMandiPrices(filters: MarketPriceFilters = {}): P
 
   const url = `/api/market-prices?${query.toString()}`;
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'GET',
     headers: {
       Accept: 'application/json',

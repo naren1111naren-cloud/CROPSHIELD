@@ -29,7 +29,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   onExploreGuest,
   onOpenRegister,
 }) => {
-  const { signIn, signInWithGoogle, resetPassword } = useAuth();
+  const { signIn, signInWithGoogle, resetPassword, register } = useAuth();
   const { language, setLanguage } = useLanguage();
   const isTa = language === 'ta';
 
@@ -116,7 +116,36 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     const demoPass = 'Paddy12345';
 
     try {
-      await signIn(demoEmail, demoPass);
+      try {
+        await signIn(demoEmail, demoPass);
+      } catch (signInErr: any) {
+        // If the demo account doesn't exist yet in this Firebase project,
+        // auto-register it once so 1-click demo always works.
+        if (
+          signInErr.code === 'auth/user-not-found' ||
+          signInErr.code === 'auth/invalid-credential'
+        ) {
+          try {
+            await register({
+              email: demoEmail,
+              password: demoPass,
+              displayName: 'Muthu Ramanathan',
+              preferredLanguage: language,
+              district: 'Thanjavur',
+              locality: 'Valangaiman Taluk',
+              activeVariety: 'CR 1009 Sub 1',
+            });
+          } catch (regErr: any) {
+            if (regErr.code === 'auth/email-already-in-use') {
+              // Account exists but sign-in failed — re-throw original sign-in error
+              throw signInErr;
+            }
+            throw regErr;
+          }
+        } else {
+          throw signInErr;
+        }
+      }
       onSuccess?.();
     } catch (err: any) {
       console.error('Demo sign-in failed:', err);

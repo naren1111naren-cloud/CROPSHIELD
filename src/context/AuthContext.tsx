@@ -49,12 +49,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (!currentUser) {
+        // User is signed out — clear profile and release loading
         setProfile(null);
         setIsLoading(false);
       }
+      // When currentUser is present, isLoading will be released by the
+      // profile subscription effect below once the profile is loaded.
+      // Safety: set a timeout so loading never stays stuck forever.
     });
 
-    return () => unsubscribeAuth();
+    // Safety timeout: if auth state + profile load takes > 6 seconds, force-release
+    // This prevents the app from being permanently stuck if Firestore is slow or offline.
+    const safetyTimer = setTimeout(() => {
+      setIsLoading((prev) => {
+        if (prev) {
+          console.warn('CropShield: Auth/profile loading timeout — releasing loading state.');
+        }
+        return false;
+      });
+    }, 6000);
+
+    return () => {
+      unsubscribeAuth();
+      clearTimeout(safetyTimer);
+    };
   }, [isConfigured]);
 
   // Subscribe to farmer profile when user is authenticated

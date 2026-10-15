@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { CommunityReport } from '../../types';
 import { subscribeCommunityReports, submitCommunityReport } from '../../services/fieldReportsService';
 import { Plus, CheckCircle, Clock, RefreshCw, X, Send } from 'lucide-react';
+import { apiFetch } from '../../lib/apiClient';
 
 export const CommunityAlertsView: React.FC = () => {
   const { language, t } = useLanguage();
@@ -61,13 +62,15 @@ export const CommunityAlertsView: React.FC = () => {
         const url = filterDistrict === 'all'
           ? '/api/community-reports'
           : `/api/community-reports?district=${encodeURIComponent(filterDistrict)}`;
-        const res = await fetch(url);
+        const res = await apiFetch(url);
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setReports(json.data);
+        } else {
+          console.error('[CropShield] /api/community-reports returned unexpected shape:', json);
         }
       } catch (err) {
-        console.error('Failed to load fallback reports:', err);
+        console.error('[CropShield] Failed to load fallback community reports from backend:', err);
       } finally {
         setIsLoading(false);
       }
@@ -98,9 +101,9 @@ export const CommunityAlertsView: React.FC = () => {
           fieldNotes: formNotes,
         });
       } catch (fsErr) {
-        console.warn('Firestore report submit failed, trying server API:', fsErr);
+        console.warn('[CropShield] Firestore report submit failed, trying Render server API:', fsErr);
         // Fallback to server endpoint
-        await fetch('/api/community-reports', {
+        await apiFetch('/api/community-reports', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

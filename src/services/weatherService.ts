@@ -1,4 +1,5 @@
 import { TN_DISTRICT_GEODATA, getDistrictGeo, DistrictGeo } from '../config/tamilNaduDistricts';
+import { apiFetch } from '../lib/apiClient';
 
 export interface CurrentWeatherState {
   time: string;
@@ -122,9 +123,9 @@ export async function getDistrictWeather(districtName: string): Promise<RealWeat
   }
 
   try {
-    // Try server-side proxy endpoint first
+    // Try server-side proxy endpoint first (same-origin in dev, Render in production)
     const proxyUrl = `/api/weather?district=${encodeURIComponent(geo.name)}`;
-    const response = await fetch(proxyUrl);
+    const response = await apiFetch(proxyUrl);
 
     if (response.ok) {
       const json = await response.json();
@@ -134,7 +135,7 @@ export async function getDistrictWeather(districtName: string): Promise<RealWeat
       }
     }
   } catch (err) {
-    console.warn('Server-side weather proxy unavailable, falling back to direct Open-Meteo:', err);
+    console.warn('[CropShield] Server-side weather proxy unavailable, falling back to direct Open-Meteo:', err);
   }
 
   // Fallback: Direct call to Open-Meteo public API with full parameters

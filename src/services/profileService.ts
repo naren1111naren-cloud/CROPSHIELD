@@ -88,7 +88,7 @@ export async function saveFarmerProfile(
     const existingSnap = await getDoc(profileRef);
 
     if (existingSnap.exists()) {
-      // Update existing profile
+      // Update existing profile — use serverTimestamp() only in the Firestore payload
       const updatePayload: Record<string, any> = {
         ...data,
         uid, // Never permit changing the UID
@@ -99,17 +99,21 @@ export async function saveFarmerProfile(
         ...(existingSnap.data() as FarmerProfile),
         ...data,
         uid,
+        updatedAt: new Date().toISOString(),
       };
       persistLocal(merged);
       return merged;
     } else {
-      const newProfile: FarmerProfile = {
+      // New profile — write to Firestore with FieldValue timestamps in the payload,
+      // but keep the in-memory FarmerProfile using ISO strings to satisfy the type.
+      const firestorePayload: Record<string, any> = {
         ...fallbackProfile,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      await setDoc(profileRef, newProfile);
+      await setDoc(profileRef, firestorePayload);
+      // fallbackProfile already has ISO string timestamps — safe to persist locally
       persistLocal(fallbackProfile);
       return fallbackProfile;
     }

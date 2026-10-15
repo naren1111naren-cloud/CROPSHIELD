@@ -12,6 +12,7 @@ import {
 import { createFieldCase, addFollowUpObservation } from '../../services/fieldCaseService';
 import { evaluateFieldDifferential } from '../../services/differentialEngine';
 import { ALL_TAMIL_NADU_DISTRICTS } from '../../config/tamilNaduDistricts';
+import { apiFetch } from '../../lib/apiClient';
 import {
   X,
   Upload,
@@ -170,8 +171,8 @@ export const GuidedFieldAssessmentModal: React.FC<GuidedFieldAssessmentModalProp
     };
 
     try {
-      // Call backend /api/field-case/assess
-      const res = await fetch('/api/field-case/assess', {
+      // Call backend /api/field-case/assess (Render in production, same-origin in dev)
+      const res = await apiFetch('/api/field-case/assess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,7 +196,7 @@ export const GuidedFieldAssessmentModal: React.FC<GuidedFieldAssessmentModalProp
         throw new Error(json.message || 'Evaluation failed');
       }
     } catch (err) {
-      console.warn('Backend differential endpoint fallback:', err);
+      console.warn('[CropShield] Backend /api/field-case/assess unavailable, falling back to local differential engine:', err);
       // Fallback directly to client deterministic engine
       const localResult = evaluateFieldDifferential({
         cropId,
