@@ -108,7 +108,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       selectedFarm?.district ||
       farmerProfile?.district ||
       initialResolution.hierarchy.district ||
-      'Karur'
+      ''
   );
 
   // Drawing & Geometry State
@@ -118,6 +118,12 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const [activeLayerType, setActiveLayerType] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Tile Loading & Provider Configuration State
+  const [tileLoading, setTileLoading] = useState<boolean>(true);
+  const [tileError, setTileError] = useState<string | null>(null);
+  const [activeProviderName, setActiveProviderName] = useState<string>('Esri World Imagery + Places');
+  const [isProviderModalOpen, setIsProviderModalOpen] = useState<boolean>(false);
 
   // Geolocation & Permissions State
   const [gpsLoading, setGpsLoading] = useState<boolean>(false);
@@ -133,7 +139,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
   // Cadastral Lookup Modal State
   const [isLookupModalOpen, setIsLookupModalOpen] = useState<boolean>(false);
-  const [lookupDistrict, setLookupDistrict] = useState<string>(selectedDistrict);
+  const [lookupDistrict, setLookupDistrict] = useState<string>(selectedDistrict || 'Karur');
   const [lookupTaluk, setLookupTaluk] = useState<string>('Karur');
   const [lookupVillage, setLookupVillage] = useState<string>('Thanthoni');
   const [lookupSurveyNo, setLookupSurveyNo] = useState<string>('');
@@ -277,7 +283,26 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       overlayTileLayerRef.current = null;
     }
 
+    setTileLoading(true);
+    setTileError(null);
+
     const maptilerKey = import.meta.env.VITE_MAPTILER_API_KEY;
+
+    const bindTileEvents = (layer: L.TileLayer) => {
+      layer.on('loading', () => setTileLoading(true));
+      layer.on('load', () => {
+        setTileLoading(false);
+        setTileError(null);
+      });
+      layer.on('tileerror', () => {
+        setTileLoading(false);
+        setTileError(
+          isTa
+            ? 'வரைபடத் தகவல்கள் ஏற்றுவதில் சிக்கல் ஏற்பட்டது. நெட்வொர்க் இணைப்பைச் சரிபார்க்கவும்.'
+            : 'Satellite imagery tiles failed to load. Check network connection or provider credentials.'
+        );
+      });
+    };
 
     if (layerType === 'hybrid') {
       if (maptilerKey) {
@@ -289,8 +314,10 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
           }
         );
+        bindTileEvents(satHybrid);
         satHybrid.addTo(map);
         baseTileLayerRef.current = satHybrid;
+        setActiveProviderName('MapTiler Hybrid Satellite (API Key Connected)');
       } else {
         const sat = L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
@@ -300,6 +327,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
           }
         );
+        bindTileEvents(sat);
         sat.addTo(map);
         baseTileLayerRef.current = sat;
 
@@ -313,6 +341,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         );
         const overlayGroup = L.layerGroup([roads, places]).addTo(map);
         overlayTileLayerRef.current = overlayGroup;
+        setActiveProviderName('Esri World Imagery + Transportation & Places Hybrid');
       }
     } else if (layerType === 'satellite') {
       const sat = L.tileLayer(
@@ -323,15 +352,19 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         }
       );
+      bindTileEvents(sat);
       sat.addTo(map);
       baseTileLayerRef.current = sat;
+      setActiveProviderName('Esri World Imagery (High-Resolution Satellite)');
     } else {
       const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
       });
+      bindTileEvents(osm);
       osm.addTo(map);
       baseTileLayerRef.current = osm;
+      setActiveProviderName('OpenStreetMap Standard Streets');
     }
   };
 
@@ -486,6 +519,19 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   };
 
+  // Reset Map View (to polygon bounds or resolved location)
+  const handleResetView = () => {
+    if (!mapInstanceRef.current) return;
+    if (polygonCoords.length >= 3) {
+      const poly = L.polygon(polygonCoords);
+      mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18 });
+    } else if (resolvedLocation) {
+      mapInstanceRef.current.flyTo(resolvedLocation.coordinates, resolvedLocation.zoom, {
+        duration: 1.2,
+      });
+    }
+  };
+
   // Search Location / Coordinates Query
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -616,7 +662,82 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           });
         });
 
+        // Vertex removal support when not drawing
+        if (!isDrawing) {
+          const canDelete = polygonCoords.length > 3;
+          marker.bindPopup(`
+            <div style="font-family: monospace; font-size: 11px; color: #0B241B; padding: 2px;">
+              <div style="font-weight: bold; margin-bottom: 2px;">Vertex #${index + 1}</div>
+              <div style="color: #64766B; margin-bottom: 6px;">${pt[0].toFixed(5)}, ${pt[1].toFixed(5)}</div>
+              ${
+                canDelete
+                  ? `<button id="del-vertex-btn-${index}" style="background: #B8423A; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-weight: bold; width: 100%;">
+                      ${isTa ? 'இப்புள்ளியை நீக்கு' : 'Delete Vertex'}
+                    </button>`
+                  : `<span style="color: #B87922;">${isTa ? 'குறைந்தது 3 புள்ளிகள் தேவை' : 'Minimum 3 vertices required'}</span>`
+              }
+            </div>
+          `);
+          marker.on('popupopen', () => {
+            const delBtn = document.getElementById(`del-vertex-btn-${index}`);
+            if (delBtn) {
+              delBtn.onclick = () => {
+                if (boundaryStatus === 'official_source') setIsProposedEdit(true);
+                setPolygonCoords((prev) => prev.filter((_, i) => i !== index));
+                marker.closePopup();
+              };
+            }
+          });
+        }
+
         vertexMarkersLayerRef.current?.addLayer(marker);
+
+        // Add intermediate midpoint marker on edge to allow inserting new vertices
+        if (!isDrawing && polygonCoords.length >= 3) {
+          const nextIndex = (index + 1) % polygonCoords.length;
+          const nextPt = polygonCoords[nextIndex];
+          const midLat = (pt[0] + nextPt[0]) / 2;
+          const midLng = (pt[1] + nextPt[1]) / 2;
+
+          const midIcon = L.divIcon({
+            className: 'custom-midpoint-marker',
+            html: `
+              <div class="w-4 h-4 rounded-full bg-white/90 hover:bg-[#00E5FF] border border-[#0B241B] flex items-center justify-center text-[10px] font-bold text-[#0B241B] cursor-pointer shadow hover:scale-125 transition-transform" title="${
+                isTa ? 'புதிய புள்ளி சேர்க்க கிளிக் செய்யவும்' : 'Click to insert vertex on this edge'
+              }">
+                +
+              </div>
+            `,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          });
+
+          const midMarker = L.marker([midLat, midLng], {
+            icon: midIcon,
+            draggable: true,
+          });
+
+          const insertVertex = (lat: number, lng: number) => {
+            if (boundaryStatus === 'official_source') setIsProposedEdit(true);
+            setPolygonCoords((prev) => {
+              const next = [...prev];
+              next.splice(index + 1, 0, [lat, lng]);
+              return next;
+            });
+          };
+
+          midMarker.on('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            insertVertex(midLat, midLng);
+          });
+
+          midMarker.on('dragend', (e: any) => {
+            const newPos = e.target.getLatLng();
+            insertVertex(newPos.lat, newPos.lng);
+          });
+
+          vertexMarkersLayerRef.current?.addLayer(midMarker);
+        }
       });
     }
   }, [polygonCoords, isDrawing, readOnly, boundaryStatus]);
@@ -900,6 +1021,11 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               className="bg-[#081813] border border-white/15 text-xs font-mono text-[#F5F4EA] px-2.5 py-1.5 rounded-[8px] cursor-pointer focus:border-[#70B77E] min-h-[36px]"
               aria-label="Select District"
             >
+              {!selectedDistrict && (
+                <option value="">
+                  {isTa ? '— மாவட்டத்தைத் தேர்ந்தெடுக்கவும் —' : '— Select District —'}
+                </option>
+              )}
               {availableDistricts.map((dist) => {
                 const geo = SOUTH_INDIA_DISTRICTS_GEODATA[dist];
                 return (
@@ -984,6 +1110,25 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           >
             <Crosshair className={`w-3.5 h-3.5 text-[#00E5FF] ${gpsLoading ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">{isTa ? 'GPS இருப்பிடம்' : 'Use Current Location'}</span>
+          </button>
+
+          {/* Reset Map View Button */}
+          <button
+            onClick={handleResetView}
+            className="px-3 py-1.5 bg-[#081813] border border-white/15 hover:border-[#70B77E] text-xs font-mono text-[#F5F4EA] rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Reset map to current district or farm bounds"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-[#70B77E]" />
+            <span className="hidden sm:inline">{isTa ? 'மீட்டமைக்க' : 'Reset View'}</span>
+          </button>
+
+          {/* Provider Setup / Status Button */}
+          <button
+            onClick={() => setIsProviderModalOpen(true)}
+            className="p-2 bg-[#081813] border border-white/15 hover:border-[#70B77E] text-white/80 hover:text-white rounded-[8px] cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors"
+            title="Map Provider Settings & API Credentials"
+          >
+            <Info className="w-4 h-4 text-[#70B77E]" />
           </button>
 
           {/* Fullscreen Toggle */}
@@ -1094,6 +1239,28 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           ======================================================== */}
       <div className="relative flex-1 min-h-[420px] sm:min-h-[480px] w-full bg-[#081813]">
         <div ref={mapContainerRef} className="absolute inset-0 z-0 h-full w-full" />
+
+        {/* Tile Loading Indicator */}
+        {tileLoading && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-[#0B241B]/90 backdrop-blur-xs border border-white/15 text-white px-3 py-1.5 rounded-full text-[11px] font-mono shadow-md flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#70B77E] animate-ping" />
+            <span>{isTa ? 'செயற்கைக்கோள் படங்கள் ஏற்றப்படுகின்றன...' : 'Loading satellite imagery...'}</span>
+          </div>
+        )}
+
+        {/* Tile Error Alert */}
+        {tileError && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 bg-[#B8423A]/90 border border-white/20 text-white px-4 py-2 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-white" />
+            <span>{tileError}</span>
+            <button
+              onClick={() => handleSwitchLayer('hybrid')}
+              className="ml-2 px-2 py-0.5 bg-white/20 hover:bg-white/30 rounded text-[11px] cursor-pointer"
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
         {/* Floating Drawing Status & Instruction Pill */}
         {isDrawing && (
@@ -1601,6 +1768,81 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               >
                 <Crosshair className="w-3.5 h-3.5" />
                 <span>{isTa ? 'அனுமதிக்கவும் & கண்டறியவும்' : 'Allow & Locate Field'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          6. MAP PROVIDER & API CREDENTIALS MODAL
+          ======================================================== */}
+      {isProviderModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-[#0B241B] border-2 border-[#70B77E]/50 max-w-lg w-full p-6 shadow-2xl rounded-[14px] text-white space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Globe2 className="w-5 h-5 text-[#70B77E]" />
+                <h3 className="font-['Plus_Jakarta_Sans'] text-lg font-bold">
+                  {isTa ? 'செயற்கைக்கோள் வழங்குநர் & API அமைப்புகள்' : 'Map Provider & GIS Credentials'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsProviderModalOpen(false)}
+                className="text-white/60 hover:text-white p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 font-mono text-xs">
+              <div className="p-3 bg-black/40 border border-white/10 rounded-[8px] space-y-1">
+                <span className="text-[#70B77E] font-bold block uppercase">CURRENT ACTIVE PROVIDER:</span>
+                <span className="text-white text-sm font-sans">{activeProviderName}</span>
+                <span className="text-white/60 text-[11px] block pt-1">
+                  Provider Attribution: Tiles &copy; Esri, i-cubed, USDA, USGS, AEX, GeoEye, OpenStreetMap
+                </span>
+              </div>
+
+              <div className="space-y-2 text-white/80 font-sans text-xs leading-relaxed">
+                <div className="font-bold text-white uppercase font-mono text-[11px]">OPTIONAL CONFIGURATIONS:</div>
+                <div className="p-2.5 bg-white/5 rounded-[6px] space-y-1 font-mono text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#00E5FF] font-bold">VITE_MAPTILER_API_KEY</span>
+                    <span className={import.meta.env.VITE_MAPTILER_API_KEY ? 'text-[#70B77E]' : 'text-amber-400'}>
+                      {import.meta.env.VITE_MAPTILER_API_KEY ? 'CONFIGURED' : 'OPTIONAL (Esri Fallback Active)'}
+                    </span>
+                  </div>
+                  <p className="text-white/70 font-sans text-[11px]">
+                    Configure in your <code className="text-[#70B77E]">.env</code> file if you wish to use custom MapTiler vector satellite hybrid tiles. If unset, Esri World Imagery operates automatically with zero key requirement.
+                  </p>
+                </div>
+
+                <div className="p-2.5 bg-white/5 rounded-[6px] space-y-1 font-mono text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[#F59E0B] font-bold">VITE_TNGIS_API_KEY & ENDPOINT</span>
+                    <span className={import.meta.env.VITE_TNGIS_API_KEY ? 'text-[#70B77E]' : 'text-amber-400'}>
+                      {import.meta.env.VITE_TNGIS_API_KEY ? 'AUTHENTICATED' : 'NOT CONFIGURED'}
+                    </span>
+                  </div>
+                  <p className="text-white/70 font-sans text-[11px]">
+                    Reserved for official State / TNeGA G2G cadastral integration agreements. Farmer-drawn parcels and surveyor GeoJSON imports work fully without state API keys.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsProviderModalOpen(false)}
+                className="px-4 py-2 bg-[#217451] hover:bg-[#1b5e42] text-white font-bold rounded-[8px] text-xs font-mono cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

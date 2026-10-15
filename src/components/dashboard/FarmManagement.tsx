@@ -376,7 +376,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
               farms={farms}
               selectedFarm={selectedMapFarm}
               farmerProfile={profile}
-              initialDistrict={selectedMapFarm?.district || profile?.district || 'Karur'}
+              initialDistrict={selectedMapFarm?.district || profile?.district}
               initialState={profile?.state || 'Tamil Nadu'}
               onSelectFarm={(farm) => setSelectedMapFarm(farm)}
               onSaveBoundary={async (savedBoundary, measuredAcres, measuredCents) => {

@@ -60,7 +60,7 @@ export function resolveFarmerLocation(
     ];
 
     const state = profile?.state || 'Tamil Nadu';
-    const district = targetFarm.district || profile?.district || 'Karur';
+    const district = targetFarm.district || profile?.district;
     const village = targetFarm.locality || profile?.locality;
 
     return {
@@ -166,18 +166,17 @@ export function resolveFarmerLocation(
     };
   }
 
-  // 5. Default Regional Fallback (South India Central View - Tamil Nadu / Karur basin)
+  // 5. Default Regional Fallback (South India Central View - Never assume Karur if unconfigured)
   return {
     type: 'default_regional',
-    coordinates: [10.9601, 78.0766], // Central South India / Karur reference
-    zoom: 8,
+    coordinates: [11.1271, 78.6569], // Central South India / Tamil Nadu geographic centroid
+    zoom: 7,
     hierarchy: {
       country: 'India',
-      state: 'Tamil Nadu',
-      district: 'Karur',
+      state: candidateState || 'Tamil Nadu',
     },
     hasSavedBoundary: false,
-    statusMessage: 'South India agricultural region view.',
+    statusMessage: 'South India agricultural regional view (No district configured in profile).',
     actionGuidance:
       'Select your district from the toolbar or click "Use my current location" to locate your farm parcel.',
     isExactField: false,

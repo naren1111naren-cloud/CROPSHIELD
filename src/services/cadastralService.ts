@@ -37,6 +37,28 @@ export const TN_CADASTRAL_HIERARCHY: Record<
     >;
   }
 > = {
+  Karur: {
+    taluks: {
+      Karur: {
+        villages: ['Thanthoni', 'Inam Karur', 'Sanapiratti', 'Vangal', 'Nerur North', 'Nerur South', 'Andankoil East', 'Andankoil West'],
+      },
+      Kulithalai: {
+        villages: ['Kulithalai', 'Nangavaram', 'Vaiganallur', 'Thimmachipuram', 'Rajendram', 'Inungur'],
+      },
+      Aravakurichi: {
+        villages: ['Aravakurichi', 'Pallapatti', 'Modakkurichi', 'Chinnadharapuram', 'Esanatham', 'Velambadi'],
+      },
+      Manmangalam: {
+        villages: ['Manmangalam', 'Punjai Thottakurichi', 'Kombupalayam', 'Panchamadevi', 'Nerur'],
+      },
+      Krishnarayapuram: {
+        villages: ['Krishnarayapuram', 'Mayanur', 'Lalapet', 'Mahadanapuram', 'Sithalavai', 'Kallapalli'],
+      },
+      Kadavur: {
+        villages: ['Kadavur', 'Tharagampatti', 'Palaviduthi', 'Mavathur', 'Keeranur'],
+      },
+    },
+  },
   Thanjavur: {
     taluks: {
       Thanjavur: {
@@ -114,8 +136,22 @@ export const TN_CADASTRAL_HIERARCHY: Record<
 export async function lookupCadastralParcel(
   params: CadastralLookupParams
 ): Promise<CadastralLookupResponse> {
-  const tngisEndpoint = import.meta.env.VITE_TNGIS_API_ENDPOINT;
-  const tngisKey = import.meta.env.VITE_TNGIS_API_KEY;
+  const getEnv = (key: string): string | undefined => {
+    try {
+      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+        return import.meta.env[key];
+      }
+    } catch {}
+    try {
+      if (typeof process !== 'undefined' && process.env && process.env[key]) {
+        return process.env[key];
+      }
+    } catch {}
+    return undefined;
+  };
+
+  const tngisEndpoint = getEnv('VITE_TNGIS_API_ENDPOINT');
+  const tngisKey = getEnv('VITE_TNGIS_API_KEY');
 
   const licenseNotice =
     'Tamil Nadu Cadastral Survey records (FMB / Field Measurement Book) are official revenue instruments maintained by the Directorate of Survey and Settlement, Government of Tamil Nadu. Unauthorized scraping or automated bypass of citizen CAPTCHA portals is strictly prohibited.';
