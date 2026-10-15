@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { FarmRecord } from '../../types';
+import { FarmRecord, FarmBoundary } from '../../types';
+import { FarmGISMap } from './FarmGISMap';
 import {
   subscribeFarms,
   createFarm,
@@ -34,6 +35,7 @@ import {
   Layers,
   Droplets,
   HelpCircle,
+  Compass,
 } from 'lucide-react';
 
 interface FarmManagementProps {
@@ -50,9 +52,15 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  // View state: 'list' for parcel cards, 'cadastre' for interactive satellite GIS map
+  const [activeView, setActiveView] = useState<'list' | 'cadastre'>('list');
+  const [selectedMapFarm, setSelectedMapFarm] = useState<FarmRecord | null>(null);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingFarm, setEditingFarm] = useState<FarmRecord | null>(null);
+  const [isMappingDrawerOpen, setIsMappingDrawerOpen] = useState(false);
+  const [boundary, setBoundary] = useState<FarmBoundary | undefined>(undefined);
 
   // Form Fields
   const [farmName, setFarmName] = useState('');
@@ -124,6 +132,8 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
     setIrrigationMethod(profile?.irrigationMethod || 'Canal / Cauvery Basin');
     setIsPrimary(farms.length === 0);
     setNotes('');
+    setBoundary(undefined);
+    setIsMappingDrawerOpen(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -142,6 +152,8 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
     setIrrigationMethod(farm.irrigationMethod || 'Canal / Cauvery Basin');
     setIsPrimary(Boolean(farm.isPrimary));
     setNotes(farm.notes || '');
+    setBoundary(farm.boundary);
+    setIsMappingDrawerOpen(false);
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -184,6 +196,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
         irrigationMethod,
         isPrimary,
         notes: notes.trim(),
+        boundary: boundary,
       };
 
       if (editingFarm && editingFarm.id) {
@@ -287,13 +300,41 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
             </p>
           </div>
 
-          <button
-            onClick={openCreateModal}
-            className="btn-primary text-xs py-2.5 px-4 shrink-0 min-h-[44px]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isTa ? 'புதிய பண்ணை சேர்க்க' : 'Add New Farm Plot'}</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* View Mode Toggle: Parcels List vs Satellite Cadastre */}
+            <div className="bg-[#FAF9F3] border border-[#DCE4D9] p-1 rounded-[10px] flex items-center gap-1 font-mono text-xs">
+              <button
+                onClick={() => setActiveView('list')}
+                className={`px-3 py-1.5 rounded-[7px] flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  activeView === 'list'
+                    ? 'bg-[#183B2A] text-white font-bold shadow-xs'
+                    : 'text-[#52665A] hover:text-[#0B211A]'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>{isTa ? 'பண்ணைகள் பட்டியல்' : 'Parcels List'} ({farms.length})</span>
+              </button>
+              <button
+                onClick={() => setActiveView('cadastre')}
+                className={`px-3 py-1.5 rounded-[7px] flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  activeView === 'cadastre'
+                    ? 'bg-[#217451] text-white font-bold shadow-xs'
+                    : 'text-[#52665A] hover:text-[#0B211A]'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                <span>{isTa ? 'செயற்கைக்கோள் வரைபடம்' : 'Satellite GIS Cadastre'}</span>
+              </button>
+            </div>
+
+            <button
+              onClick={openCreateModal}
+              className="btn-primary text-xs py-2.5 px-4 shrink-0 min-h-[44px]"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isTa ? 'புதிய பண்ணை சேர்க்க' : 'Add New Farm Plot'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Success Banner */}
@@ -328,8 +369,42 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           </div>
         )}
 
-        {/* Empty State */}
-        {!isLoading && farms.length === 0 && (
+        {/* Satellite GIS Cadastre Workspace View */}
+        {activeView === 'cadastre' && (
+          <div className="space-y-4">
+            <FarmGISMap
+              farms={farms}
+              selectedFarm={selectedMapFarm}
+              initialDistrict={selectedMapFarm?.district || profile?.district || 'Thanjavur'}
+              onSelectFarm={(farm) => setSelectedMapFarm(farm)}
+              onSaveBoundary={async (savedBoundary, measuredAcres, measuredCents) => {
+                if (selectedMapFarm && selectedMapFarm.id && user) {
+                  try {
+                    await updateFarm(user.uid, selectedMapFarm.id, {
+                      boundary: savedBoundary,
+                      landSizeArea: selectedMapFarm.areaUnit === 'Cents' ? measuredCents : measuredAcres,
+                      landSizeAcres: measuredAcres,
+                    });
+                    showSuccess(
+                      isTa
+                        ? `"${selectedMapFarm.farmName}" நில எல்லை வெற்றிகரமாக புதுப்பிக்கப்பட்டது!`
+                        : `Satellite boundary for "${selectedMapFarm.farmName}" updated in Firestore!`
+                    );
+                  } catch (err: any) {
+                    setErrorMsg(err.message || 'Failed to update boundary.');
+                  }
+                } else {
+                  openCreateModal();
+                  setBoundary(savedBoundary);
+                  setLandSizeArea(areaUnit === 'Cents' ? String(measuredCents.toFixed(1)) : String(measuredAcres.toFixed(2)));
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* Empty State in List View */}
+        {activeView === 'list' && !isLoading && farms.length === 0 && (
           <div className="p-8 sm:p-12 text-center bg-[#FAF9F3] border border-dashed border-[#DCE4D9] rounded-[12px] space-y-4">
             <div className="w-12 h-12 mx-auto rounded-full bg-[#1F6B4A]/10 flex items-center justify-center text-[#1F6B4A]">
               <Sprout className="w-6 h-6" />
@@ -354,8 +429,8 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           </div>
         )}
 
-        {/* Farms Grid */}
-        {!isLoading && farms.length > 0 && (
+        {/* Farms Grid in List View */}
+        {activeView === 'list' && !isLoading && farms.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {farms.map((farm) => (
               <div
@@ -391,9 +466,38 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                           {farm.landSizeArea ?? farm.landSizeAcres} {farm.areaUnit || 'Acres'}
                         </span>
                       </div>
+
+                      {/* Boundary Status Badge */}
+                      {farm.boundary?.coordinates ? (
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#217451]/10 text-[#217451] text-[11px] font-mono font-medium border border-[#217451]/20">
+                            <Compass className="w-3 h-3 text-[#217451] shrink-0" />
+                            <span>
+                              {farm.boundary.measuredAcres?.toFixed(2) || farm.landSizeAcres} Ac ({farm.boundary.measuredCents?.toFixed(1) || Math.round((farm.landSizeAcres || 0)*100)} Cts) · Satellite Geocoded
+                            </span>
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="mt-1 flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-amber-500/10 text-amber-800 text-[11px] font-mono border border-amber-500/20">
+                            <span>Unmapped Boundary · Manual Est.</span>
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setSelectedMapFarm(farm);
+                          setActiveView('cadastre');
+                        }}
+                        className="p-1.5 text-[#4A584D] hover:text-[#217451] hover:bg-[#EAEFE5] border border-transparent hover:border-[#DCE4D9] rounded-xs cursor-pointer transition-colors"
+                        title={isTa ? 'செயற்கைக்கோள் வரைபடத்தில் காண்க' : 'Inspect on Satellite Map'}
+                        aria-label="Inspect farm parcel on satellite map"
+                      >
+                        <Compass className="w-3.5 h-3.5 text-[#217451]" />
+                      </button>
                       <button
                         onClick={() => openEditModal(farm)}
                         className="p-1.5 text-[#4A584D] hover:text-[#183B2A] hover:bg-white border border-transparent hover:border-[#D9DED3] rounded-xs cursor-pointer transition-colors"
@@ -506,7 +610,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           role="dialog"
           aria-modal="true"
         >
-          <div className="bg-[#FAF9F3] border-2 border-[#183B2A] max-w-xl w-full p-6 sm:p-8 shadow-2xl my-6 max-h-[92vh] overflow-y-auto">
+          <div className={`bg-[#FAF9F3] border-2 border-[#183B2A] ${isMappingDrawerOpen ? 'max-w-4xl' : 'max-w-xl'} w-full p-6 sm:p-8 shadow-2xl my-6 max-h-[92vh] overflow-y-auto transition-all`}>
             <div className="flex items-center justify-between border-b border-[#D9DED3] pb-4 mb-6">
               <div>
                 <span className="text-xs font-mono text-[#426B43] uppercase tracking-wider block font-semibold">
@@ -646,8 +750,8 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                     <input
                       id="farmAreaInput"
                       type="number"
-                      step="0.1"
-                      min="0.1"
+                      step="0.01"
+                      min="0.01"
                       value={landSizeArea}
                       onChange={(e) => setLandSizeArea(e.target.value)}
                       className="w-2/3 p-3 bg-white border border-[#D9DED3] text-sm text-[#202B22] font-mono focus:outline-hidden focus:border-[#183B2A] min-h-[44px]"
@@ -684,6 +788,104 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Satellite Cadastral Boundary Section */}
+              <div className="p-4 bg-white border border-[#D9DED3] rounded-[10px] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Compass className="w-4 h-4 text-[#217451]" />
+                    <span className="text-xs font-mono font-bold text-[#183B2A] uppercase">
+                      {isTa ? 'செயற்கைக்கோள் எல்லை & நேரடி நில அளவீடு' : 'Satellite Cadastral Boundary & Live Measurement'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMappingDrawerOpen(!isMappingDrawerOpen)}
+                    className="px-3 py-1.5 text-xs font-mono bg-[#EAEFE5] hover:bg-[#DCE4D9] text-[#217451] font-semibold rounded-[6px] border border-[#B8DCC1] cursor-pointer flex items-center gap-1.5 transition-colors"
+                  >
+                    <Compass className="w-3.5 h-3.5" />
+                    <span>
+                      {isMappingDrawerOpen
+                        ? (isTa ? 'வரைபடத்தை மறை' : 'Hide GIS Map')
+                        : boundary
+                        ? (isTa ? 'எல்லையை திருத்து' : 'Adjust Boundary')
+                        : (isTa ? 'எல்லை வரைக' : 'Map on Satellite')}
+                    </span>
+                  </button>
+                </div>
+
+                {boundary ? (
+                  <div className="p-3.5 bg-[#EAEFE5]/60 border border-[#B8DCC1] rounded-[8px] space-y-2 text-xs font-mono text-[#183B2A]">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-[#217451]">
+                        <CheckCircle2 className="w-4 h-4 text-[#217451]" />
+                        <span>{isTa ? 'செயற்கைக்கோள் எல்லை பதிவு செய்யப்பட்டது' : 'Satellite Geodesic Polygon Captured'}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setBoundary(undefined)}
+                        className="text-[11px] text-[#A94338] hover:underline cursor-pointer"
+                      >
+                        {isTa ? 'எல்லையை நீக்கு' : 'Remove Boundary'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                      <div className="bg-white/80 p-2 rounded-[6px] border border-[#B8DCC1]/60">
+                        <span className="text-[#52665A] block text-[10px]">ACRES:</span>
+                        <span className="font-bold text-[#183B2A] text-sm">{boundary.measuredAcres?.toFixed(2)} Ac</span>
+                      </div>
+                      <div className="bg-white/80 p-2 rounded-[6px] border border-[#B8DCC1]/60">
+                        <span className="text-[#52665A] block text-[10px]">TN CENTS:</span>
+                        <span className="font-bold text-[#217451] text-sm">{boundary.measuredCents?.toFixed(1)} Cts</span>
+                      </div>
+                      <div className="bg-white/80 p-2 rounded-[6px] border border-[#B8DCC1]/60">
+                        <span className="text-[#52665A] block text-[10px]">SQ METRES:</span>
+                        <span className="font-bold text-[#183B2A]">{boundary.measuredAreaSqMeters?.toLocaleString('en-IN')} m²</span>
+                      </div>
+                      <div className="bg-white/80 p-2 rounded-[6px] border border-[#B8DCC1]/60">
+                        <span className="text-[#52665A] block text-[10px]">PERIMETER:</span>
+                        <span className="font-bold text-[#183B2A]">{boundary.measuredPerimeterMeters} m</span>
+                      </div>
+                    </div>
+
+                    <div className="text-[10px] text-[#52665A] pt-1.5 border-t border-[#DCE4D9] flex items-center justify-between">
+                      <span>Farmer-Mapped Boundary (Unverified by Tamil Nadu Land Survey / e-Adangal)</span>
+                      {boundary.centroid && (
+                        <span>Centroid: {boundary.centroid[0].toFixed(4)}, {boundary.centroid[1].toFixed(4)}</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[#52665A] font-sans leading-relaxed">
+                    {isTa
+                      ? 'செயற்கைக்கோள் வரைபடத்தில் உங்கள் நிலத்தின் மூலைகளைக் குறிக்கவும். பரப்பளவு தமிழ்நாட்டு சென்ட், ஏக்கர் மற்றும் சதுர மீட்டரில் தானாகவே கணக்கிடப்பட்டு படிவத்தில் நிரப்பப்படும்.'
+                      : 'Draw parcel boundary corners directly on live satellite imagery. Geodesic area will be calculated automatically in Tamil Nadu Cents, Acres, and m² and applied to this record.'}
+                  </p>
+                )}
+
+                {/* Embedded GIS Interactive Workspace inside Modal */}
+                {isMappingDrawerOpen && (
+                  <div className="pt-3 border-t border-[#D9DED3]">
+                    <FarmGISMap
+                      initialDistrict={district}
+                      selectedFarm={editingFarm ? { ...editingFarm, boundary } : boundary ? ({ farmName: farmName || 'New Plot', district, cropType, boundary } as any) : undefined}
+                      className="min-h-[440px]"
+                      onSaveBoundary={(newBoundary, measuredAcres, measuredCents) => {
+                        setBoundary(newBoundary);
+                        if (areaUnit === 'Cents') {
+                          setLandSizeArea(String(measuredCents.toFixed(1)));
+                        } else if (areaUnit === 'Hectares') {
+                          setLandSizeArea(String(newBoundary.measuredHectares?.toFixed(3) || (measuredAcres * 0.4047).toFixed(2)));
+                        } else {
+                          setLandSizeArea(String(measuredAcres.toFixed(2)));
+                        }
+                        setIsMappingDrawerOpen(false);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Stage & Planting Date */}

@@ -143,6 +143,7 @@ export async function createFarm(
     irrigationMethod: farmData.irrigationMethod || 'Canal / Cauvery Basin',
     isPrimary: shouldBePrimary,
     notes: farmData.notes?.trim() || '',
+    boundary: farmData.boundary,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -163,11 +164,14 @@ export async function createFarm(
   try {
     const farmsColRef = collection(db, 'profiles', uid, 'farms');
 
-    const payload: FarmRecord = {
+    const payload: any = {
       ...fallbackRecord,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+    if (!payload.boundary) {
+      delete payload.boundary;
+    }
 
     const docRef = await addDoc(farmsColRef, payload);
 
@@ -208,6 +212,11 @@ export async function updateFarm(
     };
     delete updatePayload.id;
     delete updatePayload.createdAt;
+    Object.keys(updatePayload).forEach((k) => {
+      if (updatePayload[k] === undefined) {
+        delete updatePayload[k];
+      }
+    });
 
     await updateDoc(farmRef, updatePayload);
 

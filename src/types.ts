@@ -118,6 +118,19 @@ export interface FarmerProfile {
   updatedAt?: any;
 }
 
+export interface FarmBoundary {
+  type: 'Polygon';
+  coordinates: [number, number][][]; // GeoJSON: Array of rings with [longitude, latitude]
+  centroid?: [number, number]; // [latitude, longitude]
+  measuredAreaSqMeters?: number;
+  measuredPerimeterMeters?: number;
+  measuredAcres?: number;
+  measuredCents?: number;
+  measuredHectares?: number;
+  surveyStatus?: 'farmer_mapped' | 'verified_cadastral';
+  mappedAt?: string;
+}
+
 export interface FarmRecord {
   id?: string;
   farmName: string;
@@ -133,6 +146,7 @@ export interface FarmRecord {
   irrigationMethod?: string;
   isPrimary?: boolean;
   notes?: string;
+  boundary?: FarmBoundary;
   createdAt?: any;
   updatedAt?: any;
 }
