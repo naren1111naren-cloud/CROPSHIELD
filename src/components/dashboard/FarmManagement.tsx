@@ -379,6 +379,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
               initialDistrict={selectedMapFarm?.district || profile?.district}
               initialState={profile?.state || 'Tamil Nadu'}
               onSelectFarm={(farm) => setSelectedMapFarm(farm)}
+              onScanFarm={onScanFarm}
               onSaveBoundary={async (savedBoundary, measuredAcres, measuredCents) => {
                 if (selectedMapFarm && selectedMapFarm.id && user) {
                   try {
@@ -986,6 +987,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                       farmerProfile={profile}
                       selectedFarm={editingFarm ? { ...editingFarm, boundary } : boundary ? ({ farmName: farmName || 'New Plot', district, cropType, boundary } as any) : undefined}
                       className="min-h-[440px]"
+                      onScanFarm={onScanFarm}
                       onSaveBoundary={(newBoundary, measuredAcres, measuredCents) => {
                         setBoundary(newBoundary);
                         if (areaUnit === 'Cents') {

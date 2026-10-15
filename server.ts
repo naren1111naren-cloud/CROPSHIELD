@@ -8,6 +8,7 @@ import { parseOpenMeteoResponse, RealWeatherData } from './src/services/weatherS
 import { specialistEngine } from './server/specialistService';
 import { evaluateFieldDifferential } from './src/services/differentialEngine';
 import { fetchMandiPrices } from './server/marketPriceService';
+import { getSatelliteCropHealth } from './server/satelliteVegetationService';
 
 dotenv.config();
 
@@ -677,6 +678,55 @@ app.get('/api/market-prices', async (req: Request, res: Response) => {
       message: err.message || 'An unexpected error occurred while processing market prices.',
     });
   }
+});
+
+// API Route: Satellite Crop Health & Vegetation Intelligence (Sentinel-2 L2A)
+app.post('/api/satellite/crop-health', async (req: Request, res: Response) => {
+  try {
+    const { farmId, farmName, cropType, cropStage, plantingDate, boundary } = req.body;
+
+    if (!farmId || !farmName) {
+      return res.status(400).json({
+        success: false,
+        error: 'INVALID_INPUT',
+        message: 'farmId and farmName are required to query satellite crop health.',
+      });
+    }
+
+    const report = await getSatelliteCropHealth({
+      farmId,
+      farmName,
+      cropType: cropType || 'Rice (Paddy)',
+      cropStage,
+      plantingDate,
+      boundary,
+    });
+
+    return res.json({ success: true, report });
+  } catch (err: any) {
+    console.error('Error in /api/satellite/crop-health:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'SATELLITE_SERVICE_ERROR',
+      message: err.message || 'Failed to process satellite vegetation query.',
+    });
+  }
+});
+
+// API Route: Satellite Provider Configuration & Copernicus Status
+app.get('/api/satellite/provider-status', (_req: Request, res: Response) => {
+  const hasCopernicus = Boolean(process.env.COPERNICUS_CLIENT_ID && process.env.COPERNICUS_CLIENT_SECRET);
+  const hasSentinelHub = Boolean(process.env.SENTINEL_HUB_CLIENT_ID && process.env.SENTINEL_HUB_CLIENT_SECRET);
+
+  return res.json({
+    success: true,
+    provider: 'ESA Copernicus Data Space Ecosystem (Sentinel-2 L2A)',
+    isConfigured: hasCopernicus || hasSentinelHub,
+    revisitFrequency: '5 Days (Constellation)',
+    spatialResolution: '10m (Bands B04, B08)',
+    atmosphericCorrection: 'Level-2A Bottom-Of-Atmosphere (BOA) Surface Reflectance',
+    indices: ['NDVI: (B08 - B04) / (B08 + B04)', 'SCL: Scene Classification Cloud & Shadow Masking'],
+  });
 });
 
 // Mount Vite or serve static assets

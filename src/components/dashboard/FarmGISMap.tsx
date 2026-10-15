@@ -8,6 +8,8 @@ import {
   BoundarySurveyStatus,
   CadastralSourceMetadata,
   FarmerProfile,
+  SatelliteVegetationReport,
+  SatelliteObservation,
 } from '../../types';
 import {
   SOUTH_INDIA_STATES,
@@ -24,6 +26,11 @@ import {
   parseImportedBoundaryFile,
   CadastralLookupResponse,
 } from '../../services/cadastralService';
+import {
+  fetchSatelliteCropHealth,
+  categorizeNdvi,
+  getCropStageNdviExpectation,
+} from '../../services/satelliteVegetationService';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   Compass,
@@ -47,12 +54,21 @@ import {
   RotateCcw,
   Navigation,
   Globe2,
+  Sprout,
+  Calendar,
+  TrendingUp,
+  Activity,
+  ExternalLink,
+  CloudRain,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
   farms?: FarmRecord[];
   selectedFarm?: FarmRecord | null;
   onSelectFarm?: (farm: FarmRecord) => void;
+  onScanFarm?: (farm: FarmRecord) => void;
   onSaveBoundary?: (
     boundary: FarmBoundary,
     measuredAcres: number,
@@ -79,6 +95,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   farms = [],
   selectedFarm,
   onSelectFarm,
+  onScanFarm,
   onSaveBoundary,
   farmerProfile,
   initialDistrict,
@@ -111,6 +128,14 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       ''
   );
 
+  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend
+  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history'>('satellite');
+  const [vegetationReport, setVegetationReport] = useState<SatelliteVegetationReport | null>(null);
+  const [vegetationLoading, setVegetationLoading] = useState<boolean>(false);
+  const [selectedObsDate, setSelectedObsDate] = useState<string | null>(null);
+  const [isCopernicusSetupModalOpen, setIsCopernicusSetupModalOpen] = useState<boolean>(false);
+  const [isVegetationDetailsOpen, setIsVegetationDetailsOpen] = useState<boolean>(true);
+
   // Drawing & Geometry State
   const [polygonCoords, setPolygonCoords] = useState<[number, number][]>([]);
   const [initialCoords, setInitialCoords] = useState<[number, number][]>([]);
@@ -124,6 +149,11 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const [tileError, setTileError] = useState<string | null>(null);
   const [activeProviderName, setActiveProviderName] = useState<string>('Esri World Imagery + Places');
   const [isProviderModalOpen, setIsProviderModalOpen] = useState<boolean>(false);
+
+  // Agronomic expectation based on crop stage
+  const stageExpectation = selectedFarm
+    ? getCropStageNdviExpectation(selectedFarm.cropType, selectedFarm.cropStage)
+    : null;
 
   // Geolocation & Permissions State
   const [gpsLoading, setGpsLoading] = useState<boolean>(false);
@@ -186,6 +216,25 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       });
     }
   }, [selectedFarm, farmerProfile, farms]);
+
+  // Fetch Sentinel-2 Vegetation Health when selectedFarm changes
+  useEffect(() => {
+    if (selectedFarm && selectedFarm.boundary?.coordinates && selectedFarm.boundary.coordinates.length > 0) {
+      setVegetationLoading(true);
+      fetchSatelliteCropHealth(selectedFarm)
+        .then((report) => {
+          setVegetationReport(report);
+          if (report.latestObservation) {
+            setSelectedObsDate(report.latestObservation.date);
+          }
+        })
+        .catch((err) => console.warn('[CropShield] Failed to fetch satellite vegetation report:', err))
+        .finally(() => setVegetationLoading(false));
+    } else {
+      setVegetationReport(null);
+      setSelectedObsDate(null);
+    }
+  }, [selectedFarm]);
 
   // Sync available taluks & villages for selected lookup district
   useEffect(() => {
@@ -592,8 +641,23 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     let polyStrokeColor = '#00E5FF';
     let polyFillColor = '#00E5FF';
     let vertexBgColor = 'bg-[#00E5FF] text-[#0B241B]';
+    let fillOpacity = 0.22;
 
-    if (boundaryStatus === 'official_source') {
+    if (activeMapMode === 'ndvi') {
+      const activeObs = vegetationReport?.latestObservation;
+      if (activeObs) {
+        const cat = categorizeNdvi(activeObs.meanNdvi);
+        polyStrokeColor = cat.colorHex;
+        polyFillColor = cat.colorHex;
+        fillOpacity = 0.40;
+        vertexBgColor = 'bg-[#22C55E] text-[#0B241B]';
+      } else {
+        polyStrokeColor = '#22C55E';
+        polyFillColor = '#22C55E';
+        fillOpacity = 0.25;
+        vertexBgColor = 'bg-[#22C55E] text-[#0B241B]';
+      }
+    } else if (boundaryStatus === 'official_source') {
       polyStrokeColor = '#F59E0B';
       polyFillColor = '#F59E0B';
       vertexBgColor = 'bg-[#F59E0B] text-[#183B2A]';
@@ -613,7 +677,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       weight: 3,
       opacity: 0.95,
       fillColor: polyFillColor,
-      fillOpacity: 0.22,
+      fillOpacity,
       dashArray: isDrawing ? '6 6' : undefined,
     });
 
@@ -1143,6 +1207,90 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       </div>
 
       {/* ========================================================
+          GIS INTELLIGENCE LAYER SELECTOR (Phase 2)
+          ======================================================== */}
+      <div className="bg-[#081813] border-b border-white/10 px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[#70B77E] font-bold uppercase text-[11px] flex items-center gap-1 mr-1">
+            <Activity className="w-3.5 h-3.5" />
+            <span>LAYER:</span>
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('satellite')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'satellite'
+                ? 'bg-[#183B2A] border border-[#70B77E]/50 text-white font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <Globe2 className="w-3.5 h-3.5 text-[#00E5FF]" />
+            <span>{isTa ? 'செயற்கைக்கோள் தளம்' : 'Satellite Base'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('ndvi')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'ndvi'
+                ? 'bg-[#217451] border border-[#70B77E] text-white font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <Sprout className="w-3.5 h-3.5 text-[#70B77E]" />
+            <span>{isTa ? 'பயிர் ஆரோக்கியம் (NDVI)' : 'Vegetation Health (NDVI)'}</span>
+            {vegetationLoading && <span className="w-2 h-2 rounded-full bg-[#00E5FF] animate-ping" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('cadastre')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'cadastre'
+                ? 'bg-[#F59E0B]/25 border border-[#F59E0B] text-[#F59E0B] font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <Landmark className="w-3.5 h-3.5 text-[#F59E0B]" />
+            <span>{isTa ? 'நில எல்லைகள்' : 'Field Cadastre'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('history')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'history'
+                ? 'bg-[#A855F7]/25 border border-[#A855F7] text-[#A855F7] font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5 text-[#A855F7]" />
+            <span>{isTa ? 'காலவரிசை போக்கு' : 'Historical Trend'}</span>
+          </button>
+        </div>
+
+        {/* Observation Status / Quick Tag */}
+        <div className="flex items-center gap-2">
+          {vegetationReport?.latestObservation ? (
+            <span className="text-[11px] text-[#70B77E] bg-[#217451]/20 border border-[#70B77E]/30 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#70B77E]" />
+              <span>Sentinel-2 L2A · {vegetationReport.latestObservation.date}</span>
+            </span>
+          ) : vegetationReport?.status === 'credentials_required' ? (
+            <button
+              type="button"
+              onClick={() => setIsCopernicusSetupModalOpen(true)}
+              className="text-[11px] text-[#F59E0B] bg-[#F59E0B]/15 border border-[#F59E0B]/30 px-2.5 py-0.5 rounded-[4px] hover:bg-[#F59E0B]/25 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <Info className="w-3 h-3 text-[#F59E0B]" />
+              <span>Copernicus L2A Setup</span>
+            </button>
+          ) : null}
+        </div>
+      </div>
+
+      {/* ========================================================
           LOCATION HIERARCHY BREADCRUMB & RESOLUTION BANNER
           ======================================================== */}
       <div className="bg-[#081813] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
@@ -1398,6 +1546,201 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                   <span>{isTa ? 'ரத்து' : 'Cancel'}</span>
                 </button>
               </>
+            )}
+          </div>
+        )}
+
+        {/* Floating NDVI Color Ramp Legend */}
+        {(activeMapMode === 'ndvi' || activeMapMode === 'history') && (
+          <div className="absolute bottom-20 left-4 z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#217451]/50 p-2.5 sm:p-3 rounded-[10px] text-xs font-mono shadow-xl max-w-[280px]">
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <span className="font-bold text-[#70B77E] uppercase text-[10px] flex items-center gap-1">
+                <Sprout className="w-3 h-3" />
+                <span>NDVI VEGETATION INDEX</span>
+              </span>
+              <span className="text-[10px] text-white/60">Sentinel-2 (10m)</span>
+            </div>
+            <div className="h-3 w-full rounded-[4px] bg-gradient-to-r from-[#3B82F6] via-[#EAB308] via-[#84CC16] via-[#22C55E] to-[#15803D] border border-white/20 mb-1" />
+            <div className="flex justify-between text-[9px] text-white/70 font-mono">
+              <span>&lt;0.1 Bare</span>
+              <span>0.25</span>
+              <span>0.45</span>
+              <span>0.65</span>
+              <span>&gt;0.8 Dense</span>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Sentinel-2 Crop Health & Observation Details Panel */}
+        {(activeMapMode === 'ndvi' || activeMapMode === 'history' || vegetationReport) && (
+          <div className="absolute top-4 right-4 z-20 max-w-[300px] sm:max-w-xs w-full bg-[#0B241B]/95 backdrop-blur-md border border-[#217451]/60 rounded-[12px] p-3 text-xs font-mono shadow-2xl text-white space-y-2.5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-1.5">
+                <Sprout className="w-4 h-4 text-[#70B77E]" />
+                <span className="font-bold text-xs sm:text-sm text-white font-['Plus_Jakarta_Sans']">
+                  {isTa ? 'செயற்கைக்கோள் பயிர் நலம்' : 'Sentinel-2 Crop Health'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVegetationDetailsOpen(!isVegetationDetailsOpen)}
+                className="text-white/60 hover:text-white p-0.5 cursor-pointer"
+                title={isVegetationDetailsOpen ? 'Collapse panel' : 'Expand panel'}
+              >
+                {isVegetationDetailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {isVegetationDetailsOpen && (
+              <>
+                {/* Selected Farm & Crop Info */}
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-white/50 uppercase text-[9px]">TARGET FIELD:</span>
+                    <span className="font-bold text-[#70B77E] truncate max-w-[140px]">{selectedFarm?.farmName || 'Select Farm'}</span>
+                  </div>
+                  <div className="text-[10px] text-white/80">
+                    {selectedFarm?.cropType || 'Crop'} {selectedFarm?.cropStage ? `· ${selectedFarm.cropStage}` : ''}
+                  </div>
+                </div>
+
+                {/* Observation Data Display */}
+                {vegetationLoading ? (
+                  <div className="p-2.5 bg-black/40 rounded-[6px] flex items-center justify-center gap-2 text-white/80 text-[11px]">
+                    <Activity className="w-3.5 h-3.5 text-[#70B77E] animate-spin" />
+                    <span>Querying Sentinel-2 passes...</span>
+                  </div>
+                ) : vegetationReport?.status === 'available' && vegetationReport.latestObservation ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 gap-1.5 text-center">
+                      <div className="bg-[#081813] border border-white/10 p-1.5 rounded-[6px]">
+                        <div className="text-[9px] text-white/50 uppercase">MEAN NDVI</div>
+                        <div className="text-base font-bold text-[#70B77E]">
+                          {vegetationReport.latestObservation.meanNdvi.toFixed(2)}
+                        </div>
+                      </div>
+                      <div className="bg-[#081813] border border-white/10 p-1.5 rounded-[6px]">
+                        <div className="text-[9px] text-white/50 uppercase">CLOUD-FREE</div>
+                        <div className="text-base font-bold text-[#00E5FF]">
+                          {vegetationReport.latestObservation.validPixelPercent}%
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-2 bg-black/40 border border-[#217451]/40 rounded-[6px] space-y-1 text-[10px]">
+                      <div className="flex items-center justify-between text-white/60">
+                        <span className="text-[#70B77E] font-bold">Vigor Status:</span>
+                        <span>{vegetationReport.latestObservation.date}</span>
+                      </div>
+                      <p className="text-white/90 font-sans text-[11px]">
+                        {isTa ? vegetationReport.latestObservation.interpretationTamil : vegetationReport.latestObservation.interpretation}
+                      </p>
+                      {stageExpectation && (
+                        <p className="text-white/60 font-sans text-[10px] pt-1 border-t border-white/10">
+                          {isTa ? stageExpectation.stageGuidanceTamil : stageExpectation.stageGuidance}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Crop Diagnosis Link */}
+                    {onScanFarm && selectedFarm && (
+                      <button
+                        type="button"
+                        onClick={() => onScanFarm(selectedFarm)}
+                        className="w-full py-1.5 bg-[#217451] hover:bg-[#1b5e42] text-white font-bold rounded-[6px] text-[11px] font-mono flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                      >
+                        <Activity className="w-3 h-3 text-[#70B77E]" />
+                        <span>{isTa ? 'நோய் கண்டறிதல் தொடங்குக' : 'Inspect with Crop Diagnosis'}</span>
+                      </button>
+                    )}
+                  </div>
+                ) : vegetationReport?.status === 'credentials_required' ? (
+                  <div className="p-2.5 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-[6px] space-y-1.5 text-[10px]">
+                    <div className="flex items-center gap-1.5 text-[#F59E0B] font-bold">
+                      <ShieldAlert className="w-3.5 h-3.5 text-[#F59E0B] shrink-0" />
+                      <span>Copernicus Sentinel-2 API Ready</span>
+                    </div>
+                    <p className="text-white/80 font-sans text-[10px] leading-tight">
+                      {isTa
+                        ? 'நேரடி 10m மல்டி-ஸ்பெக்ட்ரல் NDVI குறியீட்டிற்கு Copernicus Data Space Ecosystem API சான்றுகள் தேவை. போலி எண்கள் காட்டப்படுவதில்லை.'
+                        : '10m Surface Reflectance NDVI interface is ready. Configure COPERNICUS_CLIENT_ID & SECRET to enable live observation feeds without synthetic data.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsCopernicusSetupModalOpen(true)}
+                      className="w-full py-1 bg-[#F59E0B] hover:bg-[#d98205] text-[#0B241B] font-bold rounded-[4px] text-center cursor-pointer transition-colors text-[10px]"
+                    >
+                      Setup Copernicus Credentials
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-2 bg-black/40 rounded-[6px] text-[10px] text-white/70 space-y-1">
+                    <span className="text-[#00E5FF] font-bold block">SAVED BOUNDARY REQUIRED:</span>
+                    <p className="font-sans text-[10px]">
+                      {isTa
+                        ? 'பயிர் நலம் பகுப்பாய்வு செய்ய முதலில் வரைபடத்தில் பண்ணை எல்லையை சேமிக்கவும்.'
+                        : 'Please select a registered farm or draw a field boundary to calculate Sentinel-2 NDVI.'}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-[9px] font-sans text-white/50 leading-tight pt-1 border-t border-white/10">
+                  Sentinel-2 (10m) · B08 (NIR) & B04 (Red) · Surface Reflectance · Does not replace physical field inspection.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Floating Historical Observation Timeline */}
+        {activeMapMode === 'history' && (
+          <div className="absolute bottom-16 right-4 left-4 sm:left-auto sm:max-w-xs z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#A855F7]/50 rounded-[12px] p-2.5 text-xs font-mono shadow-2xl text-white space-y-2">
+            <div className="flex items-center justify-between border-b border-white/10 pb-1">
+              <div className="flex items-center gap-1.5 text-[#A855F7] font-bold text-[11px]">
+                <Calendar className="w-3.5 h-3.5" />
+                <span>OBSERVATION TIMELINE</span>
+              </div>
+              <span className="text-[9px] text-white/50">5-Day Revisit</span>
+            </div>
+
+            {vegetationReport?.historicalObservations && vegetationReport.historicalObservations.length > 0 ? (
+              <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                {vegetationReport.historicalObservations.map((obs) => {
+                  const isSelected = selectedObsDate === obs.date;
+                  return (
+                    <div
+                      key={obs.id}
+                      onClick={() => setSelectedObsDate(obs.date)}
+                      className={`p-1.5 rounded-[4px] border transition-colors cursor-pointer flex items-center justify-between text-[10px] ${
+                        isSelected
+                          ? 'bg-[#A855F7]/25 border-[#A855F7] text-white font-bold'
+                          : 'bg-black/30 border-white/10 hover:border-white/30 text-white/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {obs.isCloudCovered ? (
+                          <CloudRain className="w-3 h-3 text-amber-400" />
+                        ) : (
+                          <Sprout className="w-3 h-3 text-[#70B77E]" />
+                        )}
+                        <span>{obs.date}</span>
+                        {obs.isCloudCovered && <span className="text-[9px] text-amber-300">(Cloud)</span>}
+                      </div>
+                      <div>
+                        {!obs.isCloudCovered ? (
+                          <span className="font-bold text-[#70B77E]">{obs.meanNdvi.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-[9px] text-white/50">No Data</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-white/70 font-sans text-[10px] leading-tight py-1">
+                Sentinel-2 5-day cycle observations will populate once Copernicus API credentials are authenticated. Missing or cloudy dates are not artificially interpolated.
+              </p>
             )}
           </div>
         )}
@@ -1840,6 +2183,74 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               <button
                 type="button"
                 onClick={() => setIsProviderModalOpen(false)}
+                className="px-4 py-2 bg-[#217451] hover:bg-[#1b5e42] text-white font-bold rounded-[8px] text-xs font-mono cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Copernicus Sentinel-2 Setup & Specification Modal */}
+      {isCopernicusSetupModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0B241B] border border-[#70B77E]/40 rounded-[16px] max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Globe2 className="w-5 h-5 text-[#00E5FF]" />
+                <h3 className="font-bold text-sm text-white font-mono uppercase tracking-wide">
+                  Copernicus Sentinel-2 Setup
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCopernicusSetupModalOpen(false)}
+                className="p-1 rounded-[6px] hover:bg-white/10 text-white/70 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 font-mono text-xs">
+              <div className="p-3 bg-black/40 border border-white/10 rounded-[8px] space-y-1.5">
+                <span className="text-[#00E5FF] font-bold block uppercase text-[11px]">SATELLITE SENSOR SPECIFICATIONS</span>
+                <div className="space-y-1 text-white/80 font-sans text-xs">
+                  <div>• <strong>Constellation:</strong> Sentinel-2A & Sentinel-2B (ESA Copernicus)</div>
+                  <div>• <strong>Spatial Resolution:</strong> 10m Ground Sampling Distance (Bands 4 & 8)</div>
+                  <div>• <strong>Spectral Formula:</strong> NDVI = (B08 NIR - B04 Red) / (B08 + B04)</div>
+                  <div>• <strong>Atmospheric Correction:</strong> Level-2A BOA (Bottom-of-Atmosphere Reflectance)</div>
+                  <div>• <strong>Cloud & Shadow Mask:</strong> Scene Classification Layer (SCL) 20m</div>
+                  <div>• <strong>South India Revisit:</strong> ~5 Days Revisit Cycle</div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-[8px] space-y-2">
+                <div className="flex items-center gap-1.5 text-[#F59E0B] font-bold text-xs uppercase">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>CropShield Zero Synthetic Data Policy</span>
+                </div>
+                <p className="text-white/80 font-sans text-xs leading-relaxed">
+                  CropShield AI never fabricates fake satellite heatmaps, synthetic color gradients, or random NDVI numbers. Only authentic Sentinel-2 Level-2A surface reflectance data is displayed once authenticated.
+                </p>
+              </div>
+
+              <div className="space-y-2 text-white/80 font-sans text-xs leading-relaxed">
+                <div className="font-bold text-white uppercase font-mono text-[11px]">AUTHENTICATION CREDENTIALS</div>
+                <p className="text-white/70 text-xs">
+                  Register free at the <a href="https://dataspace.copernicus.eu/" target="_blank" rel="noreferrer" className="text-[#70B77E] underline inline-flex items-center gap-0.5">Copernicus Data Space Ecosystem (CDSE) <ExternalLink className="w-2.5 h-2.5 inline" /></a> and set the credentials in your backend <code className="text-[#70B77E]">.env</code>:
+                </p>
+                <div className="p-2.5 bg-black/60 rounded-[6px] space-y-1 font-mono text-[11px] text-[#00E5FF] border border-white/10 select-all">
+                  <div>COPERNICUS_CLIENT_ID=your_cdse_client_id</div>
+                  <div>COPERNICUS_CLIENT_SECRET=your_cdse_client_secret</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsCopernicusSetupModalOpen(false)}
                 className="px-4 py-2 bg-[#217451] hover:bg-[#1b5e42] text-white font-bold rounded-[8px] text-xs font-mono cursor-pointer"
               >
                 Close

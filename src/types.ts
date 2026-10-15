@@ -167,8 +167,60 @@ export interface FarmRecord {
   isPrimary?: boolean;
   notes?: string;
   boundary?: FarmBoundary;
+  satelliteReport?: SatelliteVegetationReport;
   createdAt?: any;
   updatedAt?: any;
+}
+
+export interface SatelliteObservation {
+  id: string;
+  date: string; // ISO date e.g. '2026-10-12'
+  satellite: 'Sentinel-2A' | 'Sentinel-2B' | 'Copernicus Sentinel-2';
+  instrument: string; // e.g. 'MSI (Multispectral Instrument)'
+  productLevel: 'Level-2A' | 'BOA Surface Reflectance';
+  resolutionMeters: number; // 10
+  cloudCoverPercent: number;
+  validPixelPercent: number; // percentage of field free from clouds/shadows
+  meanNdvi: number;
+  minNdvi: number;
+  maxNdvi: number;
+  ndviCategory: 'water_bare' | 'sparse_early' | 'moderate' | 'good_vigor' | 'dense_canopy';
+  interpretation: string;
+  interpretationTamil: string;
+  alertFlag?: 'normal' | 'water_stress' | 'canopy_loss' | 'rapid_growth';
+  suggestFieldInspection: boolean;
+  imageryOverlayUrl?: string;
+  bounds: [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
+  isCloudCovered: boolean;
+  cloudShadowMaskApplied: boolean;
+}
+
+export interface SatelliteVegetationReport {
+  farmId: string;
+  farmName: string;
+  cropType: string;
+  cropStage?: string;
+  sowingDate?: string;
+  geometryAreaAcres: number;
+  status: 'available' | 'credentials_required' | 'cloud_covered' | 'no_observations' | 'geometry_required';
+  provider: string; // 'ESA Copernicus Data Space Ecosystem' or 'Sentinel Hub'
+  providerAttribution: string;
+  revisitFrequencyDays: number; // 5
+  spectralBandsUsed: {
+    nir: string; // 'B08 (842 nm, 10m)'
+    red: string; // 'B04 (665 nm, 10m)'
+    cloudMask: string; // 'SCL (Scene Classification Layer, 20m)'
+  };
+  latestObservation?: SatelliteObservation;
+  historicalObservations: SatelliteObservation[];
+  disclaimer: string;
+  disclaimerTamil: string;
+  setupInstructions?: {
+    requiredEnvVars: string[];
+    documentationUrl: string;
+    instructions: string;
+  };
+  cachedAt?: string;
 }
 
 export interface ScanData {
