@@ -1,7 +1,18 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { CropPhotoSpecimen } from '../visuals/CropPhotoSpecimen';
-import { ArrowRight, Compass, Sparkles, CheckCircle2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { pageVariants, buttonHoverTap } from '../../lib/motion';
+import {
+  ArrowRight,
+  Camera,
+  Compass,
+  CheckCircle2,
+  ShieldCheck,
+  TrendingUp,
+  BookOpen,
+  Sprout,
+  Sparkles
+} from 'lucide-react';
 
 interface HeroSectionProps {
   onScanCrop: () => void;
@@ -10,88 +21,169 @@ interface HeroSectionProps {
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore }) => {
   const { language, t } = useLanguage();
+  const isTa = language === 'ta';
 
   return (
-    <section className="relative pt-10 pb-16 lg:pt-16 lg:pb-24 border-b border-[#D9DED3] bg-[#F7F6EF] overflow-hidden">
+    <motion.section
+      variants={pageVariants}
+      initial="hidden"
+      animate="visible"
+      className="relative pt-10 pb-16 lg:pt-16 lg:pb-24 border-b border-[#DCE4D9] bg-[#F5F3E9] overflow-hidden"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-          {/* Column 1: Asymmetric Text Side (7 Cols on desktop) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
+          {/* Column 1: Editorial Content Side (7 Cols on desktop) */}
           <div className="lg:col-span-7 flex flex-col justify-between">
-            {/* Small Eyebrow (Letter spaced, unboxed text) */}
-            <div className="flex items-center gap-2 text-xs font-mono tracking-wider text-[#426B43] uppercase mb-5">
-              <Compass className="w-3.5 h-3.5 text-[#183B2A]" />
-              <span>{t('regionTag')}</span>
-              <span aria-hidden="true" className="text-[#D9DED3]">/</span>
-              <span className="text-[#4A584D]">SAMBA & THALADI 2026</span>
+            {/* System Eyebrow Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#EAEFE5] border border-[#B8DCC1]/60 rounded-full text-xs font-semibold text-[#1F6B4A] tracking-wide mb-6 w-fit">
+              <Compass className="w-3.5 h-3.5 text-[#1F6B4A]" />
+              <span className="uppercase">{t('regionTag')}</span>
             </div>
 
-            {/* Main Editorial Headline with intentional line breaks and selective italic */}
-            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl text-[#183B2A] font-normal tracking-tight leading-[1.08] mb-6">
-              <span className="block">{t('heroHeadingPart1')}</span>
-              <span className="block font-medium">{t('heroHeadingPart2')}</span>
-              <span className="block italic font-light text-[#426B43]">{t('heroHeadingPart3')}</span>
-              <span className="block font-normal">{t('heroHeadingPart4')}</span>
+            {/* Main Hero Headline: 56–68px desktop, 38–44px mobile; weight 700 */}
+            <h1 className="font-['Manrope'] text-[38px] sm:text-[46px] lg:text-[58px] leading-[1.08] font-bold text-[#0B211A] tracking-[-0.03em] mb-6">
+              <span className="block text-[#0B211A]">
+                {t('heroHeadingPart1')}
+              </span>
+              <span className="block text-[#1F6B4A]">
+                {t('heroHeadingPart2')}
+              </span>
             </h1>
 
-            {/* Clear, Farmer-Friendly Supporting Text (17-18px) */}
-            <p className="text-base sm:text-lg text-[#202B22]/90 max-w-xl leading-relaxed mb-8 font-sans">
+            {/* Clear, Farmer-Friendly Supporting Text (16-18px) */}
+            <p className="text-[17px] sm:text-[18px] text-[#52665A] leading-relaxed max-w-xl mb-8 font-normal">
               {t('heroSubtext')}
             </p>
 
-            {/* Primary & Secondary Actions with High Visibility */}
-            <div className="space-y-4 mb-8">
-              <div className="flex flex-wrap items-stretch sm:items-center gap-3">
-                {/* Primary Action Button (Strongest Element, Minimum 48px height) */}
-                <button
+            {/* Primary & Secondary Actions */}
+            <div className="space-y-4 mb-10">
+              <div className="flex flex-wrap items-stretch sm:items-center gap-3.5">
+                {/* Primary Action Button: Emerald #1F6B4A, white text, 10-12px radius, min 48px height */}
+                <motion.button
+                  {...buttonHoverTap}
                   onClick={onScanCrop}
-                  className="px-8 py-4 min-h-[50px] text-base font-semibold tracking-wide text-white bg-[#183B2A] hover:bg-[#122c20] transition-all rounded-xs flex items-center justify-center gap-2.5 cursor-pointer shadow-sm hover:shadow-md focus-visible:ring-2 focus-visible:ring-[#183B2A] active:scale-[0.99]"
+                  className="px-7 py-3.5 min-h-[48px] text-[15px] sm:text-[16px] font-semibold text-white bg-[#1F6B4A] hover:bg-[#165439] transition-colors rounded-[11px] flex items-center justify-center gap-2.5 cursor-pointer shadow-[0_2px_8px_rgba(31,107,74,0.25)] hover:shadow-[0_4px_14px_rgba(31,107,74,0.32)] focus-visible:ring-2 focus-visible:ring-[#1F6B4A]"
                   aria-label={t('heroPrimaryCta')}
                 >
+                  <Camera className="w-5 h-5 text-white/90" />
                   <span>{t('heroPrimaryCta')}</span>
-                  <ArrowRight className="w-5 h-5 text-[#E5EBDD]" />
-                </button>
+                  <ArrowRight className="w-4 h-4 text-white/80" />
+                </motion.button>
 
-                {/* Secondary Action */}
-                <button
+                {/* Secondary Action: Transparent/Ivory, Forest-green text, subtle border */}
+                <motion.button
+                  {...buttonHoverTap}
                   onClick={onExplore}
-                  className="px-6 py-4 min-h-[50px] text-sm font-medium text-[#183B2A] border border-[#D9DED3] bg-white hover:bg-[#E5EBDD] transition-colors rounded-xs cursor-pointer flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#183B2A]"
+                  className="px-6 py-3.5 min-h-[48px] text-[15px] font-medium text-[#102D24] border border-[#DCE4D9] bg-white hover:bg-[#EAEFE5] transition-colors rounded-[11px] cursor-pointer flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#1F6B4A]"
                 >
                   {t('heroSecondaryCta')}
-                </button>
+                </motion.button>
               </div>
 
-              {/* Sub-action trust label */}
-              <div className="text-xs font-mono text-[#4A584D] flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#426B43]" />
+              {/* Sub-action trust note */}
+              <div className="text-[13px] text-[#718176] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#28764A]" />
                 <span>{t('heroPrimaryCtaSub')}</span>
               </div>
             </div>
 
-            {/* Quiet Trust Statement */}
-            <div className="border-t border-[#D9DED3] pt-5 max-w-xl">
-              <p className="text-xs font-mono text-[#4A584D] tracking-wide uppercase mb-2">
-                {t('heroTrustStatement')}
-              </p>
-              {/* Unboxed Metadata (Zero-pills discipline) */}
-              <div className="flex flex-wrap items-center gap-2 text-xs text-[#4A584D]">
-                <span>Cauvery Basin</span>
-                <span aria-hidden="true">·</span>
-                <span>Thanjavur, Tiruvarur & Mayiladuthurai</span>
-                <span aria-hidden="true">·</span>
-                <span>TNAU Rice Doctor Standards</span>
-                <span aria-hidden="true">·</span>
-                <span className="text-[#426B43] font-semibold">Aduthurai Met Grid</span>
+            {/* Restrained Proof Section Showing Real Capabilities */}
+            <div className="border-t border-[#DCE4D9] pt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-[#EAEFE5] rounded-[8px] text-[#1F6B4A] shrink-0 mt-0.5">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-[13px] font-semibold text-[#17271E]">
+                    {isTa ? 'செயற்கை நுண்ணறிவு ஆய்வு' : 'AI Crop Diagnosis'}
+                  </h4>
+                  <p className="text-[12px] text-[#718176] leading-snug">
+                    {isTa ? 'இலை நோய்கள் நேரடி பகுப்பாய்வு' : 'Instant vision analysis on foliar disease'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-[#EAEFE5] rounded-[8px] text-[#1F6B4A] shrink-0 mt-0.5">
+                  <BookOpen className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-[13px] font-semibold text-[#17271E]">
+                    {isTa ? 'பயிர் பராமரிப்பு வழிகாட்டல்' : 'Crop Care Guidance'}
+                  </h4>
+                  <p className="text-[12px] text-[#718176] leading-snug">
+                    {isTa ? 'TNAU பரிந்துரைத்த உயிரியல் தீர்வுகள்' : 'Biological & cultural field protocols'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-[#EAEFE5] rounded-[8px] text-[#1F6B4A] shrink-0 mt-0.5">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-[13px] font-semibold text-[#17271E]">
+                    {isTa ? 'நேரடி சந்தை விலைகள்' : 'Market Insights'}
+                  </h4>
+                  <p className="text-[12px] text-[#718176] leading-snug">
+                    {isTa ? 'தமிழ்நாடு வேளாண் சந்தை நிலவரம்' : 'Real-time Agmarknet mandi data'}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Column 2: Visual Composition (5 Cols on desktop) */}
+          {/* Column 2: Authentic Agricultural Photography Composition (5 Cols on desktop) */}
           <div className="lg:col-span-5">
-            {/* Visual Specimen with Authentic Rice Leaf View + Botanical Diagram Toggle */}
-            <CropPhotoSpecimen onScanClick={onScanCrop} />
+            <div className="relative rounded-[16px] overflow-hidden border border-[#DCE4D9] bg-white shadow-[0_4px_20px_rgba(16,45,36,0.08)] group">
+              {/* Authentic Rice Field Image */}
+              <div className="aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden relative">
+                <img
+                  src="/images/tamil_nadu_rice_field.jpg"
+                  alt={
+                    isTa
+                      ? 'தமிழ்நாடு தஞ்சாவூர் காவேரி பாசனப் படுகையில் உள்ள பசுமையான நெல் வயல் மற்றும் விவசாயிகள்'
+                      : 'Authentic healthy rice paddy fields in Thanjavur, Cauvery Delta, Tamil Nadu under warm natural morning sunlight'
+                  }
+                  className="w-full h-full object-cover object-center transform group-hover:scale-[1.02] transition-transform duration-500 ease-out"
+                  loading="eager"
+                />
+                {/* Subtle dark vignette overlay at bottom to guarantee badge contrast */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B211A]/75 via-[#0B211A]/20 to-transparent pointer-events-none" />
+
+                {/* Top Badge: Verified Field Provenance */}
+                <div className="absolute top-3.5 left-3.5 flex items-center gap-2 bg-[#0B211A]/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/15 text-white text-[12px] font-medium shadow-md">
+                  <span className="w-2 h-2 rounded-full bg-[#70B77E] animate-pulse" />
+                  <span>{isTa ? 'காவேரி பாசனப் படுகை · தஞ்சாவூர்' : 'Cauvery Delta Basin · Thanjavur'}</span>
+                </div>
+
+                {/* Bottom Overlay Information Ribbon */}
+                <div className="absolute bottom-3.5 inset-x-3.5 p-3.5 bg-white/95 backdrop-blur-md rounded-[12px] border border-[#DCE4D9] shadow-lg flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-mono text-[#52665A] uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                      <Sprout className="w-3.5 h-3.5 text-[#1F6B4A]" />
+                      <span>{isTa ? 'பயிர் ஆய்வு மாதிரி' : 'FIELD MONITORING'}</span>
+                      <span>·</span>
+                      <span className="text-[#1F6B4A]">ORYZA SATIVA</span>
+                    </div>
+                    <div className="text-[14px] font-semibold text-[#17271E] mt-0.5">
+                      {isTa ? 'நெல், பருத்தி, தக்காளி, மிளகாய், மக்காச்சோளம்' : 'Paddy, Cotton, Tomato, Chilli, Maize'}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={onScanCrop}
+                    className="px-3.5 py-2 bg-[#1F6B4A] hover:bg-[#165439] text-white text-[12px] font-semibold rounded-[8px] transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>{isTa ? 'ஆய்வு செய்' : 'Diagnose'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };

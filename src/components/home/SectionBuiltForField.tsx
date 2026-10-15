@@ -29,13 +29,13 @@ export const SectionBuiltForField: React.FC = () => {
   ];
 
   return (
-    <section id="about-system" className="py-20 border-b border-[#D9DED3] bg-white">
+    <section id="about-system" className="py-20 border-b border-[#DCE4D9] bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mb-14">
-          <span className="text-xs font-mono tracking-wider text-[#426B43] uppercase block mb-3 font-semibold">
+          <span className="text-xs font-mono tracking-wider text-[#1F6B4A] uppercase block mb-3 font-semibold">
             {t('secF_eyebrow')}
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl text-[#183B2A] tracking-tight mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#102D24] tracking-tight mb-4">
             {t('secF_title')}
           </h2>
         </div>
@@ -44,19 +44,19 @@ export const SectionBuiltForField: React.FC = () => {
           {features.map((f, i) => {
             const Icon = f.icon;
             return (
-              <div key={i} className="p-6 bg-[#FAF9F3] border border-[#D9DED3] flex flex-col justify-between shadow-2xs">
+              <div key={i} className="p-6 bg-[#F5F3E9]/50 border border-[#DCE4D9] rounded-[14px] flex flex-col justify-between shadow-sm hover:border-[#1F6B4A] transition-all">
                 <div>
-                  <div className="w-10 h-10 rounded-xs bg-[#E5EBDD] flex items-center justify-center text-[#183B2A] mb-5">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#EAEFE5] flex items-center justify-center text-[#1F6B4A] mb-5">
                     <Icon className="w-5 h-5" />
                   </div>
-                  <h3 className="font-serif text-lg sm:text-xl font-medium text-[#183B2A] mb-2.5">
+                  <h3 className="text-lg font-bold text-[#102D24] mb-2.5">
                     {f.title}
                   </h3>
-                  <p className="text-sm sm:text-base text-[#202B22]/90 leading-relaxed font-sans">
+                  <p className="text-sm text-[#52665A] leading-relaxed font-sans">
                     {f.desc}
                   </p>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#D9DED3]/60 text-xs font-mono text-[#4A584D]">
+                <div className="mt-6 pt-4 border-t border-[#DCE4D9] text-xs font-mono text-[#718176]">
                   FIELD FEATURE 0{i + 1}
                 </div>
               </div>

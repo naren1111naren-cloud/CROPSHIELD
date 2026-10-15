@@ -68,25 +68,25 @@ export const SectionDiseaseIntelligence: React.FC<{ onLaunchScanner: () => void 
   const current = diseases.find((d) => d.id === selectedDisease)!;
 
   return (
-    <section id="disease-intelligence" className="py-20 border-b border-[#D9DED3] bg-[#F7F6EF]">
+    <section id="disease-intelligence" className="py-20 border-b border-[#DCE4D9] bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
           <div className="max-w-2xl">
-            <span className="text-xs font-mono tracking-wider text-[#426B43] uppercase block mb-3 font-semibold">
+            <span className="text-xs font-mono tracking-wider text-[#1F6B4A] uppercase block mb-3 font-semibold">
               {t('secC_eyebrow')}
             </span>
-            <h2 className="font-serif text-3xl sm:text-4xl text-[#183B2A] tracking-tight mb-3">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#102D24] tracking-tight mb-3">
               {t('secC_title')}
             </h2>
-            <p className="text-base sm:text-lg text-[#4A584D] font-sans leading-relaxed">
+            <p className="text-base sm:text-lg text-[#52665A] font-sans leading-relaxed">
               {t('secC_subtitle')}
             </p>
           </div>
 
           <button
             onClick={onLaunchScanner}
-            className="self-start md:self-auto px-6 py-3.5 min-h-[44px] text-sm font-medium text-white bg-[#183B2A] hover:bg-[#122c20] transition-colors rounded-xs shrink-0 cursor-pointer shadow-xs flex items-center gap-2"
+            className="btn-primary self-start md:self-auto px-6 py-3 min-h-[46px] rounded-[10px] shrink-0 flex items-center gap-2"
           >
             <span>{t('navScanCrop')}</span>
             <ArrowRight className="w-4 h-4" />
@@ -101,19 +101,19 @@ export const SectionDiseaseIntelligence: React.FC<{ onLaunchScanner: () => void 
               <button
                 key={d.id}
                 onClick={() => setSelectedDisease(d.id)}
-                className={`p-4 text-left border transition-all cursor-pointer rounded-xs ${
+                className={`p-4 text-left border transition-all cursor-pointer rounded-[12px] ${
                   isSelected
-                    ? 'bg-white border-[#183B2A] shadow-xs'
-                    : 'bg-[#FAF9F3] border-[#D9DED3] hover:bg-white text-[#4A584D]'
+                    ? 'bg-[#EAEFE5] border-[#1F6B4A] shadow-xs'
+                    : 'bg-[#F5F3E9]/50 border-[#DCE4D9] hover:bg-white text-[#52665A]'
                 }`}
               >
-                <div className="text-[11px] font-mono text-[#426B43] mb-1 font-semibold">
+                <div className="text-[11px] font-mono text-[#1F6B4A] mb-1 font-semibold">
                   DISEASE #{d.id.toUpperCase()}
                 </div>
-                <div className={`font-serif text-base sm:text-lg font-medium ${isSelected ? 'text-[#183B2A]' : 'text-[#202B22]'}`}>
+                <div className={`text-base sm:text-lg font-bold ${isSelected ? 'text-[#102D24]' : 'text-[#17271E]'}`}>
                   {d.name}
                 </div>
-                <div className="text-xs italic text-[#4A584D] mt-0.5 truncate">
+                <div className="text-xs italic text-[#52665A] mt-0.5 truncate">
                   {d.latin}
                 </div>
               </button>
@@ -122,17 +122,17 @@ export const SectionDiseaseIntelligence: React.FC<{ onLaunchScanner: () => void 
         </div>
 
         {/* Active Disease Diagnostic Dossier */}
-        <div className="bg-white border border-[#D9DED3] p-6 lg:p-8 shadow-xs">
-          <div className="border-b border-[#D9DED3] pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-xs">
+        <div className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 lg:p-8 shadow-sm">
+          <div className="border-b border-[#DCE4D9] pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-xs">
             <div className="flex items-center gap-2">
-              <Microscope className="w-4 h-4 text-[#183B2A]" />
-              <span className="font-semibold text-[#183B2A] uppercase">
+              <Microscope className="w-4 h-4 text-[#1F6B4A]" />
+              <span className="font-semibold text-[#102D24] uppercase">
                 {current.name}
               </span>
               <span>·</span>
-              <span className="italic text-[#4A584D]">{current.latin}</span>
+              <span className="italic text-[#52665A]">{current.latin}</span>
             </div>
-            <div className="text-[11px] text-[#B67B2A] uppercase font-semibold">
+            <div className="text-[11px] text-[#D7AD63] uppercase font-semibold">
               FIELD IDENTIFICATION GUIDE
             </div>
           </div>
@@ -141,47 +141,47 @@ export const SectionDiseaseIntelligence: React.FC<{ onLaunchScanner: () => void 
             {/* Left Column: Symptoms & Morphology */}
             <div className="lg:col-span-7 space-y-6">
               <div>
-                <h4 className="text-xs font-mono uppercase text-[#4A584D] tracking-wider mb-3 font-semibold">
+                <h4 className="text-xs font-mono uppercase text-[#52665A] tracking-wider mb-3 font-semibold">
                   What to Look For on the Leaf
                 </h4>
                 <ul className="space-y-3">
                   {current.symptoms.map((symptom, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm sm:text-base text-[#202B22]">
-                      <span className="w-2 h-2 rounded-full bg-[#426B43] mt-2 shrink-0"></span>
+                    <li key={i} className="flex items-start gap-3 text-sm sm:text-base text-[#17271E]">
+                      <span className="w-2 h-2 rounded-full bg-[#1F6B4A] mt-2 shrink-0"></span>
                       <span className="font-sans leading-relaxed">{symptom}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
-              <div className="border-t border-[#D9DED3] pt-5">
-                <h4 className="text-xs font-mono uppercase text-[#4A584D] tracking-wider mb-2 font-semibold">
+              <div className="border-t border-[#DCE4D9] pt-5">
+                <h4 className="text-xs font-mono uppercase text-[#52665A] tracking-wider mb-2 font-semibold">
                   Weather & Soil Triggers
                 </h4>
-                <p className="text-sm sm:text-base text-[#202B22]/90 font-sans leading-relaxed">
+                <p className="text-sm sm:text-base text-[#52665A] font-sans leading-relaxed">
                   {current.primaryTrigger}
                 </p>
               </div>
             </div>
 
             {/* Right Column: University-Approved Management */}
-            <div className="lg:col-span-5 bg-[#FAF9F3] border border-[#E5EBDD] p-5 sm:p-6 flex flex-col justify-between">
+            <div className="lg:col-span-5 bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-5 sm:p-6 flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-2 text-xs font-mono text-[#183B2A] font-semibold uppercase mb-3">
-                  <ShieldCheck className="w-4.5 h-4.5 text-[#426B43]" />
+                <div className="flex items-center gap-2 text-xs font-mono text-[#102D24] font-semibold uppercase mb-3">
+                  <ShieldCheck className="w-4.5 h-4.5 text-[#1F6B4A]" />
                   <span>TNAU Recommended Action</span>
                 </div>
-                <p className="text-sm sm:text-base text-[#202B22] leading-relaxed font-sans mb-5">
+                <p className="text-sm sm:text-base text-[#17271E] leading-relaxed font-sans mb-5">
                   {current.tnauControl}
                 </p>
 
-                <div className="p-3 bg-white border border-[#D9DED3] text-xs font-mono text-[#4A584D] space-y-1.5">
+                <div className="p-3 bg-white border border-[#DCE4D9] rounded-[8px] text-xs font-mono text-[#52665A] space-y-1.5">
                   <div>TREATMENT THRESHOLD: More than 5% leaf area affected</div>
                   <div>SURVEILLANCE: Check field every 2 days during dew periods</div>
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-[#D9DED3] text-[11px] font-mono text-[#4A584D]">
+              <div className="mt-6 pt-4 border-t border-[#DCE4D9] text-[11px] font-mono text-[#718176]">
                 SOURCE: Tamil Nadu Agricultural University Crop Doctor Guidelines
               </div>
             </div>

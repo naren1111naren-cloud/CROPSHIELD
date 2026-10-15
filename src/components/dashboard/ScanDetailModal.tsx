@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { ScanData } from '../../types';
+import { motion } from 'motion/react';
+import { backdropVariants, modalVariants } from '../../lib/motion';
 import {
   X,
   Calendar,
@@ -36,6 +38,18 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
   const isTa = language === 'ta';
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Keyboard accessibility: ESC to close
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen || !scan) return null;
 
@@ -78,37 +92,50 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
 
   const severityBadgeClass =
     scan.severity === 'high'
-      ? 'bg-[#A94338]/10 text-[#A94338] border-[#A94338]/30'
+      ? 'badge-alert'
       : scan.severity === 'moderate'
-      ? 'bg-[#B67B2A]/10 text-[#B67B2A] border-[#B67B2A]/30'
-      : 'bg-[#426B43]/10 text-[#426B43] border-[#426B43]/30';
+      ? 'badge-caution'
+      : 'badge-healthy';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-xs">
-      <div
-        className="relative w-full max-w-4xl bg-white border border-[#D9DED3] shadow-xl my-8 overflow-hidden rounded-xs"
+    <motion.div
+      variants={backdropVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-xs"
+    >
+      <motion.div
+        variants={modalVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+        className="relative w-full max-w-4xl bg-white border border-[#DCE4D9] shadow-2xl my-8 overflow-hidden rounded-[16px]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="scan-detail-title"
       >
         {/* Modal Top Header */}
-        <div className="bg-[#FAF9F3] border-b border-[#D9DED3] p-5 sm:p-6 flex items-start justify-between gap-4">
+        <div className="bg-[#FAF9F3] border-b border-[#DCE4D9] p-5 sm:p-6 flex items-start justify-between gap-4">
           <div>
-            <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#426B43] uppercase tracking-wider mb-1 font-semibold">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#1F6B4A] uppercase tracking-wider mb-1 font-semibold">
               <span>{scan.cropName || 'Crop'}</span>
               <span>·</span>
               <span>{scan.scanId}</span>
               <span>·</span>
-              <span className="text-[#4A584D]">{formattedDate}</span>
+              <span className="text-[#52665A]">{formattedDate}</span>
             </div>
             <h3
               id="scan-detail-title"
-              className="font-serif text-2xl sm:text-3xl font-medium text-[#183B2A]"
+              className="text-2xl sm:text-3xl font-bold font-['Manrope'] text-[#0B211A]"
             >
               {isTa ? scan.possibleConditionTamil || scan.possibleCondition : scan.possibleCondition}
             </h3>
             {scan.pathogen && scan.pathogen !== 'None detected' && (
-              <p className="text-xs sm:text-sm font-mono text-[#4A584D] italic mt-0.5">
+              <p className="text-xs sm:text-sm font-mono text-[#52665A] italic mt-0.5">
                 {scan.pathogen}
               </p>
             )}
@@ -116,13 +143,13 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
 
           <div className="flex items-center gap-2 shrink-0">
             <span
-              className={`text-xs font-mono font-semibold px-3 py-1 uppercase border rounded-xs ${severityBadgeClass}`}
+              className={`text-xs font-mono font-semibold uppercase ${severityBadgeClass}`}
             >
               {scan.severity || 'nominal'} priority
             </span>
             <button
               onClick={onClose}
-              className="p-1.5 text-[#4A584D] hover:text-[#183B2A] hover:bg-[#E5EBDD] rounded-xs cursor-pointer transition-colors"
+              className="p-1.5 text-[#52665A] hover:text-[#0B211A] hover:bg-[#EAEFE5] rounded-[8px] cursor-pointer transition-colors"
               aria-label="Close inspection dossier"
             >
               <X className="w-5 h-5" />
@@ -319,22 +346,22 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
                     onGetAgriculturalHelp(scan);
                   }
                 }}
-                className="px-4 py-2.5 text-xs font-mono font-semibold bg-[#FAF9F3] hover:bg-[#E5EBDD] text-[#183B2A] border border-[#183B2A] rounded-xs cursor-pointer flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="btn-secondary text-xs py-2 px-3.5"
               >
-                <HelpCircle className="w-3.5 h-3.5 text-[#183B2A]" />
+                <HelpCircle className="w-3.5 h-3.5 text-[#1F6B4A]" />
                 <span>{isTa ? 'விவசாய உதவி பெறுக' : 'Get Agricultural Help'}</span>
               </button>
             )}
 
             <button
               onClick={onClose}
-              className="px-5 py-2.5 text-xs font-mono bg-[#183B2A] text-white hover:bg-[#122c20] rounded-xs cursor-pointer transition-colors shadow-2xs"
+              className="btn-primary text-xs py-2 px-5"
             >
               {isTa ? 'மூடுக' : 'Close Dossier'}
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

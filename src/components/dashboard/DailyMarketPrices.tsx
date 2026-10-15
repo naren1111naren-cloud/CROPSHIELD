@@ -159,24 +159,24 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-white border border-[#D9DED3] p-6 lg:p-8 rounded-xs space-y-4 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#D9DED3] pb-5">
+      <div className="surface-card p-6 lg:p-8 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCE4D9] pb-5">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-[#426B43] bg-[#426B43]/10 px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[#1F6B4A] bg-[#EAEFE5] px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5">
                 <Store className="w-3.5 h-3.5" />
                 GOVERNMENT OF INDIA OGD · AGMARKNET FEED
               </span>
               {response?.isCached && (
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#7A6B3A] bg-[#F7F4E9] px-2 py-0.5 rounded-full border border-[#D9DED3]">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#A96616] bg-[#FAF4EB] px-2 py-0.5 rounded-full border border-[#D7AD63]/30 font-semibold">
                   ⚡ CACHED (30m TTL)
                 </span>
               )}
             </div>
-            <h2 className="font-serif text-2xl lg:text-3xl font-medium text-[#183B2A]">
+            <h2 className="text-2xl lg:text-3xl font-bold font-['Manrope'] text-[#0B211A] tracking-tight">
               {isTa ? 'தினசரி சந்தை விலைகள் (மண்டி நிலவரம்)' : 'Daily Crop Market Prices (Mandi Rates)'}
             </h2>
-            <p className="text-xs text-[#4A584D] font-sans mt-1 max-w-2xl">
+            <p className="text-xs sm:text-sm text-[#52665A] font-sans mt-1 max-w-2xl leading-relaxed">
               {isTa
                 ? 'தமிழ்நாடு மற்றும் பிற ஒழுங்குமுறை விற்பனைக் கூடங்களின் (Mandi) அதிகாரப்பூர்வ நேரடி விலைகள். குறைந்தபட்ச, அதிகபட்ச மற்றும் மாதிரி (Modal) விலைகள் ₹/குவிண்டால் வீதத்தில் காட்டப்படுகின்றன.'
                 : 'Live regulated market prices directly from the Ministry of Agriculture & Farmers Welfare via AGMARKNET feeds. Minimum, maximum, and modal wholesale rates in ₹/quintal.'}
@@ -187,7 +187,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             <button
               onClick={loadPrices}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#183B2A] text-white text-xs font-mono rounded-xs hover:bg-[#204935] transition-colors cursor-pointer disabled:opacity-50"
+              className="btn-primary text-xs py-2 px-3.5"
               title="Refresh Mandi Prices"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -197,7 +197,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
               href="https://agmarknet.gov.in/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 px-3 py-2 border border-[#D9DED3] text-[#4A584D] hover:text-[#183B2A] hover:bg-[#FAF9F3] text-xs font-mono rounded-xs transition-colors"
+              className="btn-secondary text-xs py-2 px-3"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>AGMARKNET</span>
@@ -207,9 +207,9 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
         {/* Priority Crop Quick Filters */}
         <div className="space-y-2 pt-1">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#4A584D] flex items-center justify-between">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-[#52665A] flex items-center justify-between font-semibold">
             <span>{isTa ? 'தமிழ்நாட்டின் முக்கிய பயிர்கள்' : 'Priority Tamil Nadu Crops'}:</span>
-            <span className="text-[10px] text-[#426B43]">
+            <span className="text-[10px] text-[#1F6B4A]">
               {isTa ? 'ஒரு பயிரைத் தொட்டு விலைகளைக் காண்க' : 'Click to inspect wholesale mandi arrivals'}
             </span>
           </div>
@@ -220,10 +220,10 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                 <button
                   key={c.id}
                   onClick={() => setSelectedCommodity(c.id)}
-                  className={`px-3 py-1.5 text-xs font-mono rounded-xs border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 text-xs font-mono rounded-[8px] border transition-all cursor-pointer flex items-center gap-1.5 ${
                     isSelected
-                      ? 'bg-[#183B2A] text-[#FAF9F3] border-[#183B2A] font-semibold shadow-xs'
-                      : 'bg-[#FAF9F3] text-[#183B2A] border-[#D9DED3] hover:border-[#183B2A] hover:bg-white'
+                      ? 'bg-[#1F6B4A] text-white border-[#1F6B4A] font-semibold shadow-xs'
+                      : 'bg-white text-[#17271E] border-[#DCE4D9] hover:border-[#1F6B4A] hover:bg-[#FAF9F3]'
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
@@ -233,10 +233,10 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             })}
             <button
               onClick={() => setSelectedCommodity('all')}
-              className={`px-3 py-1.5 text-xs font-mono rounded-xs border transition-all cursor-pointer ${
+              className={`px-3 py-1.5 text-xs font-mono rounded-[8px] border transition-all cursor-pointer ${
                 selectedCommodity === 'all'
-                  ? 'bg-[#183B2A] text-[#FAF9F3] border-[#183B2A] font-semibold'
-                  : 'bg-[#FAF9F3] text-[#4A584D] border-[#D9DED3] hover:border-[#183B2A]'
+                  ? 'bg-[#1F6B4A] text-white border-[#1F6B4A] font-semibold'
+                  : 'bg-white text-[#52665A] border-[#DCE4D9] hover:border-[#1F6B4A]'
               }`}
             >
               {isTa ? 'அனைத்து பயிர்களும்' : 'All Commodities'}
@@ -246,17 +246,17 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
       </div>
 
       {/* Filter Controls Bar */}
-      <form onSubmit={handleManualSearch} className="bg-white border border-[#D9DED3] p-5 rounded-xs space-y-4">
+      <form onSubmit={handleManualSearch} className="surface-card p-5 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-sans">
           {/* State */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#4A584D] font-medium">
+            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
               {isTa ? 'மாநிலம் (State)' : 'State'}
             </label>
             <select
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
-              className="w-full bg-[#FAF9F3] border border-[#D9DED3] rounded-xs px-3 py-2 text-[#183B2A] font-sans focus:outline-hidden focus:border-[#183B2A]"
+              className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] px-3 py-2 text-[#17271E] font-sans focus:outline-hidden focus:border-[#1F6B4A]"
             >
               <option value="Tamil Nadu">Tamil Nadu (தமிழ்நாடு)</option>
               <option value="Andhra Pradesh">Andhra Pradesh</option>
@@ -267,13 +267,13 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
           {/* District */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#4A584D] font-medium">
+            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
               {isTa ? 'மாவட்டம் (District)' : 'District'}
             </label>
             <select
               value={selectedDistrict}
               onChange={(e) => setSelectedDistrict(e.target.value)}
-              className="w-full bg-[#FAF9F3] border border-[#D9DED3] rounded-xs px-3 py-2 text-[#183B2A] font-sans focus:outline-hidden focus:border-[#183B2A]"
+              className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] px-3 py-2 text-[#17271E] font-sans focus:outline-hidden focus:border-[#1F6B4A]"
             >
               <option value="all">{isTa ? 'அனைத்து மாவட்டங்களும் (All Districts)' : 'All Districts (Tamil Nadu)'}</option>
               {TN_DISTRICT_LIST.map((d) => (
@@ -286,7 +286,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
           {/* Market / Mandi search */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#4A584D] font-medium">
+            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
               {isTa ? 'சந்தை பெயர் (Mandi Name)' : 'Market / Mandi Name'}
             </label>
             <div className="relative">
@@ -295,15 +295,15 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                 placeholder={isTa ? 'உதா: Thanjavur, Madurai...' : 'e.g., Thanjavur, Madurai...'}
                 value={searchMarket}
                 onChange={(e) => setSearchMarket(e.target.value)}
-                className="w-full bg-[#FAF9F3] border border-[#D9DED3] rounded-xs pl-8 pr-3 py-2 text-[#183B2A] font-sans placeholder:text-gray-400 focus:outline-hidden focus:border-[#183B2A]"
+                className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] pl-8 pr-3 py-2 text-[#17271E] font-sans placeholder:text-gray-400 focus:outline-hidden focus:border-[#1F6B4A]"
               />
-              <Search className="w-3.5 h-3.5 text-[#4A584D] absolute left-2.5 top-3" />
+              <Search className="w-3.5 h-3.5 text-[#718176] absolute left-2.5 top-3" />
             </div>
           </div>
 
           {/* Variety search */}
           <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#4A584D] font-medium">
+            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
               {isTa ? 'ரகம் (Variety)' : 'Crop Variety'}
             </label>
             <div className="relative">
@@ -312,24 +312,24 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                 placeholder={isTa ? 'உதா: Common, 1001, Hybrid...' : 'e.g., Common, Hybrid, Local...'}
                 value={searchVariety}
                 onChange={(e) => setSearchVariety(e.target.value)}
-                className="w-full bg-[#FAF9F3] border border-[#D9DED3] rounded-xs pl-8 pr-3 py-2 text-[#183B2A] font-sans placeholder:text-gray-400 focus:outline-hidden focus:border-[#183B2A]"
+                className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] pl-8 pr-3 py-2 text-[#17271E] font-sans placeholder:text-gray-400 focus:outline-hidden focus:border-[#1F6B4A]"
               />
-              <Filter className="w-3.5 h-3.5 text-[#4A584D] absolute left-2.5 top-3" />
+              <Filter className="w-3.5 h-3.5 text-[#718176] absolute left-2.5 top-3" />
             </div>
           </div>
         </div>
 
         {/* Sort & Action Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#D9DED3] text-xs font-mono">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#DCE4D9] text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="text-[#4A584D] flex items-center gap-1">
+            <span className="text-[#52665A] flex items-center gap-1 font-semibold">
               <ArrowUpDown className="w-3.5 h-3.5" />
               {isTa ? 'வரிசைப்படுத்து:' : 'Sort By:'}
             </span>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-[#FAF9F3] border border-[#D9DED3] rounded-xs px-2.5 py-1 text-[#183B2A] font-mono focus:outline-hidden focus:border-[#183B2A]"
+              className="bg-[#FAF9F3] border border-[#DCE4D9] rounded-[8px] px-2.5 py-1 text-[#17271E] font-mono focus:outline-hidden focus:border-[#1F6B4A]"
             >
               <option value="modal_desc">{isTa ? 'மாதிரி விலை (அதிகம் முதல் குறைவு)' : 'Modal Price (High to Low)'}</option>
               <option value="modal_asc">{isTa ? 'மாதிரி விலை (குறைவு முதல் அதிகம்)' : 'Modal Price (Low to High)'}</option>
@@ -342,13 +342,13 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             <button
               type="button"
               onClick={handleResetFilters}
-              className="px-3 py-1 text-[#4A584D] hover:text-[#183B2A] underline cursor-pointer"
+              className="px-3 py-1 text-[#52665A] hover:text-[#17271E] underline cursor-pointer"
             >
               {isTa ? 'வடிகட்டிகளை மீட்டமை' : 'Reset Filters'}
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 bg-[#426B43] hover:bg-[#183B2A] text-white font-mono rounded-xs transition-colors cursor-pointer"
+              className="btn-primary text-xs py-1.5 px-4 min-h-[36px]"
             >
               {isTa ? 'தேடு' : 'Apply Search'}
             </button>
@@ -358,16 +358,16 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
       {/* Comparison Statistics Banner (if multiple records found) */}
       {priceStats && priceStats.count > 0 && (
-        <div className="bg-[#FAF9F3] border border-[#D9DED3] p-4 rounded-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="surface-card bg-[#FAF9F3] border border-[#DCE4D9] p-5 rounded-[12px] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#183B2A]/10 flex items-center justify-center text-[#183B2A]">
+            <div className="w-10 h-10 rounded-full bg-[#1F6B4A]/10 flex items-center justify-center text-[#1F6B4A]">
               <BarChart3 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[11px] font-mono uppercase text-[#426B43] font-semibold">
+              <div className="text-[11px] font-mono uppercase text-[#1F6B4A] font-semibold">
                 {isTa ? 'சந்தை ஒப்பீட்டு பகுப்பாய்வு' : 'Market Comparison Summary'}
               </div>
-              <div className="font-serif text-lg text-[#183B2A]">
+              <div className="font-bold text-lg text-[#0B211A] font-['Plus_Jakarta_Sans']">
                 {selectedCommodity} · {priceStats.count} {isTa ? 'சந்தை மையங்கள்' : 'Reporting Mandis'}
               </div>
             </div>
@@ -375,16 +375,16 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
           <div className="grid grid-cols-3 gap-4 text-center sm:text-right font-mono">
             <div>
-              <div className="text-[10px] text-[#4A584D] uppercase">{isTa ? 'குறைந்தபட்சம்' : 'Floor Modal'}</div>
-              <div className="text-sm font-bold text-[#183B2A]">₹{priceStats.min.toLocaleString('en-IN')}</div>
+              <div className="text-[10px] text-[#718176] uppercase font-semibold">{isTa ? 'குறைந்தபட்சம்' : 'Floor Modal'}</div>
+              <div className="text-base font-bold text-[#102D24]">₹{priceStats.min.toLocaleString('en-IN')}</div>
             </div>
             <div>
-              <div className="text-[10px] text-[#4A584D] uppercase">{isTa ? 'சராசரி மாதிரி' : 'State Average'}</div>
-              <div className="text-sm font-bold text-[#426B43]">₹{priceStats.avg.toLocaleString('en-IN')}</div>
+              <div className="text-[10px] text-[#718176] uppercase font-semibold">{isTa ? 'மாநில சராசரி' : 'State Average'}</div>
+              <div className="text-base font-bold text-[#1F6B4A]">₹{priceStats.avg.toLocaleString('en-IN')}</div>
             </div>
             <div>
-              <div className="text-[10px] text-[#4A584D] uppercase">{isTa ? 'அதிகபட்சம்' : 'Peak Modal'}</div>
-              <div className="text-sm font-bold text-[#183B2A]">₹{priceStats.max.toLocaleString('en-IN')}</div>
+              <div className="text-[10px] text-[#718176] uppercase font-semibold">{isTa ? 'அதிகபட்சம்' : 'Peak Modal'}</div>
+              <div className="text-base font-bold text-[#102D24]">₹{priceStats.max.toLocaleString('en-IN')}</div>
             </div>
           </div>
         </div>
@@ -450,31 +450,31 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
       )}
 
       {/* Main Results Container */}
-      <div className="bg-white border border-[#D9DED3] rounded-xs shadow-xs overflow-hidden">
+      <div className="surface-card overflow-hidden">
         {/* Results Metadata Header */}
-        <div className="p-4 sm:p-5 border-b border-[#D9DED3] bg-[#FAF9F3]/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+        <div className="p-4 sm:p-5 border-b border-[#DCE4D9] bg-[#FAF9F3]/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#183B2A]">
+            <span className="font-bold text-[#102D24]">
               {loading ? 'SEARCHING MANDIS...' : `${processedRecords.length} MARKET RECORDS DISPLAYED`}
             </span>
             {selectedDistrict !== 'all' && (
-              <span className="text-[#426B43] bg-white px-2 py-0.5 border border-[#D9DED3] rounded-xs">
+              <span className="text-[#1F6B4A] bg-white px-2 py-0.5 border border-[#DCE4D9] rounded-[6px]">
                 District: {selectedDistrict}
               </span>
             )}
             {selectedCommodity !== 'all' && (
-              <span className="text-[#426B43] bg-white px-2 py-0.5 border border-[#D9DED3] rounded-xs">
+              <span className="text-[#1F6B4A] bg-white px-2 py-0.5 border border-[#DCE4D9] rounded-[6px]">
                 Crop: {selectedCommodity}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-4 text-[11px] text-[#4A584D]">
+          <div className="flex items-center gap-4 text-[11px] text-[#52665A]">
             <div className="flex items-center gap-1" title="When CropShield requested upstream data">
-              <Clock className="w-3.5 h-3.5 text-[#426B43]" />
+              <Clock className="w-3.5 h-3.5 text-[#1F6B4A]" />
               <span>{isTa ? 'கடைசி புதுப்பிப்பு:' : 'Last Fetch:'} {lastFetchedTime || 'Just now'}</span>
             </div>
-            <div className="text-[11px] font-semibold text-[#183B2A]">
+            <div className="text-[11px] font-semibold text-[#102D24]">
               {isTa ? 'அலகு: ₹ / குவிண்டால்' : 'Unit: ₹/quintal'}
             </div>
           </div>
@@ -483,12 +483,12 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
         {/* Loading State Skeleton */}
         {loading && (
           <div className="p-12 text-center space-y-4">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#183B2A]" />
+            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#1F6B4A]" />
             <div className="space-y-1">
-              <h4 className="font-serif text-lg text-[#183B2A]">
+              <h4 className="font-bold text-lg text-[#102D24] font-['Plus_Jakarta_Sans']">
                 {isTa ? 'மண்டி விலைகள் சரிபார்க்கப்படுகின்றன...' : 'Connecting to AGMARKNET XML Feed...'}
               </h4>
-              <p className="text-xs text-[#4A584D] font-mono">
+              <p className="text-xs text-[#718176] font-mono">
                 Querying data.gov.in resource 9ef84268-d588-465a-a308-a864a43d0070
               </p>
             </div>
@@ -498,14 +498,14 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
         {/* Empty State */}
         {!loading && response?.success && processedRecords.length === 0 && (
           <div className="p-12 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-[#183B2A]/10 mx-auto flex items-center justify-center text-[#183B2A]">
+            <div className="w-12 h-12 rounded-full bg-[#1F6B4A]/10 mx-auto flex items-center justify-center text-[#1F6B4A]">
               <Store className="w-6 h-6" />
             </div>
             <div className="space-y-1 max-w-md mx-auto">
-              <h4 className="font-serif text-xl font-medium text-[#183B2A]">
+              <h4 className="font-bold text-xl text-[#102D24] font-['Plus_Jakarta_Sans']">
                 {isTa ? 'பொருத்தமான சந்தை பதிவுகள் எதுவும் இல்லை' : 'No Matching Mandi Records Found'}
               </h4>
-              <p className="text-xs text-[#4A584D] font-sans">
+              <p className="text-xs text-[#52665A] font-sans leading-relaxed">
                 {isTa
                   ? `தேர்ந்தெடுக்கப்பட்ட வடிகட்டிகளுக்கு (${selectedCommodity !== 'all' ? selectedCommodity : 'பயிர்'}, ${selectedDistrict !== 'all' ? selectedDistrict : 'தமிழ்நாடு'}) இன்றைய தினத்திற்கான புதிய வரத்து பதிவுகள் AGMARKNET சேவையில் பதிவாகவில்லை.`
                   : `No verified mandi arrivals reported for ${selectedCommodity} in ${selectedDistrict === 'all' ? 'Tamil Nadu' : selectedDistrict} for the selected parameters.`}
@@ -513,7 +513,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             </div>
             <button
               onClick={handleResetFilters}
-              className="px-4 py-2 border border-[#183B2A] text-[#183B2A] hover:bg-[#183B2A] hover:text-white text-xs font-mono rounded-xs transition-colors cursor-pointer"
+              className="btn-secondary text-xs py-2 px-4"
             >
               {isTa ? 'அனைத்து மாவட்டங்களையும் காண்க' : 'Clear Filters & Show All Districts'}
             </button>
@@ -526,7 +526,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             <div className="hidden lg:block overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-[#FAF9F3] border-b border-[#D9DED3] font-mono text-[11px] text-[#4A584D] uppercase">
+                  <tr className="bg-[#FAF9F3] border-b border-[#DCE4D9] font-mono text-[11px] text-[#52665A] uppercase">
                     <th className="py-3.5 px-4 font-semibold">{isTa ? 'பயிர் / ரகம்' : 'Commodity / Variety'}</th>
                     <th className="py-3.5 px-4 font-semibold">{isTa ? 'சந்தை & மாவட்டம்' : 'Mandi & District'}</th>
                     <th className="py-3.5 px-4 font-semibold text-right">{isTa ? 'குறைந்த விலை' : 'Min Price'}</th>
@@ -536,7 +536,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                     <th className="py-3.5 px-4 font-semibold">{isTa ? 'அறிவிக்கப்பட்ட தேதி' : 'Arrival Date'}</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#D9DED3] font-sans">
+                <tbody className="divide-y divide-[#DCE4D9] font-sans">
                   {processedRecords.map((r, idx) => {
                     const priceRange = r.maxPrice - r.minPrice;
                     const percentModal = priceRange > 0 ? Math.round(((r.modalPrice - r.minPrice) / priceRange) * 100) : 50;
@@ -545,59 +545,59 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                       <tr key={`${r.id}-${idx}`} className="hover:bg-[#FAF9F3]/60 transition-colors">
                         {/* Commodity & Variety */}
                         <td className="py-3.5 px-4">
-                          <div className="font-medium text-[#183B2A] text-sm">
+                          <div className="font-semibold text-[#102D24] text-sm">
                             {r.commodity}
                           </div>
                           {r.commodityTamil && isTa && (
-                            <div className="text-[11px] text-[#426B43] font-sans">{r.commodityTamil}</div>
+                            <div className="text-[11px] text-[#1F6B4A] font-sans">{r.commodityTamil}</div>
                           )}
-                          <div className="text-[11px] font-mono text-[#4A584D] mt-0.5">
-                            {isTa ? 'ரகம்:' : 'Variety:'} <span className="text-[#183B2A]">{r.variety || 'Standard / Local'}</span>
+                          <div className="text-[11px] font-mono text-[#718176] mt-0.5">
+                            {isTa ? 'ரகம்:' : 'Variety:'} <span className="text-[#102D24] font-medium">{r.variety || 'Standard / Local'}</span>
                             {r.grade && r.grade !== 'FAQ' && ` · Grade: ${r.grade}`}
                           </div>
                         </td>
 
                         {/* Mandi & District */}
                         <td className="py-3.5 px-4">
-                          <div className="font-semibold text-[#183B2A] flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5 text-[#426B43]" />
+                          <div className="font-semibold text-[#102D24] flex items-center gap-1.5">
+                            <Building2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
                             {r.market}
                           </div>
-                          <div className="text-[11px] font-mono text-[#4A584D] mt-0.5">
+                          <div className="text-[11px] font-mono text-[#718176] mt-0.5">
                             {r.district}, {r.state}
                           </div>
                         </td>
 
                         {/* Min Price */}
-                        <td className="py-3.5 px-4 text-right font-mono text-[#4A584D]">
+                        <td className="py-3.5 px-4 text-right font-mono text-[#52665A]">
                           ₹{r.minPrice.toLocaleString('en-IN')}
                         </td>
 
                         {/* Modal Price */}
                         <td className="py-3.5 px-4 text-right font-mono">
-                          <div className="inline-block bg-[#183B2A] text-white px-2.5 py-1 rounded-xs font-bold text-sm shadow-2xs">
+                          <div className="inline-block bg-[#1F6B4A] text-white px-2.5 py-1 rounded-[6px] font-bold text-sm shadow-xs">
                             ₹{r.modalPrice.toLocaleString('en-IN')}
                           </div>
-                          <div className="text-[10px] text-[#4A584D] font-mono mt-0.5">₹/quintal</div>
+                          <div className="text-[10px] text-[#718176] font-mono mt-0.5">₹/quintal</div>
                         </td>
 
                         {/* Max Price */}
-                        <td className="py-3.5 px-4 text-right font-mono text-[#4A584D]">
+                        <td className="py-3.5 px-4 text-right font-mono text-[#52665A]">
                           ₹{r.maxPrice.toLocaleString('en-IN')}
                         </td>
 
                         {/* Visual Range Bar */}
                         <td className="py-3.5 px-4 w-36">
                           <div className="space-y-1">
-                            <div className="w-full bg-[#E5EAE1] h-2 rounded-full overflow-hidden relative">
+                            <div className="w-full bg-[#EAEFE5] h-2 rounded-full overflow-hidden relative">
                               <div
-                                className="bg-[#426B43] h-full rounded-full transition-all"
+                                className="bg-[#1F6B4A] h-full rounded-full transition-all"
                                 style={{ width: `${Math.max(15, Math.min(100, percentModal))}%` }}
                               />
                             </div>
-                            <div className="flex justify-between text-[9px] font-mono text-[#4A584D]">
+                            <div className="flex justify-between text-[9px] font-mono text-[#718176]">
                               <span>Min</span>
-                              <span className="text-[#183B2A] font-bold">Modal</span>
+                              <span className="text-[#102D24] font-bold">Modal</span>
                               <span>Max</span>
                             </div>
                           </div>
@@ -605,11 +605,11 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
                         {/* Reported Date */}
                         <td className="py-3.5 px-4">
-                          <div className="text-xs font-mono text-[#183B2A] flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-[#426B43]" />
+                          <div className="text-xs font-mono text-[#102D24] flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-[#1F6B4A]" />
                             <span>{r.arrivalDate}</span>
                           </div>
-                          <div className="text-[10px] font-mono text-[#4A584D]">
+                          <div className="text-[10px] font-mono text-[#718176]">
                             {isTa ? 'சந்தை வரத்து தேதி' : 'Reported Date'}
                           </div>
                         </td>
@@ -621,31 +621,31 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             </div>
 
             {/* Mobile / Small Screens Card View */}
-            <div className="block lg:hidden divide-y divide-[#D9DED3]">
+            <div className="block lg:hidden divide-y divide-[#DCE4D9]">
               {processedRecords.map((r, idx) => (
                 <div key={`m-${r.id}-${idx}`} className="p-4 space-y-3 bg-white">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="font-semibold text-base text-[#183B2A]">
+                      <div className="font-semibold text-base text-[#102D24]">
                         {r.commodity} {r.commodityTamil && isTa && `(${r.commodityTamil})`}
                       </div>
-                      <div className="text-xs font-mono text-[#4A584D] flex items-center gap-1 mt-0.5">
-                        <Building2 className="w-3.5 h-3.5 text-[#426B43]" />
-                        <span className="font-bold text-[#183B2A]">{r.market}</span> ({r.district})
+                      <div className="text-xs font-mono text-[#52665A] flex items-center gap-1 mt-0.5">
+                        <Building2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
+                        <span className="font-bold text-[#102D24]">{r.market}</span> ({r.district})
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="bg-[#183B2A] text-white px-2.5 py-1 rounded-xs font-bold font-mono text-sm inline-block">
+                      <div className="bg-[#1F6B4A] text-white px-2.5 py-1 rounded-[6px] font-bold font-mono text-sm inline-block shadow-xs">
                         ₹{r.modalPrice.toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[10px] font-mono text-[#4A584D]">₹/quintal</div>
+                      <div className="text-[10px] font-mono text-[#718176]">₹/quintal</div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-[#FAF9F3] p-2.5 rounded-xs border border-[#D9DED3]">
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-[#FAF9F3] p-2.5 rounded-[8px] border border-[#DCE4D9]">
                     <div>
-                      <span className="text-[#4A584D] block text-[10px] uppercase">{isTa ? 'குறைந்த விலை' : 'Min Price'}</span>
-                      <span className="text-[#183B2A] font-bold">₹{r.minPrice.toLocaleString('en-IN')}</span>
+                      <span className="text-[#718176] block text-[10px] uppercase font-semibold">{isTa ? 'குறைந்த விலை' : 'Min Price'}</span>
+                      <span className="text-[#102D24] font-bold">₹{r.minPrice.toLocaleString('en-IN')}</span>
                     </div>
                     <div>
                       <span className="text-[#4A584D] block text-[10px] uppercase">{isTa ? 'அதிகபட்ச விலை' : 'Max Price'}</span>
@@ -667,24 +667,24 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
         )}
 
         {/* Footer Attribution & Disclaimers */}
-        <div className="p-4 bg-[#FAF9F3] border-t border-[#D9DED3] text-xs font-sans text-[#4A584D] space-y-1">
+        <div className="p-4 bg-[#FAF9F3] border-t border-[#DCE4D9] text-xs font-sans text-[#52665A] space-y-1">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[11px]">
             <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#426B43]" />
-              <span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
+              <span className="font-semibold text-[#102D24]">
                 {isTa
-                  ? 'மூலம்: இந்திய அரசின் திறந்த தரவுத் தளம் (data.gov.in) / AGMARKNET'
-                  : 'Source: Open Government Data (OGD) Platform India / AGMARKNET Mandi Feeds'}
+                  ? 'அதிகாரப்பூர்வ மூலம்: இந்திய அரசின் திறந்த தரவுத் தளம் (data.gov.in) / AGMARKNET'
+                  : 'Official Source: Open Government Data (OGD) Platform India · Directorate of Marketing & Inspection (DMI) · AGMARKNET'}
               </span>
             </div>
             <div>
-              Resource UUID: <code className="text-[#183B2A]">9ef84268-d588-465a-a308-a864a43d0070</code>
+              Resource UUID: <code className="text-[#1F6B4A] font-bold">9ef84268-d588-465a-a308-a864a43d0070</code>
             </div>
           </div>
-          <p className="text-[11px] leading-relaxed">
+          <p className="text-[11px] leading-relaxed text-[#718176]">
             {isTa
-              ? 'குறிப்பு: மாதிரி விலை (Modal Price) என்பது அந்த குறிப்பிட்ட தினத்தில் அதிகபட்ச வரத்து நடைபெற்ற விலையைக் குறிக்கும். அனைத்து விலைகளும் 100 கிலோ (1 குவிண்டால்) எடையைக் குறிக்கின்றன. நிதி அல்லது விற்பனை முடிவுகளை எடுப்பதற்கு முன் உள்ளூர் ஒழுங்குமுறை விற்பனைக்கூடத்தை நேரில் தொடர்புகொள்ளவும்.'
-              : 'Disclaimer: The Modal Price indicates the prevailing price at which maximum commodity quantities were transacted on that day. Prices are officially quoted in Rupees per quintal (100 kg). Market rates fluctuate with daily arrivals.'}
+              ? 'குறிப்பு: மாதிரி விலை (Modal Price) என்பது அந்த குறிப்பிட்ட தினத்தில் அதிகபட்ச வரத்து நடைபெற்ற விலையைக் குறிக்கும். அனைத்து விலைகளும் 100 கிலோ (1 குவிண்டால்) எடையைக் குறிக்கின்றன.'
+              : 'Data Attribution & Integrity: Modal wholesale price represents the prevailing transaction price at regulated mandis. Quoted in INR (₹) per quintal (100 kg). Sourced via live government API endpoints.'}
           </p>
         </div>
       </div>

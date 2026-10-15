@@ -161,9 +161,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#F7F6EF] flex flex-col justify-between text-[#202B22]">
+    <div className="min-h-screen bg-[#F5F3E9] flex flex-col justify-between text-[#17271E]">
       {/* Minimal Top Header */}
-      <header className="border-b border-[#D9DED3] bg-[#F7F6EF]/90 backdrop-blur-xs py-4 px-4 sm:px-8">
+      <header className="border-b border-[#DCE4D9] bg-[#F5F3E9]/90 backdrop-blur-xs py-4 px-4 sm:px-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <button
             type="button"
@@ -177,29 +177,29 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           <div className="flex items-center gap-3">
             {/* Language Switcher */}
             <div
-              className="flex items-center bg-white border border-[#D9DED3] rounded-xs p-0.5 text-xs font-mono"
+              className="flex items-center bg-white border border-[#DCE4D9] rounded-[8px] p-0.5 text-xs font-mono"
               role="group"
               aria-label="Language selection"
             >
               <button
                 type="button"
                 onClick={() => setLanguage('en')}
-                className={`px-2.5 py-1.5 transition-colors cursor-pointer rounded-2xs ${
+                className={`px-2.5 py-1.5 transition-colors cursor-pointer rounded-[6px] ${
                   language === 'en'
-                    ? 'bg-[#183B2A] text-white font-semibold'
-                    : 'text-[#4A584D] hover:text-[#183B2A]'
+                    ? 'bg-[#1F6B4A] text-white font-semibold'
+                    : 'text-[#52665A] hover:text-[#102D24]'
                 }`}
               >
                 English
               </button>
-              <span className="text-[#D9DED3] select-none" aria-hidden="true">|</span>
+              <span className="text-[#DCE4D9] select-none" aria-hidden="true">|</span>
               <button
                 type="button"
                 onClick={() => setLanguage('ta')}
-                className={`px-2.5 py-1.5 transition-colors cursor-pointer rounded-2xs ${
+                className={`px-2.5 py-1.5 transition-colors cursor-pointer rounded-[6px] ${
                   language === 'ta'
-                    ? 'bg-[#183B2A] text-white font-semibold'
-                    : 'text-[#4A584D] hover:text-[#183B2A]'
+                    ? 'bg-[#1F6B4A] text-white font-semibold'
+                    : 'text-[#52665A] hover:text-[#102D24]'
                 }`}
               >
                 தமிழ்
@@ -210,7 +210,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button
                 type="button"
                 onClick={onExploreGuest}
-                className="hidden sm:inline-flex items-center gap-1 text-xs font-mono text-[#4A584D] hover:text-[#183B2A] hover:underline cursor-pointer px-2 py-1"
+                className="hidden sm:inline-flex items-center gap-1 text-xs font-mono text-[#52665A] hover:text-[#1F6B4A] hover:underline cursor-pointer px-2 py-1"
               >
                 <span>{isTa ? 'கள நுண்ணறிவு ஆய்வு →' : 'Explore Platform →'}</span>
               </button>
@@ -221,17 +221,17 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
       {/* Main Content Area */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="max-w-md w-full bg-[#FAF9F3] border-2 border-[#183B2A] shadow-xl p-6 sm:p-8">
+        <div className="max-w-md w-full bg-white border border-[#DCE4D9] rounded-[16px] shadow-lg p-6 sm:p-8">
           {/* Top Metadata */}
-          <div className="border-b border-[#D9DED3] pb-4 mb-6 text-center">
-            <span className="text-[11px] font-mono text-[#426B43] uppercase tracking-wider block font-semibold mb-1">
+          <div className="border-b border-[#DCE4D9] pb-4 mb-6 text-center">
+            <span className="text-[11px] font-mono text-[#1F6B4A] uppercase tracking-wider block font-semibold mb-1">
               {isTa ? 'களப்பணி அங்கீகாரம் · வேளாண் வாயில்' : 'FIELDNOTE INTELLIGENCE · SECURE FARMER PORTAL'}
             </span>
-            <h1 className="font-serif text-2xl sm:text-3xl font-medium text-[#183B2A]">
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#102D24]">
               {mode === 'signin' && (isTa ? 'விவசாயி உள்நுழைவு' : 'Farmer Sign In')}
               {mode === 'reset' && (isTa ? 'கடவுச்சொல் மீட்டமைக்க' : 'Reset Password')}
             </h1>
-            <p className="text-xs text-[#526355] mt-1.5 font-sans">
+            <p className="text-xs text-[#52665A] mt-1.5 font-sans">
               {mode === 'signin'
                 ? isTa
                   ? 'பயிர் நோய் பகுப்பாய்வு மற்றும் தினசரி சந்தை விலைகளை அணுகவும்'
@@ -244,16 +244,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
           {/* Feedback Alerts */}
           {errorMsg && (
-            <div className="mb-5 p-3.5 bg-[#FAF3F2] border border-[#A94338]/40 text-[#A94338] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-xs">
-              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+            <div className="mb-5 p-3.5 bg-[#FAF3F2] border border-[#B8423A]/30 text-[#B8423A] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px]">
+              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#B8423A]" />
               <div className="flex-1">
                 <span>{errorMsg}</span>
                 {mode === 'signin' && (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found') && onOpenRegister && (
-                  <div className="mt-2 pt-2 border-t border-[#A94338]/20">
+                  <div className="mt-2 pt-2 border-t border-[#B8423A]/20">
                     <button
                       type="button"
                       onClick={onOpenRegister}
-                      className="text-xs font-semibold underline hover:text-[#782820] cursor-pointer inline-flex items-center gap-1"
+                      className="text-xs font-semibold underline hover:text-[#B8423A] cursor-pointer inline-flex items-center gap-1"
                     >
                       <span>{isTa ? 'புதிய விவசாயியா? கணக்கை உருவாக்க இங்கே சொடுக்கவும் →' : "Don't have an account yet? Register here →"}</span>
                     </button>
@@ -264,8 +264,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           )}
 
           {successMsg && (
-            <div className="mb-5 p-3.5 bg-[#FAF9F3] border border-[#426B43]/40 text-[#183B2A] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-xs">
-              <CheckCircle2 className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#426B43]" />
+            <div className="mb-5 p-3.5 bg-[#EAEFE5] border border-[#70B77E]/50 text-[#17271E] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px]">
+              <CheckCircle2 className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#1F6B4A]" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -277,12 +277,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isLoading || isGoogleLoading}
-                className="w-full py-3.5 px-4 min-h-[48px] bg-white hover:bg-[#F3F5EE] text-[#183B2A] border border-[#D9DED3] hover:border-[#183B2A] rounded-xs font-sans font-medium text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-2xs disabled:opacity-60"
+                className="w-full py-3 px-4 min-h-[46px] bg-white hover:bg-[#F5F3E9] text-[#17271E] border border-[#DCE4D9] hover:border-[#1F6B4A] rounded-[10px] font-sans font-medium text-sm flex items-center justify-center gap-3 transition-all cursor-pointer shadow-xs disabled:opacity-60"
                 aria-label="Continue with Google"
               >
                 {isGoogleLoading ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-[#183B2A]" />
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#1F6B4A]" />
                     <span className="font-mono text-xs">{isTa ? 'கூகிள் இணைக்கிறது...' : 'Connecting to Google...'}</span>
                   </>
                 ) : (
@@ -306,7 +306,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                         d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                       />
                     </svg>
-                    <span className="font-medium">
+                    <span className="font-medium text-[#17271E]">
                       {isTa ? 'கூகிள் மூலம் தொடரவும்' : 'Continue with Google'}
                     </span>
                   </>
@@ -316,10 +316,10 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               {/* Minimal Section Divider */}
               <div className="relative my-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#D9DED3]" />
+                  <div className="w-full border-t border-[#DCE4D9]" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase font-mono">
-                  <span className="bg-[#FAF9F3] px-3 text-[#738275]">
+                  <span className="bg-white px-3 text-[#718176]">
                     {isTa ? 'அல்லது மின்னஞ்சல் மூலம்' : 'or with farmer credentials'}
                   </span>
                 </div>
@@ -330,11 +330,11 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           {/* Email / Password Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="signInEmail" className="block text-xs font-mono text-[#4A584D] uppercase mb-1">
+              <label htmlFor="signInEmail" className="block text-xs font-mono text-[#52665A] uppercase mb-1">
                 {isTa ? 'மின்னஞ்சல் முகவரி (Email Address) *' : 'Email Address *'}
               </label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#738275] absolute left-3 top-3.5" />
+                <Mail className="w-4 h-4 text-[#718176] absolute left-3.5 top-3.5" />
                 <input
                   id="signInEmail"
                   type="email"
@@ -342,7 +342,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={isTa ? 'farmer@cropshield.in' : 'farmer@cropshield.in'}
-                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-[#D9DED3] text-sm text-[#202B22] font-sans focus:outline-hidden focus:border-[#183B2A] rounded-xs"
+                  className="w-full pl-10 pr-3 py-2.5 bg-[#F5F3E9]/40 border border-[#DCE4D9] text-sm text-[#17271E] font-sans focus:outline-hidden focus:border-[#1F6B4A] rounded-[10px] transition-colors"
                 />
               </div>
             </div>
@@ -350,7 +350,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             {mode === 'signin' && (
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label htmlFor="signInPassword" className="block text-xs font-mono text-[#4A584D] uppercase">
+                  <label htmlFor="signInPassword" className="block text-xs font-mono text-[#52665A] uppercase">
                     {isTa ? 'கடவுச்சொல் (Password) *' : 'Password *'}
                   </label>
                   <button
@@ -360,13 +360,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       setErrorMsg(null);
                       setSuccessMsg(null);
                     }}
-                    className="text-xs font-mono text-[#183B2A] hover:underline cursor-pointer"
+                    className="text-xs font-mono text-[#1F6B4A] hover:underline cursor-pointer"
                   >
                     {isTa ? 'மறந்துவிட்டீர்களா?' : 'Forgot password?'}
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-[#738275] absolute left-3 top-3.5" />
+                  <Lock className="w-4 h-4 text-[#718176] absolute left-3.5 top-3.5" />
                   <input
                     id="signInPassword"
                     type={showPassword ? 'text' : 'password'}
@@ -374,12 +374,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-10 py-2.5 bg-white border border-[#D9DED3] text-sm text-[#202B22] font-sans focus:outline-hidden focus:border-[#183B2A] rounded-xs"
+                    className="w-full pl-10 pr-10 py-2.5 bg-[#F5F3E9]/40 border border-[#DCE4D9] text-sm text-[#17271E] font-sans focus:outline-hidden focus:border-[#1F6B4A] rounded-[10px] transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 text-[#738275] hover:text-[#183B2A] cursor-pointer"
+                    className="absolute right-3.5 top-3 text-[#718176] hover:text-[#102D24] cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -397,7 +397,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     setErrorMsg(null);
                     setSuccessMsg(null);
                   }}
-                  className="text-xs font-mono text-[#183B2A] hover:underline cursor-pointer"
+                  className="text-xs font-mono text-[#1F6B4A] hover:underline cursor-pointer"
                 >
                   {isTa ? '← உள்நுழைவுக்குத் திரும்பு' : '← Back to Sign In'}
                 </button>
@@ -408,7 +408,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button
                 type="submit"
                 disabled={isLoading || isGoogleLoading}
-                className="w-full py-3.5 min-h-[48px] text-sm font-semibold tracking-wide text-white bg-[#183B2A] hover:bg-[#122c20] transition-colors rounded-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-60"
+                className="btn-primary w-full py-3 min-h-[46px] rounded-[10px] flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -434,12 +434,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           </form>
 
           {/* Quick Demo Reviewer Strip */}
-          <div className="mt-6 pt-5 border-t border-[#D9DED3]">
+          <div className="mt-6 pt-5 border-t border-[#DCE4D9]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-mono text-[#4A584D] uppercase">
+              <span className="text-[11px] font-mono text-[#52665A] uppercase">
                 {isTa ? 'மதிப்பீட்டாளர் உடனடி அணுகல்' : 'Instant Reviewer Demo'}
               </span>
-              <span className="text-[10px] font-mono text-[#426B43] bg-[#E8EFE3] px-1.5 py-0.5 rounded-2xs">
+              <span className="text-[10px] font-mono text-[#1F6B4A] bg-[#EAEFE5] px-2 py-0.5 rounded-[6px] font-semibold">
                 Paddy CR-1009
               </span>
             </div>
@@ -447,9 +447,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               type="button"
               onClick={handleDemoSignIn}
               disabled={isLoading || isGoogleLoading}
-              className="w-full py-2.5 min-h-[44px] text-xs font-mono font-medium text-[#183B2A] border border-[#183B2A] bg-white hover:bg-[#E5EBDD] rounded-xs cursor-pointer flex items-center justify-center gap-2 transition-colors"
+              className="btn-secondary w-full py-2.5 min-h-[44px] rounded-[10px] flex items-center justify-center gap-2 text-xs font-mono"
             >
-              <User className="w-3.5 h-3.5" />
+              <User className="w-3.5 h-3.5 text-[#1F6B4A]" />
               <span>
                 {isTa
                   ? 'முன்மாதிரி கணக்கில் நுழைக (Muthu Ramanathan, Thanjavur)'
@@ -460,12 +460,12 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
           {/* New Farmer Registration Link */}
           {onOpenRegister && (
-            <div className="mt-5 text-center text-xs text-[#526355]">
+            <div className="mt-5 text-center text-xs text-[#52665A]">
               <span>{isTa ? 'புதிய விவசாயியா? ' : 'New to CropShield? '}</span>
               <button
                 type="button"
                 onClick={onOpenRegister}
-                className="font-semibold text-[#183B2A] hover:underline cursor-pointer ml-1 inline-flex items-center"
+                className="font-semibold text-[#1F6B4A] hover:underline cursor-pointer ml-1 inline-flex items-center"
               >
                 <span>{isTa ? 'புதிய கணக்கை உருவாக்கவும் →' : 'Register your farm →'}</span>
               </button>
@@ -478,7 +478,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button
                 type="button"
                 onClick={onExploreGuest}
-                className="text-xs font-mono text-[#667166] hover:text-[#183B2A] hover:underline cursor-pointer"
+                className="text-xs font-mono text-[#718176] hover:text-[#102D24] hover:underline cursor-pointer"
               >
                 {isTa
                   ? '← உள்நுழையாமல் பொது கள தகவல்களை ஆராயவும்'
@@ -490,7 +490,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       </main>
 
       {/* Minimal Bottom Footer */}
-      <footer className="border-t border-[#D9DED3] bg-[#F7F6EF] py-4 px-4 text-center text-xs font-mono text-[#667166]">
+      <footer className="border-t border-[#DCE4D9] bg-[#F5F3E9] py-4 px-4 text-center text-xs font-mono text-[#718176]">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>CropShield AI · Tamil Nadu Agricultural Intelligence & Advisory</span>
           <span>Open-Meteo · TNAU Protocols · Gemini Vision AI</span>

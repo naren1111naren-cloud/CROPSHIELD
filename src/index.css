@@ -1,39 +1,70 @@
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-sans: "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-tamil: "Noto Sans Tamil", "Manrope", sans-serif;
+  --font-sans: "Plus Jakarta Sans", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Manrope", "Plus Jakarta Sans", sans-serif;
+  --font-data: "DM Sans", "Plus Jakarta Sans", sans-serif;
+  --font-serif: "Manrope", "Plus Jakarta Sans", Georgia, serif;
+  --font-tamil: "Noto Sans Tamil", "Plus Jakarta Sans", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  --color-forest: #183B2A;
-  --color-agri: #426B43;
-  --color-leaf: #78965C;
-  --color-sage: #E5EBDD;
-  --color-paper: #F7F6EF;
-  --color-ink: #202B22;
-  --color-muted-ink: #4A584D;
-  --color-rule: #D9DED3;
-  --color-ochre: #B67B2A;
-  --color-alert: #A94338;
+  /* Forest Intelligence Exact Color System */
+  /* Primary colors */
+  --color-forest-bg: #102D24;
+  --color-forest-deep: #0B211A;
+  --color-forest-emerald: #1F6B4A;
+  --color-leaf-bright: #70B77E;
+  --color-sage-soft: #B8DCC1;
+
+  /* Light theme surfaces */
+  --color-surface-main: #F5F3E9;
+  --color-surface-secondary: #EAEFE5;
+  --color-surface-elevated: #FFFFFF;
+  --color-surface-subtle: #F0F4ED;
+
+  /* Text tokens */
+  --color-text-primary: #17271E;
+  --color-text-secondary: #52665A;
+  --color-text-muted: #718176;
+  --color-text-dark: #F5F7F1;
+
+  /* Accents */
+  --color-accent-gold: #D7AD63;
+  --color-accent-blue: #447CB0;
+  --color-accent-success: #28764A;
+  --color-accent-warning: #A96616;
+  --color-accent-error: #B8423A;
+  --color-divider-subtle: #DCE4D9;
+
+  /* Backward compatibility aliases */
+  --color-forest: #102D24;
+  --color-agri: #1F6B4A;
+  --color-leaf: #70B77E;
+  --color-sage: #B8DCC1;
+  --color-paper: #F5F3E9;
+  --color-ink: #17271E;
+  --color-muted-ink: #52665A;
+  --color-rule: #DCE4D9;
+  --color-ochre: #D7AD63;
+  --color-alert: #B8423A;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #F7F6EF;
-  color: #202B22;
+  background-color: #F5F3E9;
+  color: #17271E;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 /* Tamil font rendering adjustments - generous line height, no artificial tracking */
 [lang="ta"], .font-tamil {
-  font-family: "Noto Sans Tamil", "Manrope", sans-serif;
+  font-family: "Noto Sans Tamil", "Plus Jakarta Sans", sans-serif;
   letter-spacing: normal !important;
   line-height: 1.75;
 }
 
-/* Reduced-motion support */
+/* Reduced-motion accessibility support (150-250ms default animations) */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
@@ -45,19 +76,226 @@ body {
 
 /* Accessible visible focus ring default */
 :focus-visible {
-  outline: 2px solid #183B2A;
+  outline: 2px solid #1F6B4A;
   outline-offset: 2px;
 }
 
-/* Subtle botanical grid paper pattern */
-.bg-field-grid {
-  background-image: 
-    linear-gradient(to right, rgba(217, 222, 211, 0.45) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(217, 222, 211, 0.45) 1px, transparent 1px);
-  background-size: 28px 28px;
+/* Typography Scale Classes */
+.text-hero-headline {
+  font-family: var(--font-display);
+  font-size: 38px;
+  line-height: 1.12;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+@media (min-width: 1024px) {
+  .text-hero-headline {
+    font-size: 58px;
+    line-height: 1.08;
+  }
 }
 
-.bg-field-dots {
-  background-image: radial-gradient(rgba(66, 107, 67, 0.2) 1px, transparent 1px);
-  background-size: 20px 20px;
+.text-page-title {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 1024px) {
+  .text-page-title {
+    font-size: 36px;
+  }
+}
+
+.text-section-heading {
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+@media (min-width: 768px) {
+  .text-section-heading {
+    font-size: 26px;
+  }
+}
+
+.text-feature-heading {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+@media (min-width: 768px) {
+  .text-feature-heading {
+    font-size: 20px;
+  }
+}
+
+.text-body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  font-weight: 450;
+  color: #52665A;
+}
+
+.text-nav {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 550;
+}
+
+.text-data-label {
+  font-family: var(--font-data);
+  font-size: 13px;
+  font-weight: 500;
+  color: #718176;
+}
+
+.text-metric {
+  font-family: var(--font-sans);
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+@media (min-width: 768px) {
+  .text-metric {
+    font-size: 38px;
+  }
+}
+
+/* Component Utility Classes */
+
+/* Primary Button: Emerald background #1F6B4A, white text, 10-12px corner radius, smooth hover */
+.btn-primary {
+  background-color: #1F6B4A;
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 11px;
+  padding: 0.75rem 1.45rem;
+  min-height: 44px;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(16, 45, 36, 0.08);
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: #165439;
+  box-shadow: 0 2px 6px rgba(16, 45, 36, 0.18);
+  transform: translateY(-1px);
+}
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+.btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Secondary Button: Transparent/Ivory, Forest-green text, subtle border #DCE4D9 */
+.btn-secondary {
+  background-color: #FFFFFF;
+  color: #102D24;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  border: 1px solid #DCE4D9;
+  font-weight: 550;
+  border-radius: 11px;
+  padding: 0.75rem 1.35rem;
+  min-height: 44px;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.btn-secondary:hover:not(:disabled) {
+  background-color: #EAEFE5;
+  border-color: #B8DCC1;
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Elevated Card Surfaces */
+.surface-card {
+  background-color: #FFFFFF;
+  border: 1px solid #DCE4D9;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(16, 45, 36, 0.04);
+}
+
+.surface-forest {
+  background-color: #0B211A;
+  color: #F5F7F1;
+  border: 1px solid rgba(184, 220, 193, 0.14);
+  border-radius: 12px;
+}
+
+/* Inputs */
+.input-forest {
+  background-color: #FFFFFF;
+  border: 1px solid #DCE4D9;
+  border-radius: 10px;
+  color: #17271E;
+  padding: 0.65rem 0.9rem;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.input-forest:focus {
+  outline: none;
+  border-color: #1F6B4A;
+  box-shadow: 0 0 0 3px rgba(31, 107, 74, 0.15);
+}
+
+/* Status Badges */
+.badge-healthy {
+  background-color: #EAEFE5;
+  color: #28764A;
+  border: 1px solid #B8DCC1;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.25rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-caution {
+  background-color: #FAF4EB;
+  color: #A96616;
+  border: 1px solid rgba(215, 173, 99, 0.45);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.25rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge-alert {
+  background-color: #FAF2F1;
+  color: #B8423A;
+  border: 1px solid rgba(184, 66, 58, 0.3);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  padding: 0.25rem 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }

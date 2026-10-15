@@ -50,16 +50,21 @@ export const CropShieldLogo: React.FC<CropShieldLogoProps> = ({
 
       {/* Wordmark */}
       <div className="flex flex-col">
-        <span
-          className={`font-serif tracking-tight font-medium ${textSizes[size]} ${textColor} leading-none`}
-        >
-          {language === 'ta' ? 'CropShield' : 'CropShield'}
-        </span>
+        <div className="flex items-center gap-1.5 leading-none">
+          <span
+            className={`font-['Manrope'] font-bold tracking-tight ${textSizes[size]} ${textColor}`}
+          >
+            CropShield
+          </span>
+          <span className="text-[11px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[5px] bg-[#1F6B4A] text-white">
+            AI
+          </span>
+        </div>
         {showTagline && (
           <span
             className={`text-[10px] tracking-wider uppercase font-mono mt-1 ${subtextColor}`}
           >
-            {language === 'ta' ? 'கள நுண்ணறிவு · தமிழ்நாடு' : 'Fieldnote Intelligence'}
+            {language === 'ta' ? 'வேளாண் நுண்ணறிவு தளம்' : 'Agricultural Intelligence'}
           </span>
         )}
       </div>

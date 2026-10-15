@@ -270,17 +270,17 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="bg-white border border-[#D9DED3] p-6 lg:p-8 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#D9DED3] pb-4 mb-4">
+      <div className="surface-card p-6 lg:p-8 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#DCE4D9] pb-4 mb-4">
           <div>
-            <div className="flex items-center gap-2 text-xs font-mono uppercase text-[#426B43] tracking-wider font-semibold">
-              <Layers className="w-4 h-4 text-[#183B2A]" />
+            <div className="flex items-center gap-2 text-xs font-mono uppercase text-[#1F6B4A] tracking-wider font-semibold">
+              <Layers className="w-4 h-4 text-[#1F6B4A]" />
               <span>CADASTRAL PLOT REGISTRY · PROFILES/{user?.uid?.substring(0, 8)}/FARMS</span>
             </div>
-            <h2 className="font-serif text-2xl sm:text-3xl font-medium text-[#183B2A] mt-1">
+            <h2 className="text-2xl sm:text-3xl font-bold font-['Manrope'] text-[#0B211A] mt-1">
               {isTa ? 'எனது பண்ணைப் பதிவேடு (My Farm Parcels)' : 'My Farm Parcels & Cadastre'}
             </h2>
-            <p className="text-xs text-[#4A584D] font-sans mt-0.5">
+            <p className="text-xs sm:text-sm text-[#52665A] font-sans mt-0.5 leading-relaxed">
               {isTa
                 ? 'உங்கள் நிலப்பரப்புகள், பயிர்கள், பாசன முறைகள் மற்றும் வளர்ச்சிப் பருவங்களை நிர்வகிக்கவும்.'
                 : 'Maintain separate records for each field parcel, cultivated crop, area, irrigation method, and growth stage.'}
@@ -289,7 +289,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
 
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#183B2A] text-white font-mono text-xs font-semibold hover:bg-[#122c20] transition-colors rounded-xs cursor-pointer shadow-xs shrink-0 min-h-[44px]"
+            className="btn-primary text-xs py-2.5 px-4 shrink-0 min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
             <span>{isTa ? 'புதிய பண்ணை சேர்க்க' : 'Add New Farm Plot'}</span>
@@ -298,22 +298,22 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
 
         {/* Success Banner */}
         {actionSuccess && (
-          <div className="mb-4 p-3 bg-[#426B43]/10 border border-[#426B43] text-[#183B2A] text-xs font-sans flex items-center gap-2 rounded-xs animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-[#426B43] shrink-0" />
+          <div className="mb-4 p-3 bg-[#EAEFE5] border border-[#B8DCC1] text-[#1F6B4A] text-xs font-sans flex items-center gap-2 rounded-[10px] animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-[#1F6B4A] shrink-0" />
             <span>{actionSuccess}</span>
           </div>
         )}
 
         {/* Error Banner */}
         {errorMsg && (
-          <div className="mb-4 p-3 bg-[#A94338]/10 border border-[#A94338] text-[#A94338] text-xs font-sans flex items-center justify-between rounded-xs">
+          <div className="mb-4 p-3 bg-[#FAF2F1] border border-[#B8423A]/30 text-[#B8423A] text-xs font-sans flex items-center justify-between rounded-[10px]">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>
             <button
               onClick={() => setErrorMsg(null)}
-              className="text-xs font-mono underline hover:text-[#183B2A] cursor-pointer"
+              className="text-xs font-mono underline hover:text-[#102D24] cursor-pointer"
             >
               Dismiss
             </button>
@@ -322,23 +322,23 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
 
         {/* Loading State */}
         {isLoading && (
-          <div className="py-12 text-center text-[#4A584D] font-mono text-xs flex flex-col items-center justify-center gap-3">
-            <RefreshCw className="w-5 h-5 animate-spin text-[#183B2A]" />
+          <div className="py-12 text-center text-[#52665A] font-mono text-xs flex flex-col items-center justify-center gap-3">
+            <RefreshCw className="w-5 h-5 animate-spin text-[#1F6B4A]" />
             <span>{isTa ? 'பண்ணை விவரங்கள் ஏற்றப்படுகின்றன...' : 'Loading registered farm plots from Firestore...'}</span>
           </div>
         )}
 
         {/* Empty State */}
         {!isLoading && farms.length === 0 && (
-          <div className="p-8 sm:p-12 text-center bg-[#FAF9F3] border border-dashed border-[#D9DED3] rounded-xs space-y-4">
-            <div className="w-12 h-12 mx-auto rounded-full bg-[#183B2A]/10 flex items-center justify-center text-[#183B2A]">
+          <div className="p-8 sm:p-12 text-center bg-[#FAF9F3] border border-dashed border-[#DCE4D9] rounded-[12px] space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-full bg-[#1F6B4A]/10 flex items-center justify-center text-[#1F6B4A]">
               <Sprout className="w-6 h-6" />
             </div>
             <div className="space-y-1">
-              <h3 className="font-serif text-xl font-medium text-[#183B2A]">
+              <h3 className="text-xl font-bold font-['Plus_Jakarta_Sans'] text-[#102D24]">
                 {isTa ? 'பதிவு செய்யப்பட்ட பண்ணைகள் எதுவும் இல்லை' : 'No Farm Parcels Registered Yet'}
               </h3>
-              <p className="text-xs text-[#4A584D] font-sans max-w-md mx-auto">
+              <p className="text-xs sm:text-sm text-[#52665A] font-sans max-w-md mx-auto leading-relaxed">
                 {isTa
                   ? 'உங்கள் முதல் வயலைச் சேர்த்து, பயிர் ரகம், பரப்பளவு மற்றும் நடவுத் தேதியைப் பதிவு செய்யவும்.'
                   : 'Add your first farm parcel to organize your crop plots, calibrate disease alerts, and receive stage-specific agronomic advice.'}
@@ -346,7 +346,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
             </div>
             <button
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#183B2A] text-white font-mono text-xs font-semibold hover:bg-[#122c20] rounded-xs cursor-pointer shadow-xs min-h-[44px]"
+              className="btn-primary text-xs py-2.5 px-5 min-h-[44px]"
             >
               <Plus className="w-4 h-4" />
               <span>{isTa ? 'முதல் பண்ணையைச் சேர்க்க' : 'Register Your First Farm'}</span>
@@ -360,10 +360,10 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
             {farms.map((farm) => (
               <div
                 key={farm.id}
-                className={`p-5 bg-[#FAF9F3] border transition-all flex flex-col justify-between ${
+                className={`p-5 bg-white border rounded-[12px] transition-all flex flex-col justify-between shadow-xs ${
                   farm.isPrimary
-                    ? 'border-[#183B2A] ring-1 ring-[#183B2A]/20'
-                    : 'border-[#D9DED3] hover:border-[#426B43]'
+                    ? 'border-[#1F6B4A] ring-1 ring-[#1F6B4A]/30'
+                    : 'border-[#DCE4D9] hover:border-[#1F6B4A]'
                 }`}
               >
                 <div>

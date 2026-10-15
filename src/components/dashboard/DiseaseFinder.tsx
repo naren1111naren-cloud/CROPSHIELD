@@ -27,6 +27,8 @@ import {
 
 import { ContextualHelpModal, ScanContextHelp } from './ContextualHelpModal';
 import { apiFetch } from '../../lib/apiClient';
+import { motion, AnimatePresence } from 'motion/react';
+import { imagePreviewVariants, resultRevealVariants, buttonHoverTap } from '../../lib/motion';
 
 interface DiseaseFinderProps {
   onSaveToLog: (result: AnalysisResult, imagePreview: string, file?: File | null, farmId?: string) => void;
@@ -535,132 +537,153 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-6">
           {/* Left Column: Dropzone & Image Preview */}
           <div className="lg:col-span-7">
-            {!imagePreview ? (
-              <div
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                className="relative border-2 border-dashed border-[#D9DED3] hover:border-[#426B43] transition-colors p-8 sm:p-12 text-center bg-[#FAF9F3] cursor-pointer flex flex-col items-center justify-center min-h-[300px] rounded-xs"
-                onClick={() => fileInputRef.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    fileInputRef.current?.click();
-                  }
-                }}
-                aria-label="Upload crop leaf photograph"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
-                />
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
-                />
-
-                <div className="w-14 h-14 rounded-xs bg-[#E5EBDD] text-[#183B2A] flex items-center justify-center mb-4 shadow-2xs">
-                  <Upload className="w-7 h-7" />
-                </div>
-
-                <p className="text-base sm:text-lg font-serif font-medium text-[#183B2A] mb-1">
-                  {isTa ? 'இலைப் புகைப்படத்தைப் பதிவேற்ற அழுத்தவும்' : 'Tap to upload a leaf photograph'}
-                </p>
-                <p className="text-xs font-mono text-[#4A584D] max-w-sm mb-4">
-                  {isTa
-                    ? 'JPEG, PNG, WebP · 15 MBக்கு கீழ் · இயற்கை பகல் வெளிச்சம் சிறந்தது'
-                    : 'Supports JPEG, PNG, WebP · Under 15 MB · Natural daylight recommended'}
-                </p>
-
-                {/* Mobile Camera Option Button */}
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      cameraInputRef.current?.click();
-                    }}
-                    className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-semibold text-[#183B2A] border border-[#D9DED3] bg-white hover:bg-[#E5EBDD] rounded-xs flex items-center gap-2 cursor-pointer shadow-2xs"
-                  >
-                    <Camera className="w-4 h-4 text-[#426B43]" />
-                    <span>{isTa ? 'நேரடி கேமரா மூலம் படம் பிடிக்க' : 'Take Photo with Camera'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
+            <AnimatePresence mode="wait">
+              {!imagePreview ? (
+                <motion.div
+                  key="dropzone"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.3 }}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  className="relative border-2 border-dashed border-[#DCE4D9] hover:border-[#1F6B4A] transition-all p-8 sm:p-12 text-center bg-[#FAF9F3] hover:bg-white cursor-pointer flex flex-col items-center justify-center min-h-[300px] rounded-[14px] group"
+                  onClick={() => fileInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
                       fileInputRef.current?.click();
-                    }}
-                    className="px-4 py-2.5 min-h-[44px] text-xs font-mono font-medium text-[#4A584D] border border-[#D9DED3] bg-white hover:bg-[#FAF9F3] rounded-xs flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>{isTa ? 'கோப்பைத் தேர்ந்தெடு' : 'Browse Files'}</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="relative border border-[#D9DED3] bg-[#FAF9F3] p-3 rounded-xs">
-                {/* Image Frame with Registration Crosshairs */}
-                <div className="relative aspect-4/3 max-h-[360px] w-full bg-black/5 overflow-hidden flex items-center justify-center rounded-xs">
-                  <img
-                    src={imagePreview}
-                    alt={`${selectedCropId} leaf inspection specimen`}
-                    className="max-h-full max-w-full object-contain"
+                    }
+                  }}
+                  aria-label="Upload clear photo of your crop"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
                   />
-                  {/* Inspection Crosshair Overlay */}
-                  <div className="absolute inset-0 pointer-events-none border border-[#183B2A]/20 flex items-center justify-center">
-                    <div className="w-8 h-8 border border-[#B67B2A]/60 rounded-full flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 bg-[#B67B2A] rounded-full"></div>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && handleFileChange(e.target.files[0])}
+                  />
+
+                  <div className="w-16 h-16 rounded-[14px] bg-[#EAEFE5] text-[#1F6B4A] flex items-center justify-center mb-4 shadow-xs group-hover:scale-105 transition-transform">
+                    <Camera className="w-8 h-8" />
+                  </div>
+
+                  <p className="text-lg sm:text-xl font-bold font-['Plus_Jakarta_Sans'] text-[#0B211A] mb-1.5">
+                    {isTa ? 'உங்கள் பயிரின் தெளிவான புகைப்படத்தைப் பதிவேற்றவும்' : 'Upload a clear photo of your crop.'}
+                  </p>
+                  <p className="text-xs sm:text-sm text-[#52665A] max-w-md mb-5 leading-relaxed">
+                    {isTa
+                      ? 'JPEG, PNG, WebP · 15 MBக்கு கீழ் · இயற்கை பகல் வெளிச்சத்தில் இலை நரம்புகள் தெரியுமாறு படம் எடுக்கவும்'
+                      : 'Drag & drop image or browse files · Supports JPEG, PNG, WebP under 15 MB · Natural daylight recommended'}
+                  </p>
+
+                  {/* Mobile Camera Option Button */}
+                  <div className="flex flex-wrap items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        cameraInputRef.current?.click();
+                      }}
+                      className="btn-primary text-xs py-2.5 px-4.5"
+                    >
+                      <Camera className="w-4 h-4" />
+                      <span>{isTa ? 'நேரடி கேமரா மூலம் படம் பிடிக்க' : 'Capture with Camera'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="btn-secondary text-xs py-2.5 px-4"
+                    >
+                      <Upload className="w-4 h-4 text-[#1F6B4A]" />
+                      <span>{isTa ? 'கோப்பைத் தேர்ந்தெடு' : 'Browse Files'}</span>
+                    </button>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="preview"
+                  variants={imagePreviewVariants}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  className="relative border border-[#DCE4D9] bg-[#FAF9F3] p-3 rounded-[14px] shadow-xs"
+                >
+                  {/* Image Frame with Registration Crosshairs */}
+                  <div className="relative aspect-4/3 max-h-[360px] w-full bg-black/5 overflow-hidden flex items-center justify-center rounded-[10px]">
+                    <img
+                      src={imagePreview}
+                      alt={`${selectedCropId} leaf inspection specimen`}
+                      className="max-h-full max-w-full object-contain"
+                    />
+                    {/* Inspection Crosshair Overlay */}
+                    <div className="absolute inset-0 pointer-events-none border border-[#102D24]/10 flex items-center justify-center">
+                      <div className="w-8 h-8 border border-[#D7AD63]/70 rounded-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 bg-[#D7AD63] rounded-full"></div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Replace / Remove Controls */}
-                <div className="mt-3 flex items-center justify-between text-xs font-mono text-[#4A584D]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#183B2A] font-semibold uppercase">
-                      {isTa ? currentCropConfig.cropNameTamil : currentCropConfig.cropNameEnglish} SPECIMEN
+                  {/* Replace / Remove Controls */}
+                  <div className="mt-3 flex items-center justify-between text-xs font-mono text-[#52665A]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[#102D24] font-semibold uppercase">
+                        {isTa ? currentCropConfig.cropNameTamil : currentCropConfig.cropNameEnglish} SPECIMEN
+                      </span>
+                      {selectedFile && <span>({(selectedFile.size / 1024).toFixed(0)} KB)</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="hover:text-[#102D24] underline cursor-pointer p-1"
+                      >
+                        {isTa ? 'வேறு படம் மாற்ற' : 'Replace photo'}
+                      </button>
+                      <span>·</span>
+                      <button
+                        onClick={handleReset}
+                        className="text-[#A94338] hover:underline cursor-pointer p-1"
+                      >
+                        {isTa ? 'நீக்குக' : 'Remove photo'}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+              {errorMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="mt-4 p-4 bg-[#FAF3F2] border border-[#A94338]/40 text-[#A94338] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px]"
+                >
+                  <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <span className="font-semibold block font-mono">
+                      {isTa ? 'ஆய்வு பிழை' : 'Inspection Notice'}
                     </span>
-                    {selectedFile && <span>({(selectedFile.size / 1024).toFixed(0)} KB)</span>}
+                    <span>{errorMsg}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="hover:text-[#183B2A] underline cursor-pointer p-1"
-                    >
-                      {isTa ? 'வேறு படம் மாற்ற' : 'Replace photo'}
-                    </button>
-                    <span>·</span>
-                    <button
-                      onClick={handleReset}
-                      className="text-[#A94338] hover:underline cursor-pointer p-1"
-                    >
-                      {isTa ? 'நீக்குக' : 'Remove photo'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {errorMsg && (
-              <div className="mt-4 p-4 bg-[#FAF3F2] border border-[#A94338]/40 text-[#A94338] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-xs">
-                <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <span className="font-semibold block font-mono">
-                    {isTa ? 'ஆய்வு பிழை' : 'Inspection Notice'}
-                  </span>
-                  <span>{errorMsg}</span>
-                </div>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Right Column: Agronomic Context Inputs */}
@@ -736,10 +759,10 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
               <button
                 onClick={handleAnalyze}
                 disabled={isLoading || !imagePreview}
-                className={`w-full py-4 min-h-[48px] text-sm font-semibold tracking-wide uppercase transition-colors rounded-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
+                className={`w-full py-3.5 min-h-[48px] text-sm font-semibold tracking-wide uppercase transition-all rounded-[11px] flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
                   isLoading || !imagePreview
-                    ? 'bg-[#4A584D]/40 text-white cursor-not-allowed'
-                    : 'bg-[#183B2A] hover:bg-[#122c20] text-white active:scale-[0.99]'
+                    ? 'bg-[#52665A]/35 text-white cursor-not-allowed'
+                    : 'btn-primary shadow-sm'
                 }`}
               >
                 {isLoading ? (
@@ -757,7 +780,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
 
               {/* Progress step message */}
               {isLoading && loadingStep && (
-                <div className="mt-2 text-center text-xs font-mono text-[#426B43] animate-pulse">
+                <div className="mt-2 text-center text-xs font-mono text-[#1F6B4A] animate-pulse">
                   {loadingStep}
                 </div>
               )}
@@ -767,9 +790,16 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
       </div>
 
       {/* 3. Analysis Results Dossier */}
-      {analysisResult && (
-        <div className="bg-white border-2 border-[#183B2A] p-6 lg:p-8 animate-fadeIn shadow-sm rounded-xs">
-          {/* Results Dossier Top Bar */}
+      <AnimatePresence>
+        {analysisResult && (
+          <motion.div
+            variants={resultRevealVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            className="bg-white border-2 border-[#102D24] p-6 lg:p-8 shadow-md rounded-[16px]"
+          >
+            {/* Results Dossier Top Bar */}
           <div className="border-b border-[#D9DED3] pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#426B43] uppercase tracking-wider mb-1 font-semibold">
@@ -928,18 +958,18 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                 </div>
               </div>
 
-              <div className="md:col-span-4 md:text-right border-t md:border-t-0 md:border-l border-[#D9DED3] pt-4 md:pt-0 md:pl-6">
-                <span className="text-xs font-mono uppercase text-[#4A584D] block mb-1 font-semibold">
+              <div className="md:col-span-4 md:text-right border-t md:border-t-0 md:border-l border-[#DCE4D9] pt-4 md:pt-0 md:pl-6">
+                <span className="text-xs font-mono uppercase text-[#718176] block mb-1 font-semibold">
                   {t('resultsSeverity')}
                 </span>
                 <span
-                  className={`inline-block font-mono text-xs sm:text-sm uppercase font-semibold px-3 py-1.5 rounded-xs ${
+                  className={
                     analysisResult.severity === 'high'
-                      ? 'bg-[#A94338]/10 text-[#A94338] border border-[#A94338]/30'
+                      ? 'badge-alert text-xs sm:text-sm font-mono uppercase font-bold px-3 py-1.5'
                       : analysisResult.severity === 'moderate'
-                      ? 'bg-[#B67B2A]/10 text-[#B67B2A] border border-[#B67B2A]/30'
-                      : 'bg-[#426B43]/10 text-[#426B43] border border-[#426B43]/30'
-                  }`}
+                      ? 'badge-caution text-xs sm:text-sm font-mono uppercase font-bold px-3 py-1.5'
+                      : 'badge-healthy text-xs sm:text-sm font-mono uppercase font-bold px-3 py-1.5'
+                  }
                 >
                   {analysisResult.severity.toUpperCase()} PRIORITY
                 </span>
@@ -1162,8 +1192,9 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* Expert Confirmation Request Modal */}
       {showExpertModal && (
