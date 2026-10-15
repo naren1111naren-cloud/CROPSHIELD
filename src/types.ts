@@ -118,6 +118,22 @@ export interface FarmerProfile {
   updatedAt?: any;
 }
 
+export type BoundarySurveyStatus = 'official_source' | 'farmer_drawn' | 'imported' | 'unavailable';
+
+export interface CadastralSourceMetadata {
+  provider: string;
+  district?: string;
+  taluk?: string;
+  revenueVillage?: string;
+  surveyNumber?: string;
+  subdivisionNumber?: string;
+  retrievedAt?: string;
+  fileName?: string;
+  licenseNotice?: string;
+  officialExtentAcres?: number;
+  officialExtentCents?: number;
+}
+
 export interface FarmBoundary {
   type: 'Polygon';
   coordinates: [number, number][][]; // GeoJSON: Array of rings with [longitude, latitude]
@@ -127,7 +143,11 @@ export interface FarmBoundary {
   measuredAcres?: number;
   measuredCents?: number;
   measuredHectares?: number;
-  surveyStatus?: 'farmer_mapped' | 'verified_cadastral';
+  surveyStatus?: BoundarySurveyStatus;
+  sourceMetadata?: CadastralSourceMetadata;
+  officialExtentAcres?: number;
+  officialExtentCents?: number;
+  proposedCoordinates?: [number, number][][]; // If user proposes an edit to an official boundary
   mappedAt?: string;
 }
 

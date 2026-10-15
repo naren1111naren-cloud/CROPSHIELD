@@ -469,13 +469,29 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
 
                       {/* Boundary Status Badge */}
                       {farm.boundary?.coordinates ? (
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#217451]/10 text-[#217451] text-[11px] font-mono font-medium border border-[#217451]/20">
-                            <Compass className="w-3 h-3 text-[#217451] shrink-0" />
-                            <span>
-                              {farm.boundary.measuredAcres?.toFixed(2) || farm.landSizeAcres} Ac ({farm.boundary.measuredCents?.toFixed(1) || Math.round((farm.landSizeAcres || 0)*100)} Cts) · Satellite Geocoded
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          {farm.boundary.surveyStatus === 'official_source' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#F59E0B]/10 text-[#B45309] text-[11px] font-mono font-medium border border-[#F59E0B]/30">
+                              <Compass className="w-3 h-3 text-[#B45309] shrink-0" />
+                              <span>
+                                Official Cadastre {farm.boundary.sourceMetadata?.surveyNumber ? `· Survey ${farm.boundary.sourceMetadata.surveyNumber}` : ''} ({farm.boundary.measuredAcres?.toFixed(2) || farm.landSizeAcres} Ac / {farm.boundary.measuredCents?.toFixed(1)} Cts)
+                              </span>
                             </span>
-                          </span>
+                          ) : farm.boundary.surveyStatus === 'imported' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#A855F7]/10 text-[#7E22CE] text-[11px] font-mono font-medium border border-[#A855F7]/30">
+                              <Compass className="w-3 h-3 text-[#7E22CE] shrink-0" />
+                              <span>
+                                Imported Survey ({farm.boundary.sourceMetadata?.fileName || 'File'}) · {farm.boundary.measuredAcres?.toFixed(2) || farm.landSizeAcres} Ac
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[4px] bg-[#217451]/10 text-[#217451] text-[11px] font-mono font-medium border border-[#217451]/20">
+                              <Compass className="w-3 h-3 text-[#217451] shrink-0" />
+                              <span>
+                                {farm.boundary.measuredAcres?.toFixed(2) || farm.landSizeAcres} Ac ({farm.boundary.measuredCents?.toFixed(1) || Math.round((farm.landSizeAcres || 0)*100)} Cts) · Farmer Mapped
+                              </span>
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-1 flex items-center gap-1.5">
@@ -829,6 +845,23 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                       >
                         {isTa ? 'எல்லையை நீக்கு' : 'Remove Boundary'}
                       </button>
+                    </div>
+
+                    {/* Provenance Tag */}
+                    <div className="flex items-center gap-2 pt-0.5 flex-wrap text-[11px]">
+                      {boundary.surveyStatus === 'official_source' ? (
+                        <span className="px-2 py-0.5 rounded-[4px] bg-[#F59E0B]/20 text-[#B45309] font-bold">
+                          🏛️ Official Cadastral Record · {boundary.sourceMetadata?.surveyNumber ? `Survey ${boundary.sourceMetadata.surveyNumber}` : 'Government WFS'}
+                        </span>
+                      ) : boundary.surveyStatus === 'imported' ? (
+                        <span className="px-2 py-0.5 rounded-[4px] bg-[#A855F7]/20 text-[#7E22CE] font-bold">
+                          📂 Imported Survey File · {boundary.sourceMetadata?.fileName || 'Spatial File'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-[4px] bg-[#217451]/20 text-[#217451] font-bold">
+                          ✏️ Farmer-Mapped Outline (Unverified by e-Adangal)
+                        </span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">

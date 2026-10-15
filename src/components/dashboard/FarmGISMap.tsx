@@ -2,8 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as turf from '@turf/turf';
-import { FarmRecord, FarmBoundary } from '../../types';
+import { FarmRecord, FarmBoundary, BoundarySurveyStatus, CadastralSourceMetadata } from '../../types';
 import { TN_DISTRICT_GEODATA } from '../../config/tamilNaduDistricts';
+import {
+  TN_CADASTRAL_HIERARCHY,
+  lookupCadastralParcel,
+  parseImportedBoundaryFile,
+  CadastralLookupResponse,
+} from '../../services/cadastralService';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   Compass,
@@ -18,19 +24,25 @@ import {
   Minimize2,
   Info,
   AlertTriangle,
-  Sparkles,
   Search,
   CheckCircle2,
-  ExternalLink,
-  ChevronDown,
-  Navigation
+  FileUp,
+  Landmark,
+  ShieldAlert,
+  ShieldCheck,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
   farms?: FarmRecord[];
   selectedFarm?: FarmRecord | null;
   onSelectFarm?: (farm: FarmRecord) => void;
-  onSaveBoundary?: (boundary: FarmBoundary, measuredAcres: number, measuredCents: number) => void;
+  onSaveBoundary?: (
+    boundary: FarmBoundary,
+    measuredAcres: number,
+    measuredCents: number
+  ) => void;
   initialDistrict?: string;
   className?: string;
   readOnly?: boolean;
@@ -60,18 +72,40 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const baseTileLayerRef = useRef<L.TileLayer | null>(null);
+  const overlayTileLayerRef = useRef<L.LayerGroup | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Drawing & Geometry State
-  // Coordinates are stored as [lat, lng] for Leaflet rendering
   const [polygonCoords, setPolygonCoords] = useState<[number, number][]>([]);
+  const [initialCoords, setInitialCoords] = useState<[number, number][]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
-  const [activeLayerType, setActiveLayerType] = useState<'satellite' | 'streets'>('satellite');
+  const [activeLayerType, setActiveLayerType] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
   const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [gpsLoading, setGpsLoading] = useState<boolean>(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Boundary Provenance & Official Cadastre Metadata
+  const [boundaryStatus, setBoundaryStatus] = useState<BoundarySurveyStatus>('farmer_drawn');
+  const [sourceMetadata, setSourceMetadata] = useState<CadastralSourceMetadata | undefined>(undefined);
+  const [officialExtentAcres, setOfficialExtentAcres] = useState<number | undefined>(undefined);
+  const [officialExtentCents, setOfficialExtentCents] = useState<number | undefined>(undefined);
+  const [isProposedEdit, setIsProposedEdit] = useState<boolean>(false);
+
+  // Cadastral Lookup Modal State
+  const [isLookupModalOpen, setIsLookupModalOpen] = useState<boolean>(false);
+  const [lookupDistrict, setLookupDistrict] = useState<string>(initialDistrict);
+  const [lookupTaluk, setLookupTaluk] = useState<string>('Thanjavur');
+  const [lookupVillage, setLookupVillage] = useState<string>('Pillaiyarpatti');
+  const [lookupSurveyNo, setLookupSurveyNo] = useState<string>('');
+  const [lookupSubdivNo, setLookupSubdivNo] = useState<string>('');
+  const [lookupLoading, setLookupLoading] = useState<boolean>(false);
+  const [lookupResult, setLookupResult] = useState<CadastralLookupResponse | null>(null);
+
+  // File Upload Feedback
+  const [importNotice, setImportNotice] = useState<string | null>(null);
 
   // Live Measurements
   const [measurements, setMeasurements] = useState<LiveMeasurements>({
@@ -88,6 +122,29 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const vertexMarkersLayerRef = useRef<L.LayerGroup | null>(null);
   const savedFarmsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
+
+  // Sync available taluks & villages for selected lookup district
+  useEffect(() => {
+    const distData = TN_CADASTRAL_HIERARCHY[lookupDistrict];
+    if (distData) {
+      const taluks = Object.keys(distData.taluks);
+      if (taluks.length > 0 && !taluks.includes(lookupTaluk)) {
+        setLookupTaluk(taluks[0]);
+        const villages = distData.taluks[taluks[0]].villages;
+        setLookupVillage(villages[0] || '');
+      }
+    }
+  }, [lookupDistrict]);
+
+  useEffect(() => {
+    const distData = TN_CADASTRAL_HIERARCHY[lookupDistrict];
+    if (distData && distData.taluks[lookupTaluk]) {
+      const villages = distData.taluks[lookupTaluk].villages;
+      if (villages.length > 0 && !villages.includes(lookupVillage)) {
+        setLookupVillage(villages[0]);
+      }
+    }
+  }, [lookupTaluk]);
 
   // Helper to calculate measurements from Leaflet [lat, lng] array
   const calculateLiveMeasurements = (coords: [number, number][]): LiveMeasurements => {
@@ -141,7 +198,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         validationError: isSelfIntersecting
           ? isTa
             ? 'எல்லைக் கோடுகள் ஒன்றை ஒன்று குறுக்கறுக்கக் கூடாது (Self-intersecting).'
-            : 'Boundary lines self-intersect. Please adjust vertices to form a simple polygon.'
+            : 'Boundary lines self-intersect. Please drag vertices to form a valid non-overlapping polygon.'
           : undefined,
       };
     } catch (err: any) {
@@ -157,10 +214,83 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   };
 
+  // Configure Layer: Hybrid Satellite vs Satellite Pure vs Streets
+  const applyTileLayer = (map: L.Map, layerType: 'hybrid' | 'satellite' | 'streets') => {
+    // Clear previous base layer
+    if (baseTileLayerRef.current) {
+      map.removeLayer(baseTileLayerRef.current);
+      baseTileLayerRef.current = null;
+    }
+    // Clear previous overlay group
+    if (overlayTileLayerRef.current) {
+      map.removeLayer(overlayTileLayerRef.current);
+      overlayTileLayerRef.current = null;
+    }
+
+    const maptilerKey = import.meta.env.VITE_MAPTILER_API_KEY;
+
+    if (layerType === 'hybrid') {
+      if (maptilerKey) {
+        const satHybrid = L.tileLayer(
+          `https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${maptilerKey}`,
+          {
+            maxZoom: 20,
+            attribution:
+              '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+          }
+        );
+        satHybrid.addTo(map);
+        baseTileLayerRef.current = satHybrid;
+      } else {
+        // High-precision Esri Satellite base
+        const sat = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          {
+            maxZoom: 19,
+            attribution:
+              'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          }
+        );
+        sat.addTo(map);
+        baseTileLayerRef.current = sat;
+
+        // Overlay transportation & place boundaries
+        const roads = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19, opacity: 0.95 }
+        );
+        const places = L.tileLayer(
+          'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+          { maxZoom: 19, opacity: 0.95 }
+        );
+        const overlayGroup = L.layerGroup([roads, places]).addTo(map);
+        overlayTileLayerRef.current = overlayGroup;
+      }
+    } else if (layerType === 'satellite') {
+      const sat = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        {
+          maxZoom: 19,
+          attribution:
+            'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        }
+      );
+      sat.addTo(map);
+      baseTileLayerRef.current = sat;
+    } else {
+      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      });
+      osm.addTo(map);
+      baseTileLayerRef.current = osm;
+    }
+  };
+
   // Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return; // Already initialized
+    if (mapInstanceRef.current) return;
 
     const targetGeo = TN_DISTRICT_GEODATA[initialDistrict] || TN_DISTRICT_GEODATA.Thanjavur;
     const initialLat = targetGeo.latitude;
@@ -180,22 +310,11 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     // Metric Scale Bar
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 
-    // Satellite Imagery Layer (Esri World Imagery)
-    const satelliteLayer = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      {
-        maxZoom: 19,
-        attribution:
-          'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-      }
-    );
-
-    satelliteLayer.addTo(map);
-    tileLayerRef.current = satelliteLayer;
-
     // Layer Groups
     vertexMarkersLayerRef.current = L.layerGroup().addTo(map);
     savedFarmsLayerGroupRef.current = L.layerGroup().addTo(map);
+
+    applyTileLayer(map, 'hybrid');
 
     mapInstanceRef.current = map;
 
@@ -205,39 +324,17 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     };
   }, []);
 
-  // Switch Layer: Satellite vs Streets
-  const handleSwitchLayer = (layerType: 'satellite' | 'streets') => {
+  // Switch Layer
+  const handleSwitchLayer = (layerType: 'hybrid' | 'satellite' | 'streets') => {
     if (!mapInstanceRef.current) return;
     setActiveLayerType(layerType);
-
-    if (tileLayerRef.current) {
-      mapInstanceRef.current.removeLayer(tileLayerRef.current);
-    }
-
-    if (layerType === 'satellite') {
-      const sat = L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-          maxZoom: 19,
-          attribution:
-            'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        }
-      );
-      sat.addTo(mapInstanceRef.current);
-      tileLayerRef.current = sat;
-    } else {
-      const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      });
-      osm.addTo(mapInstanceRef.current);
-      tileLayerRef.current = osm;
-    }
+    applyTileLayer(mapInstanceRef.current, layerType);
   };
 
-  // Fly to District when district selection changes
+  // Fly to District
   const handleDistrictChange = (distKey: string) => {
     setSelectedDistrict(distKey);
+    setLookupDistrict(distKey);
     const geo = TN_DISTRICT_GEODATA[distKey];
     if (geo && mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([geo.latitude, geo.longitude], 15, { duration: 1.2 });
@@ -262,7 +359,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         if (mapInstanceRef.current) {
           mapInstanceRef.current.flyTo([latitude, longitude], 17, { duration: 1.5 });
 
-          // Remove previous GPS marker
           if (userGpsMarkerRef.current) {
             userGpsMarkerRef.current.remove();
           }
@@ -307,7 +403,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     e.preventDefault();
     if (!searchQuery.trim() || !mapInstanceRef.current) return;
 
-    // Check if user entered coordinates "lat, lng"
     const coordParts = searchQuery.split(',').map((s) => parseFloat(s.trim()));
     if (coordParts.length === 2 && !isNaN(coordParts[0]) && !isNaN(coordParts[1])) {
       const [lat, lng] = coordParts;
@@ -317,7 +412,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       }
     }
 
-    // Check if matches known district
     const matchedDist = Object.keys(TN_DISTRICT_GEODATA).find((k) =>
       k.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -349,29 +443,45 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     const map = mapInstanceRef.current;
     if (!map) return;
 
-    // Calculate live measurements
     const liveMetrics = calculateLiveMeasurements(polygonCoords);
     setMeasurements(liveMetrics);
 
-    // Clear previous active polygon layer
     if (activePolygonLayerRef.current) {
       activePolygonLayerRef.current.remove();
       activePolygonLayerRef.current = null;
     }
 
-    // Clear previous vertex markers
     if (vertexMarkersLayerRef.current) {
       vertexMarkersLayerRef.current.clearLayers();
     }
 
     if (polygonCoords.length === 0) return;
 
-    // Draw Polygon Overlay (Translucent Cyan with Lime Accent)
+    // Determine Polygon Styling based on Boundary Provenance
+    let polyStrokeColor = '#00E5FF'; // Cyan for farmer-drawn
+    let polyFillColor = '#00E5FF';
+    let vertexBgColor = 'bg-[#00E5FF] text-[#0B241B]';
+
+    if (boundaryStatus === 'official_source') {
+      polyStrokeColor = '#F59E0B'; // Amber/Gold for official
+      polyFillColor = '#F59E0B';
+      vertexBgColor = 'bg-[#F59E0B] text-[#183B2A]';
+    } else if (boundaryStatus === 'imported') {
+      polyStrokeColor = '#A855F7'; // Purple for imported
+      polyFillColor = '#A855F7';
+      vertexBgColor = 'bg-[#A855F7] text-white';
+    }
+
+    if (!liveMetrics.isValid) {
+      polyStrokeColor = '#B8423A';
+      polyFillColor = '#B8423A';
+    }
+
     const polygon = L.polygon(polygonCoords, {
-      color: liveMetrics.isValid ? '#00E5FF' : '#B8423A',
+      color: polyStrokeColor,
       weight: 3,
       opacity: 0.95,
-      fillColor: liveMetrics.isValid ? '#00E5FF' : '#B8423A',
+      fillColor: polyFillColor,
       fillOpacity: 0.22,
       dashArray: isDrawing ? '6 6' : undefined,
     });
@@ -379,7 +489,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     polygon.addTo(map);
     activePolygonLayerRef.current = polygon;
 
-    // Render Draggable Vertex Markers (unless read-only)
+    // Render Draggable Vertex Markers
     if (!readOnly && vertexMarkersLayerRef.current) {
       polygonCoords.forEach((pt, index) => {
         const isFirst = index === 0;
@@ -388,8 +498,8 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           html: `
             <div class="relative flex items-center justify-center cursor-move group">
               <div class="w-6 h-6 rounded-full ${
-                isFirst && isDrawing ? 'bg-[#70B77E] ring-2 ring-white' : 'bg-[#00E5FF] border-2 border-[#0B241B]'
-              } text-[#0B241B] flex items-center justify-center text-[10px] font-mono font-bold shadow-md hover:scale-125 transition-transform">
+                isFirst && isDrawing ? 'bg-[#70B77E] ring-2 ring-white' : vertexBgColor
+              } border-2 border-[#0B241B] flex items-center justify-center text-[10px] font-mono font-bold shadow-md hover:scale-125 transition-transform">
                 ${index + 1}
               </div>
             </div>
@@ -400,10 +510,9 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
         const marker = L.marker(pt, {
           icon: vertexIcon,
-          draggable: !isDrawing, // Drag to adjust vertices once finished drawing
+          draggable: !isDrawing,
         });
 
-        // Click first marker while drawing to close polygon
         if (isDrawing && isFirst && polygonCoords.length >= 3) {
           marker.on('click', (e) => {
             L.DomEvent.stopPropagation(e);
@@ -414,6 +523,9 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         // Live drag update for vertices
         marker.on('drag', (e: any) => {
           const newPos = e.target.getLatLng();
+          if (boundaryStatus === 'official_source') {
+            setIsProposedEdit(true);
+          }
           setPolygonCoords((prev) => {
             const next = [...prev];
             next[index] = [newPos.lat, newPos.lng];
@@ -424,22 +536,26 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         vertexMarkersLayerRef.current?.addLayer(marker);
       });
     }
-  }, [polygonCoords, isDrawing, readOnly]);
+  }, [polygonCoords, isDrawing, readOnly, boundaryStatus]);
 
   // Load Selected Farm's boundary if supplied
   useEffect(() => {
     if (selectedFarm && selectedFarm.boundary?.coordinates && selectedFarm.boundary.coordinates.length > 0) {
       try {
         const ring = selectedFarm.boundary.coordinates[0];
-        // Convert GeoJSON [lng, lat] back to Leaflet [lat, lng]
         const leafletCoords: [number, number][] = ring
-          .slice(0, ring.length - 1) // omit duplicate closing point
+          .slice(0, ring.length - 1)
           .map(([lng, lat]) => [lat, lng]);
 
         setPolygonCoords(leafletCoords);
+        setInitialCoords(leafletCoords);
         setIsDrawing(false);
+        setBoundaryStatus(selectedFarm.boundary.surveyStatus || 'farmer_drawn');
+        setSourceMetadata(selectedFarm.boundary.sourceMetadata);
+        setOfficialExtentAcres(selectedFarm.boundary.officialExtentAcres);
+        setOfficialExtentCents(selectedFarm.boundary.officialExtentCents);
+        setIsProposedEdit(false);
 
-        // Zoom to the loaded polygon
         if (mapInstanceRef.current && leafletCoords.length >= 3) {
           const poly = L.polygon(leafletCoords);
           mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18 });
@@ -458,24 +574,33 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     savedFarmsLayerGroupRef.current.clearLayers();
 
     farms.forEach((farm) => {
-      if (farm.id === selectedFarm?.id) return; // Active selected farm is rendered separately
+      if (farm.id === selectedFarm?.id) return;
       if (farm.boundary?.coordinates && farm.boundary.coordinates.length > 0) {
         try {
           const ring = farm.boundary.coordinates[0];
           const coords: [number, number][] = ring.map(([lng, lat]) => [lat, lng]);
 
+          const isOfficial = farm.boundary.surveyStatus === 'official_source';
+          const isImported = farm.boundary.surveyStatus === 'imported';
+
+          const strokeColor = isOfficial ? '#F59E0B' : isImported ? '#A855F7' : farm.isPrimary ? '#70B77E' : '#DFE6DB';
+          const fillColor = isOfficial ? '#F59E0B' : isImported ? '#A855F7' : farm.isPrimary ? '#70B77E' : '#B8DCC1';
+
           const savedPoly = L.polygon(coords, {
-            color: farm.isPrimary ? '#70B77E' : '#DFE6DB',
+            color: strokeColor,
             weight: 2,
             opacity: 0.8,
-            fillColor: farm.isPrimary ? '#70B77E' : '#B8DCC1',
+            fillColor,
             fillOpacity: 0.15,
           });
+
+          const statusBadge = isOfficial ? '🏛️ Official Cadastre' : isImported ? '📂 Imported Survey' : '✏️ Farmer-Mapped';
 
           savedPoly.bindTooltip(`
             <div style="font-family: Plus Jakarta Sans, sans-serif; font-size: 12px; color: #0B241B;">
               <strong>${farm.farmName}</strong> (${farm.cropType})<br/>
-              <span style="font-family: monospace; color: #217451;">${farm.landSizeArea || farm.landSizeAcres || '—'} ${farm.areaUnit || 'Acres'}</span>
+              <span style="font-family: monospace; color: #217451;">${farm.landSizeArea || farm.landSizeAcres || '—'} ${farm.areaUnit || 'Acres'}</span><br/>
+              <span style="font-size: 10px; color: #64766B;">${statusBadge}</span>
             </div>
           `);
 
@@ -493,6 +618,8 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const handleStartDrawing = () => {
     setPolygonCoords([]);
     setIsDrawing(true);
+    setBoundaryStatus('farmer_drawn');
+    setIsProposedEdit(false);
   };
 
   // Undo Last Point
@@ -510,17 +637,107 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const handleClearBoundary = () => {
     setPolygonCoords([]);
     setIsDrawing(false);
+    setSourceMetadata(undefined);
+    setOfficialExtentAcres(undefined);
+    setOfficialExtentCents(undefined);
+    setIsProposedEdit(false);
+  };
+
+  // Revert / Cancel Unsaved Edits
+  const handleRevertEdits = () => {
+    if (initialCoords.length >= 3) {
+      setPolygonCoords([...initialCoords]);
+      setIsProposedEdit(false);
+    }
+  };
+
+  // Official Cadastral Query Handler
+  const handleCadastralLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lookupSurveyNo.trim()) return;
+
+    setLookupLoading(true);
+    setLookupResult(null);
+
+    const res = await lookupCadastralParcel({
+      district: lookupDistrict,
+      taluk: lookupTaluk,
+      village: lookupVillage,
+      surveyNumber: lookupSurveyNo.trim(),
+      subdivisionNumber: lookupSubdivNo.trim() || undefined,
+    });
+
+    setLookupLoading(false);
+    setLookupResult(res);
+  };
+
+  // Adopt Queried Official Boundary
+  const handleApplyOfficialBoundary = (res: CadastralLookupResponse) => {
+    if (res.boundary && res.boundary.coordinates.length > 0) {
+      const ring = res.boundary.coordinates[0];
+      const coords: [number, number][] = ring.slice(0, ring.length - 1).map(([lng, lat]) => [lat, lng]);
+      setPolygonCoords(coords);
+      setInitialCoords(coords);
+      setBoundaryStatus('official_source');
+      setSourceMetadata(res.boundary.sourceMetadata);
+      setOfficialExtentAcres(res.officialExtentAcres);
+      setOfficialExtentCents(res.officialExtentCents);
+      setIsProposedEdit(false);
+      setIsLookupModalOpen(false);
+
+      if (mapInstanceRef.current && coords.length >= 3) {
+        const poly = L.polygon(coords);
+        mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18 });
+      }
+    }
+  };
+
+  // File Upload for Genuine Survey Shapefile / GeoJSON
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const content = event.target?.result as string;
+        const imported = parseImportedBoundaryFile(content, file.name);
+
+        const ring = imported.coordinates[0];
+        const coords: [number, number][] = ring.slice(0, ring.length - 1).map(([lng, lat]) => [lat, lng]);
+
+        setPolygonCoords(coords);
+        setInitialCoords(coords);
+        setBoundaryStatus('imported');
+        setSourceMetadata(imported.sourceMetadata);
+        setIsProposedEdit(false);
+        setImportNotice(
+          isTa
+            ? `நில அளவை கோப்பு வெற்றிகரமாக இறக்கப்பட்டது: ${file.name}`
+            : `Survey boundary imported successfully from ${file.name}`
+        );
+        setTimeout(() => setImportNotice(null), 4000);
+
+        if (mapInstanceRef.current && coords.length >= 3) {
+          const poly = L.polygon(coords);
+          mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18 });
+        }
+      } catch (err: any) {
+        setImportNotice(`Import Error: ${err.message}`);
+        setTimeout(() => setImportNotice(null), 5000);
+      }
+    };
+    reader.readAsText(file);
+    if (e.target) e.target.value = '';
   };
 
   // Commit / Save Boundary
   const handleCommitBoundary = () => {
     if (polygonCoords.length < 3 || !measurements.isValid) return;
 
-    // Convert to GeoJSON [lng, lat] ring
     const geoJsonRing: [number, number][] = polygonCoords.map(([lat, lng]) => [lng, lat]);
-    geoJsonRing.push(geoJsonRing[0]); // Ensure closed ring
+    geoJsonRing.push(geoJsonRing[0]);
 
-    // Calculate centroid
     const poly = turf.polygon([geoJsonRing]);
     const centroidFeature = turf.centroid(poly);
     const [cLng, cLat] = centroidFeature.geometry.coordinates;
@@ -534,7 +751,10 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       measuredAcres: measurements.acres,
       measuredCents: measurements.cents,
       measuredHectares: measurements.hectares,
-      surveyStatus: 'farmer_mapped',
+      surveyStatus: boundaryStatus,
+      sourceMetadata,
+      officialExtentAcres,
+      officialExtentCents,
       mappedAt: new Date().toISOString(),
     };
 
@@ -547,6 +767,16 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : className
       }`}
     >
+      {/* Hidden file input for GeoJSON import */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".geojson,.json"
+        onChange={handleFileUpload}
+        className="hidden"
+        aria-label="Upload GeoJSON Survey File"
+      />
+
       {/* ========================================================
           1. GIS WORKSPACE TOP TOOLBAR
           ======================================================== */}
@@ -557,18 +787,38 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
           <div>
             <div className="text-xs font-mono uppercase text-[#70B77E] font-bold flex items-center gap-1.5">
-              <span>SATELLITE CADASTRAL MAPPER</span>
+              <span>SATELLITE CADASTRAL GIS</span>
               <span>·</span>
-              <span className="text-white/60">ESRI WORLD IMAGERY</span>
+              <span className="text-white/60">HYBRID IMAGERY & REVENUE BOUNDARIES</span>
             </div>
-            <h3 className="text-sm sm:text-base font-bold text-white font-['Plus_Jakarta_Sans']">
-              {isTa ? 'செயற்கைக்கோள் பண்ணை வரைபடம் & பரப்பளவு கணக்கீடு' : 'Interactive Cadastre & Live Area Measurement'}
+            <h3 className="text-sm sm:text-base font-bold text-white font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+              <span>{isTa ? 'செயற்கைக்கோள் நில அளவை & பரப்பளவு' : 'Interactive Cadastre & Live Farm Measurement'}</span>
             </h3>
           </div>
         </div>
 
         {/* Toolbar Controls */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Official Cadastre Lookup Button */}
+          <button
+            onClick={() => setIsLookupModalOpen(true)}
+            className="px-3 py-1.5 bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 border border-[#F59E0B]/40 text-[#F59E0B] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Lookup official government survey & subdivision record"
+          >
+            <Landmark className="w-3.5 h-3.5 text-[#F59E0B]" />
+            <span>{isTa ? 'அரசு நில அளவை சரிபார்ப்பு' : 'Official Cadastre'}</span>
+          </button>
+
+          {/* Import Survey File Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3 py-1.5 bg-[#A855F7]/20 hover:bg-[#A855F7]/30 border border-[#A855F7]/40 text-[#A855F7] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Import surveyor GeoJSON / spatial file"
+          >
+            <FileUp className="w-3.5 h-3.5 text-[#A855F7]" />
+            <span className="hidden sm:inline">{isTa ? 'கோப்பு இறக்குமதி' : 'Import GeoJSON'}</span>
+          </button>
+
           {/* District Quick Fly-to */}
           <div className="relative">
             <select
@@ -585,12 +835,24 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </select>
           </div>
 
-          {/* Layer Selector: Satellite vs Streets */}
+          {/* Layer Selector: Hybrid vs Satellite vs Streets */}
           <div
             className="flex items-center bg-[#081813] border border-white/15 rounded-[8px] p-0.5 text-xs font-mono"
             role="group"
             aria-label="Map Layer Toggle"
           >
+            <button
+              onClick={() => handleSwitchLayer('hybrid')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                activeLayerType === 'hybrid'
+                  ? 'bg-[#217451] text-white font-bold'
+                  : 'text-white/70 hover:text-white'
+              }`}
+              aria-pressed={activeLayerType === 'hybrid'}
+              title="Satellite imagery with roads and geographic labels"
+            >
+              Hybrid
+            </button>
             <button
               onClick={() => handleSwitchLayer('satellite')}
               className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
@@ -599,8 +861,9 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                   : 'text-white/70 hover:text-white'
               }`}
               aria-pressed={activeLayerType === 'satellite'}
+              title="Pure satellite imagery"
             >
-              Satellite
+              Sat
             </button>
             <button
               onClick={() => handleSwitchLayer('streets')}
@@ -610,6 +873,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                   : 'text-white/70 hover:text-white'
               }`}
               aria-pressed={activeLayerType === 'streets'}
+              title="OpenStreetMap vector streets"
             >
               Streets
             </button>
@@ -623,7 +887,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             title="Locate with device GPS"
           >
             <Crosshair className={`w-3.5 h-3.5 text-[#00E5FF] ${gpsLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isTa ? 'GPS இருப்பிடம்' : 'GPS Locate'}</span>
+            <span className="hidden sm:inline">{isTa ? 'GPS இருப்பிடம்' : 'GPS'}</span>
           </button>
 
           {/* Fullscreen Toggle */}
@@ -637,7 +901,19 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         </div>
       </div>
 
-      {/* GPS Error Banner (if any) */}
+      {/* Import / Error Notifications */}
+      {importNotice && (
+        <div className="bg-[#217451] text-white px-4 py-2 text-xs font-mono flex items-center justify-between z-10">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-[#70B77E]" />
+            <span>{importNotice}</span>
+          </div>
+          <button onClick={() => setImportNotice(null)} className="cursor-pointer text-white/80 hover:text-white">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {gpsError && (
         <div className="bg-[#B8423A] text-white px-4 py-2 text-xs font-mono flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
@@ -658,7 +934,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
         {/* Floating Drawing Status & Instruction Pill */}
         {isDrawing && (
-          <div className="absolute top-4 left-4 z-20 bg-[#0B241B]/90 backdrop-blur-md border border-[#00E5FF]/40 text-[#F5F4EA] px-3.5 py-2 rounded-[10px] text-xs font-mono shadow-lg flex items-center gap-2">
+          <div className="absolute top-4 left-4 z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#00E5FF]/40 text-[#F5F4EA] px-3.5 py-2 rounded-[10px] text-xs font-mono shadow-lg flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#00E5FF] animate-pulse" />
             <span>
               {polygonCoords.length === 0
@@ -669,6 +945,36 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                 ? `${polygonCoords.length} புள்ளிகள் வைக்கப்பட்டன. முடிக்க முதல் புள்ளியை கிளிக் செய்யவும்.`
                 : `${polygonCoords.length} vertices placed. Click 1st corner to close boundary.`}
             </span>
+          </div>
+        )}
+
+        {/* Floating Boundary Provenance Tag */}
+        {polygonCoords.length >= 3 && !isDrawing && (
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+            {boundaryStatus === 'official_source' ? (
+              <div className="bg-[#F59E0B]/90 backdrop-blur-md border border-[#F59E0B] text-[#183B2A] font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
+                <Landmark className="w-3.5 h-3.5 text-[#183B2A]" />
+                <span>
+                  OFFICIAL CADASTRE · {sourceMetadata?.surveyNumber ? `Survey ${sourceMetadata.surveyNumber}` : 'Verified'}
+                </span>
+              </div>
+            ) : boundaryStatus === 'imported' ? (
+              <div className="bg-[#A855F7]/90 backdrop-blur-md border border-[#A855F7] text-white font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
+                <FileUp className="w-3.5 h-3.5 text-white" />
+                <span>IMPORTED SURVEY · {sourceMetadata?.fileName || 'File'}</span>
+              </div>
+            ) : (
+              <div className="bg-[#0B241B]/90 backdrop-blur-md border border-[#00E5FF]/40 text-[#00E5FF] font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
+                <Compass className="w-3.5 h-3.5 text-[#00E5FF]" />
+                <span>FARMER-MAPPED (UNVERIFIED)</span>
+              </div>
+            )}
+
+            {isProposedEdit && (
+              <div className="bg-[#B8423A]/90 text-white font-mono text-[11px] px-2.5 py-1 rounded-[6px] shadow-sm">
+                Proposed User Adjustment
+              </div>
+            )}
           </div>
         )}
 
@@ -701,8 +1007,28 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                   className="px-4 py-2 bg-[#00E5FF] hover:bg-[#00cce6] text-[#0B241B] text-xs font-mono font-bold rounded-[8px] flex items-center gap-2 cursor-pointer transition-colors shadow-sm min-h-[38px]"
                 >
                   <MapPin className="w-3.5 h-3.5" />
-                  <span>{polygonCoords.length > 0 ? (isTa ? 'மறு எல்லை வரைய' : 'Redraw Boundary') : (isTa ? 'எல்லை வரைக' : 'Draw Boundary')}</span>
+                  <span>
+                    {polygonCoords.length > 0
+                      ? isTa
+                        ? 'மறு எல்லை வரைய'
+                        : 'Redraw Boundary'
+                      : isTa
+                      ? 'எல்லை வரைக'
+                      : 'Draw Boundary'}
+                  </span>
                 </button>
+
+                {/* Revert / Cancel edits button if initial coords were loaded */}
+                {initialCoords.length >= 3 && isProposedEdit && (
+                  <button
+                    onClick={handleRevertEdits}
+                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono text-white rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+                    title="Revert to original loaded geometry"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    <span>{isTa ? 'மீட்டமை' : 'Revert Edits'}</span>
+                  </button>
+                )}
 
                 {polygonCoords.length >= 3 && (
                   <button
@@ -760,6 +1086,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
         )}
 
+        {/* Live Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {/* Metric 1: Acres */}
           <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
@@ -817,15 +1144,48 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
         </div>
 
+        {/* Cadastral Extent Comparison (if official record has documented extent) */}
+        {officialExtentAcres !== undefined && (
+          <div className="p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-[8px] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[#F59E0B]">
+            <div className="flex items-center gap-1.5">
+              <Landmark className="w-4 h-4 text-[#F59E0B] shrink-0" />
+              <span>
+                OFFICIAL RECORDED EXTENT: <strong>{officialExtentAcres} Acres</strong> ({officialExtentCents} Cents)
+              </span>
+            </div>
+            <span className="text-white/60 text-[11px]">
+              Geodesic Variance: {(measurements.acres - officialExtentAcres).toFixed(2)} Ac
+            </span>
+          </div>
+        )}
+
         {/* Footer Actions & Survey Transparency Notice */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-white/10 text-xs font-mono text-white/60">
           <div className="flex items-center gap-2">
-            <Info className="w-3.5 h-3.5 text-[#B87922] shrink-0" />
-            <span>
-              {isTa
-                ? 'விவசாயி வரைந்த எல்லை (தமிழ்நாடு நில அளவை / e-Adangal சரிபார்ப்பு இல்லை).'
-                : 'Farmer-Mapped Boundary (Geodetic Turf.js calculation; unverified by Tamil Nadu Land Survey / e-Adangal).'}
-            </span>
+            {boundaryStatus === 'official_source' ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 text-[#F59E0B] shrink-0" />
+                <span className="text-[#F59E0B]">
+                  Official Government Survey Record · {sourceMetadata?.provider || 'TNGIS'}
+                </span>
+              </>
+            ) : boundaryStatus === 'imported' ? (
+              <>
+                <FileUp className="w-3.5 h-3.5 text-[#A855F7] shrink-0" />
+                <span className="text-[#A855F7]">
+                  Imported Geospatial Record · {sourceMetadata?.fileName || 'Spatial File'}
+                </span>
+              </>
+            ) : (
+              <>
+                <Info className="w-3.5 h-3.5 text-[#B87922] shrink-0" />
+                <span>
+                  {isTa
+                    ? 'விவசாயி வரைந்த எல்லை (தமிழ்நாடு நில அளவை / e-Adangal சரிபார்ப்பு இல்லை).'
+                    : 'Farmer-Mapped Boundary (Geodetic Turf.js calculation; unverified by Tamil Nadu Land Survey / e-Adangal).'}
+                </span>
+              </>
+            )}
           </div>
 
           {onSaveBoundary && polygonCoords.length >= 3 && measurements.isValid && !readOnly && (
@@ -839,6 +1199,202 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           )}
         </div>
       </div>
+
+      {/* ========================================================
+          4. OFFICIAL CADASTRAL LOOKUP MODAL
+          ======================================================== */}
+      {isLookupModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-[#0B241B] border-2 border-[#F59E0B]/50 max-w-lg w-full p-6 shadow-2xl rounded-[14px] text-white space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-[#F59E0B]" />
+                <h3 className="font-['Plus_Jakarta_Sans'] text-lg font-bold">
+                  {isTa ? 'தமிழ்நாடு அரசு நில அளவை சரிபார்ப்பு' : 'Official Cadastral Record Lookup'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsLookupModalOpen(false)}
+                className="text-white/60 hover:text-white p-1 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs font-sans text-white/70 leading-relaxed">
+              {isTa
+                ? 'உங்கள் மாவட்ட, தாலுகா, வருவாய் கிராமம் மற்றும் புல எண் (Survey Number) விவரங்களை உள்ளிட்டு அரசு நில அளவை பதிவேட்டை சரிபார்க்கவும்.'
+                : 'Enter your Revenue District, Taluk, Village, Survey Number, and Subdivision Number to query official cadastral land records.'}
+            </p>
+
+            <form onSubmit={handleCadastralLookup} className="space-y-3 font-mono text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/80 uppercase font-semibold mb-1">District</label>
+                  <select
+                    value={lookupDistrict}
+                    onChange={(e) => setLookupDistrict(e.target.value)}
+                    className="w-full p-2 bg-[#081813] border border-white/20 rounded-[6px] text-white"
+                  >
+                    {Object.keys(TN_CADASTRAL_HIERARCHY).map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-white/80 uppercase font-semibold mb-1">Taluk</label>
+                  <select
+                    value={lookupTaluk}
+                    onChange={(e) => setLookupTaluk(e.target.value)}
+                    className="w-full p-2 bg-[#081813] border border-white/20 rounded-[6px] text-white"
+                  >
+                    {TN_CADASTRAL_HIERARCHY[lookupDistrict] &&
+                      Object.keys(TN_CADASTRAL_HIERARCHY[lookupDistrict].taluks).map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-white/80 uppercase font-semibold mb-1">Revenue Village</label>
+                  <select
+                    value={lookupVillage}
+                    onChange={(e) => setLookupVillage(e.target.value)}
+                    className="w-full p-2 bg-[#081813] border border-white/20 rounded-[6px] text-white"
+                  >
+                    {TN_CADASTRAL_HIERARCHY[lookupDistrict]?.taluks[lookupTaluk]?.villages.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="w-1/2">
+                    <label className="block text-white/80 uppercase font-semibold mb-1">Survey No *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 142"
+                      value={lookupSurveyNo}
+                      onChange={(e) => setLookupSurveyNo(e.target.value)}
+                      className="w-full p-2 bg-[#081813] border border-white/20 rounded-[6px] text-white"
+                    />
+                  </div>
+                  <div className="w-1/2">
+                    <label className="block text-white/80 uppercase font-semibold mb-1">Subdiv No</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 2B"
+                      value={lookupSubdivNo}
+                      onChange={(e) => setLookupSubdivNo(e.target.value)}
+                      className="w-full p-2 bg-[#081813] border border-white/20 rounded-[6px] text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={lookupLoading}
+                className="w-full py-2.5 bg-[#F59E0B] hover:bg-[#d98205] text-[#0B241B] font-bold rounded-[8px] flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-xs"
+              >
+                {lookupLoading ? <Crosshair className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                <span>{lookupLoading ? 'Querying Revenue Registry...' : 'Search Official Cadastre Record'}</span>
+              </button>
+            </form>
+
+            {/* Cadastral Lookup Result / Honest Technical Fallback */}
+            {lookupResult && (
+              <div
+                className={`p-4 rounded-[10px] border text-xs font-mono space-y-2.5 ${
+                  lookupResult.success
+                    ? 'bg-[#217451]/30 border-[#70B77E] text-[#F5F4EA]'
+                    : 'bg-[#B8423A]/15 border-[#B8423A]/40 text-[#F5F4EA]'
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  {lookupResult.success ? (
+                    <ShieldCheck className="w-5 h-5 text-[#70B77E] shrink-0" />
+                  ) : (
+                    <ShieldAlert className="w-5 h-5 text-[#F59E0B] shrink-0" />
+                  )}
+                  <div className="space-y-1">
+                    <div className="font-bold text-sm text-white">
+                      {lookupResult.success ? 'Official Record Located' : 'Authorized State Integration Required'}
+                    </div>
+                    <p className="text-white/80 font-sans leading-relaxed">{lookupResult.message}</p>
+                  </div>
+                </div>
+
+                {lookupResult.technicalDetails && (
+                  <div className="p-2.5 bg-black/40 rounded-[6px] text-[11px] text-white/70 space-y-1">
+                    <span className="text-[#F59E0B] font-bold block">TECHNICAL ARCHITECTURE NOTICE:</span>
+                    <span>{lookupResult.technicalDetails}</span>
+                  </div>
+                )}
+
+                {lookupResult.success && lookupResult.boundary && (
+                  <button
+                    onClick={() => handleApplyOfficialBoundary(lookupResult)}
+                    className="w-full py-2 bg-[#70B77E] hover:bg-[#83c690] text-[#0B241B] font-bold rounded-[6px] flex items-center justify-center gap-1.5 cursor-pointer mt-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Apply Official Boundary to Map</span>
+                  </button>
+                )}
+
+                {!lookupResult.success && (
+                  <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLookupModalOpen(false);
+                        handleStartDrawing();
+                        setSourceMetadata({
+                          provider: 'Farmer-Drawn with Official Revenue References',
+                          district: lookupDistrict,
+                          taluk: lookupTaluk,
+                          revenueVillage: lookupVillage,
+                          surveyNumber: lookupSurveyNo,
+                          subdivisionNumber: lookupSubdivNo,
+                          retrievedAt: new Date().toISOString(),
+                          licenseNotice: lookupResult.licenseNotice,
+                        });
+                      }}
+                      className="flex-1 py-2 bg-[#00E5FF] hover:bg-[#00cce6] text-[#0B241B] font-bold rounded-[6px] text-center cursor-pointer transition-colors"
+                    >
+                      Draw Estimated Outline for Survey {lookupSurveyNo}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsLookupModalOpen(false);
+                        fileInputRef.current?.click();
+                      }}
+                      className="py-2 px-3 bg-white/10 hover:bg-white/20 text-white rounded-[6px] text-center cursor-pointer transition-colors"
+                    >
+                      Import GeoJSON File
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
