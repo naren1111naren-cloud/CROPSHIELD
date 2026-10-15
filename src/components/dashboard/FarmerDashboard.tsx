@@ -891,7 +891,10 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
                 }}
                 onStartFieldCaseInvestigation={(image, crop, variety, farmId) => {
                   setInvestigationPreload({ imagePreview: image, cropId: crop, variety, farmId });
+                  setActiveTab('cases');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
+                onNavigateToHistory={() => switchTab('history')}
               />
             </div>
           )}
