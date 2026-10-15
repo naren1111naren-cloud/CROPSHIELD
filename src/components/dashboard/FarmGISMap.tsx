@@ -2,8 +2,22 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as turf from '@turf/turf';
-import { FarmRecord, FarmBoundary, BoundarySurveyStatus, CadastralSourceMetadata } from '../../types';
-import { TN_DISTRICT_GEODATA } from '../../config/tamilNaduDistricts';
+import {
+  FarmRecord,
+  FarmBoundary,
+  BoundarySurveyStatus,
+  CadastralSourceMetadata,
+  FarmerProfile,
+} from '../../types';
+import {
+  SOUTH_INDIA_STATES,
+  SOUTH_INDIA_DISTRICTS_GEODATA,
+  getSouthIndiaDistrictGeo,
+} from '../../config/southIndiaGeodata';
+import {
+  resolveFarmerLocation,
+  ResolvedFarmerLocation,
+} from '../../services/locationResolver';
 import {
   TN_CADASTRAL_HIERARCHY,
   lookupCadastralParcel,
@@ -31,7 +45,8 @@ import {
   ShieldAlert,
   ShieldCheck,
   RotateCcw,
-  Sparkles,
+  Navigation,
+  Globe2,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
@@ -43,7 +58,9 @@ interface FarmGISMapProps {
     measuredAcres: number,
     measuredCents: number
   ) => void;
+  farmerProfile?: FarmerProfile | null;
   initialDistrict?: string;
+  initialState?: string;
   className?: string;
   readOnly?: boolean;
 }
@@ -63,7 +80,9 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   selectedFarm,
   onSelectFarm,
   onSaveBoundary,
-  initialDistrict = 'Thanjavur',
+  farmerProfile,
+  initialDistrict,
+  initialState = 'Tamil Nadu',
   className = '',
   readOnly = false,
 }) => {
@@ -76,16 +95,34 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const overlayTileLayerRef = useRef<L.LayerGroup | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Initial Location Resolution from profile/farm records
+  const initialResolution = resolveFarmerLocation(farmerProfile, selectedFarm, farms);
+  const [resolvedLocation, setResolvedLocation] = useState<ResolvedFarmerLocation>(initialResolution);
+
+  // South India State & District Navigation State
+  const [selectedState, setSelectedState] = useState<string>(
+    farmerProfile?.state || initialState || initialResolution.hierarchy.state || 'Tamil Nadu'
+  );
+  const [selectedDistrict, setSelectedDistrict] = useState<string>(
+    initialDistrict ||
+      selectedFarm?.district ||
+      farmerProfile?.district ||
+      initialResolution.hierarchy.district ||
+      'Karur'
+  );
+
   // Drawing & Geometry State
   const [polygonCoords, setPolygonCoords] = useState<[number, number][]>([]);
   const [initialCoords, setInitialCoords] = useState<[number, number][]>([]);
   const [isDrawing, setIsDrawing] = useState<boolean>(false);
   const [activeLayerType, setActiveLayerType] = useState<'hybrid' | 'satellite' | 'streets'>('hybrid');
-  const [selectedDistrict, setSelectedDistrict] = useState<string>(initialDistrict);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Geolocation & Permissions State
   const [gpsLoading, setGpsLoading] = useState<boolean>(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [isGpsConsentModalOpen, setIsGpsConsentModalOpen] = useState<boolean>(false);
 
   // Boundary Provenance & Official Cadastre Metadata
   const [boundaryStatus, setBoundaryStatus] = useState<BoundarySurveyStatus>('farmer_drawn');
@@ -96,9 +133,9 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
   // Cadastral Lookup Modal State
   const [isLookupModalOpen, setIsLookupModalOpen] = useState<boolean>(false);
-  const [lookupDistrict, setLookupDistrict] = useState<string>(initialDistrict);
-  const [lookupTaluk, setLookupTaluk] = useState<string>('Thanjavur');
-  const [lookupVillage, setLookupVillage] = useState<string>('Pillaiyarpatti');
+  const [lookupDistrict, setLookupDistrict] = useState<string>(selectedDistrict);
+  const [lookupTaluk, setLookupTaluk] = useState<string>('Karur');
+  const [lookupVillage, setLookupVillage] = useState<string>('Thanthoni');
   const [lookupSurveyNo, setLookupSurveyNo] = useState<string>('');
   const [lookupSubdivNo, setLookupSubdivNo] = useState<string>('');
   const [lookupLoading, setLookupLoading] = useState<boolean>(false);
@@ -122,6 +159,27 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const vertexMarkersLayerRef = useRef<L.LayerGroup | null>(null);
   const savedFarmsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
+
+  // Re-resolve location whenever selectedFarm or farmerProfile updates
+  useEffect(() => {
+    const nextResolution = resolveFarmerLocation(farmerProfile, selectedFarm, farms);
+    setResolvedLocation(nextResolution);
+
+    if (nextResolution.hierarchy.district) {
+      setSelectedDistrict(nextResolution.hierarchy.district);
+      setLookupDistrict(nextResolution.hierarchy.district);
+    }
+    if (nextResolution.hierarchy.state) {
+      setSelectedState(nextResolution.hierarchy.state);
+    }
+
+    // Auto-fly map to the resolved location
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(nextResolution.coordinates, nextResolution.zoom, {
+        duration: 1.2,
+      });
+    }
+  }, [selectedFarm, farmerProfile, farms]);
 
   // Sync available taluks & villages for selected lookup district
   useEffect(() => {
@@ -160,9 +218,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
 
     try {
-      // GeoJSON requires [longitude, latitude]
       const geoJsonRing: [number, number][] = coords.map(([lat, lng]) => [lng, lat]);
-      // Close the ring
       if (
         geoJsonRing[0][0] !== geoJsonRing[geoJsonRing.length - 1][0] ||
         geoJsonRing[0][1] !== geoJsonRing[geoJsonRing.length - 1][1]
@@ -171,8 +227,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       }
 
       const poly = turf.polygon([geoJsonRing]);
-
-      // Check self-intersections
       const kinks = turf.kinks(poly);
       const isSelfIntersecting = kinks.features.length > 0;
 
@@ -183,9 +237,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         : 0;
 
       const hectares = areaSqM / 10000;
-      // 1 Acre = 4046.8564224 m²
       const acres = areaSqM / 4046.8564224;
-      // In Tamil Nadu revenue system: 1 Acre = 100 Cents
       const cents = acres * 100;
 
       return {
@@ -198,7 +250,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         validationError: isSelfIntersecting
           ? isTa
             ? 'எல்லைக் கோடுகள் ஒன்றை ஒன்று குறுக்கறுக்கக் கூடாது (Self-intersecting).'
-            : 'Boundary lines self-intersect. Please drag vertices to form a valid non-overlapping polygon.'
+            : 'Boundary lines self-intersect. Please drag vertices to form a simple polygon.'
           : undefined,
       };
     } catch (err: any) {
@@ -216,12 +268,10 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
   // Configure Layer: Hybrid Satellite vs Satellite Pure vs Streets
   const applyTileLayer = (map: L.Map, layerType: 'hybrid' | 'satellite' | 'streets') => {
-    // Clear previous base layer
     if (baseTileLayerRef.current) {
       map.removeLayer(baseTileLayerRef.current);
       baseTileLayerRef.current = null;
     }
-    // Clear previous overlay group
     if (overlayTileLayerRef.current) {
       map.removeLayer(overlayTileLayerRef.current);
       overlayTileLayerRef.current = null;
@@ -242,7 +292,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         satHybrid.addTo(map);
         baseTileLayerRef.current = satHybrid;
       } else {
-        // High-precision Esri Satellite base
         const sat = L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           {
@@ -254,7 +303,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         sat.addTo(map);
         baseTileLayerRef.current = sat;
 
-        // Overlay transportation & place boundaries
         const roads = L.tileLayer(
           'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
           { maxZoom: 19, opacity: 0.95 }
@@ -292,25 +340,21 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
 
-    const targetGeo = TN_DISTRICT_GEODATA[initialDistrict] || TN_DISTRICT_GEODATA.Thanjavur;
-    const initialLat = targetGeo.latitude;
-    const initialLng = targetGeo.longitude;
+    const initialLat = resolvedLocation.coordinates[0];
+    const initialLng = resolvedLocation.coordinates[1];
+    const initialZoom = resolvedLocation.zoom;
 
     const map = L.map(mapContainerRef.current, {
       center: [initialLat, initialLng],
-      zoom: 16,
+      zoom: initialZoom,
       zoomControl: false,
       attributionControl: true,
       maxZoom: 19,
     });
 
-    // Custom Top-Right Zoom Control
     L.control.zoom({ position: 'topright' }).addTo(map);
-
-    // Metric Scale Bar
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 
-    // Layer Groups
     vertexMarkersLayerRef.current = L.layerGroup().addTo(map);
     savedFarmsLayerGroupRef.current = L.layerGroup().addTo(map);
 
@@ -331,20 +375,50 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     applyTileLayer(mapInstanceRef.current, layerType);
   };
 
+  // State Change Handler
+  const handleStateChange = (stateName: string) => {
+    setSelectedState(stateName);
+    const stateObj = SOUTH_INDIA_STATES[stateName];
+    if (stateObj && stateObj.districts.length > 0) {
+      const firstDist = stateObj.districts[0];
+      setSelectedDistrict(firstDist);
+      setLookupDistrict(firstDist);
+
+      const distGeo = getSouthIndiaDistrictGeo(firstDist);
+      if (distGeo && mapInstanceRef.current) {
+        mapInstanceRef.current.flyTo([distGeo.latitude, distGeo.longitude], distGeo.zoomLevel || 12, {
+          duration: 1.5,
+        });
+      }
+    }
+  };
+
   // Fly to District
   const handleDistrictChange = (distKey: string) => {
     setSelectedDistrict(distKey);
     setLookupDistrict(distKey);
-    const geo = TN_DISTRICT_GEODATA[distKey];
+    const geo = getSouthIndiaDistrictGeo(distKey);
     if (geo && mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([geo.latitude, geo.longitude], 15, { duration: 1.2 });
+      mapInstanceRef.current.flyTo([geo.latitude, geo.longitude], geo.zoomLevel || 12, {
+        duration: 1.2,
+      });
     }
   };
 
-  // GPS Locate Current Farmer Location
-  const handleGpsLocate = () => {
+  // Explicit User GPS Location Action (with permission explanation)
+  const handleRequestGpsLocation = () => {
+    setIsGpsConsentModalOpen(true);
+  };
+
+  const handleConfirmGpsPermission = () => {
+    setIsGpsConsentModalOpen(false);
+
     if (!navigator.geolocation) {
-      setGpsError(isTa ? 'உங்கள் உலாவியில் GPS ஆதரிக்கப்படவில்லை.' : 'Geolocation is not supported by your browser.');
+      setGpsError(
+        isTa
+          ? 'உங்கள் உலாவியில் GPS ஆதரிக்கப்படவில்லை.'
+          : 'Geolocation is not supported by your browser.'
+      );
       return;
     }
 
@@ -389,13 +463,27 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       (err) => {
         setGpsLoading(false);
         let msg = 'Failed to obtain GPS location.';
-        if (err.code === 1) msg = isTa ? 'GPS அனுமதி மறுக்கப்பட்டது.' : 'Location permission denied by user.';
-        else if (err.code === 2) msg = isTa ? 'இருப்பிடத்தை கண்டறிய முடியவில்லை.' : 'Position unavailable.';
-        else if (err.code === 3) msg = isTa ? 'இருப்பிட நேரம் முடிவடைந்தது.' : 'Location request timed out.';
+        if (err.code === 1)
+          msg = isTa
+            ? 'GPS இருப்பிட அனுமதி மறுக்கப்பட்டது. உங்கள் சுயவிவர இருப்பிடத்தைப் பயன்படுத்தலாம்.'
+            : 'Location permission was denied. You can continue using your saved profile district.';
+        else if (err.code === 2)
+          msg = isTa ? 'GPS இருப்பிடத்தைக் கண்டறிய முடியவில்லை.' : 'GPS position unavailable.';
+        else if (err.code === 3)
+          msg = isTa ? 'இருப்பிட நேரம் முடிவடைந்தது.' : 'GPS location request timed out.';
         setGpsError(msg);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+  };
+
+  // Re-center on Saved Location / Profile District
+  const handleLocateSavedDistrict = () => {
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo(resolvedLocation.coordinates, resolvedLocation.zoom, {
+        duration: 1.2,
+      });
+    }
   };
 
   // Search Location / Coordinates Query
@@ -406,17 +494,15 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     const coordParts = searchQuery.split(',').map((s) => parseFloat(s.trim()));
     if (coordParts.length === 2 && !isNaN(coordParts[0]) && !isNaN(coordParts[1])) {
       const [lat, lng] = coordParts;
-      if (lat >= 8 && lat <= 14 && lng >= 76 && lng <= 81) {
+      if (lat >= 8 && lat <= 20 && lng >= 74 && lng <= 85) {
         mapInstanceRef.current.flyTo([lat, lng], 17, { duration: 1.2 });
         return;
       }
     }
 
-    const matchedDist = Object.keys(TN_DISTRICT_GEODATA).find((k) =>
-      k.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const matchedDist = getSouthIndiaDistrictGeo(searchQuery);
     if (matchedDist) {
-      handleDistrictChange(matchedDist);
+      handleDistrictChange(matchedDist.name);
     }
   };
 
@@ -457,17 +543,16 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
     if (polygonCoords.length === 0) return;
 
-    // Determine Polygon Styling based on Boundary Provenance
-    let polyStrokeColor = '#00E5FF'; // Cyan for farmer-drawn
+    let polyStrokeColor = '#00E5FF';
     let polyFillColor = '#00E5FF';
     let vertexBgColor = 'bg-[#00E5FF] text-[#0B241B]';
 
     if (boundaryStatus === 'official_source') {
-      polyStrokeColor = '#F59E0B'; // Amber/Gold for official
+      polyStrokeColor = '#F59E0B';
       polyFillColor = '#F59E0B';
       vertexBgColor = 'bg-[#F59E0B] text-[#183B2A]';
     } else if (boundaryStatus === 'imported') {
-      polyStrokeColor = '#A855F7'; // Purple for imported
+      polyStrokeColor = '#A855F7';
       polyFillColor = '#A855F7';
       vertexBgColor = 'bg-[#A855F7] text-white';
     }
@@ -489,7 +574,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     polygon.addTo(map);
     activePolygonLayerRef.current = polygon;
 
-    // Render Draggable Vertex Markers
     if (!readOnly && vertexMarkersLayerRef.current) {
       polygonCoords.forEach((pt, index) => {
         const isFirst = index === 0;
@@ -520,7 +604,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           });
         }
 
-        // Live drag update for vertices
         marker.on('drag', (e: any) => {
           const newPos = e.target.getLatLng();
           if (boundaryStatus === 'official_source') {
@@ -622,18 +705,15 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     setIsProposedEdit(false);
   };
 
-  // Undo Last Point
   const handleUndoPoint = () => {
     setPolygonCoords((prev) => prev.slice(0, -1));
   };
 
-  // Complete Drawing
   const handleFinishDrawing = () => {
     if (polygonCoords.length < 3) return;
     setIsDrawing(false);
   };
 
-  // Clear Boundary
   const handleClearBoundary = () => {
     setPolygonCoords([]);
     setIsDrawing(false);
@@ -643,7 +723,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     setIsProposedEdit(false);
   };
 
-  // Revert / Cancel Unsaved Edits
   const handleRevertEdits = () => {
     if (initialCoords.length >= 3) {
       setPolygonCoords([...initialCoords]);
@@ -671,7 +750,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     setLookupResult(res);
   };
 
-  // Adopt Queried Official Boundary
   const handleApplyOfficialBoundary = (res: CadastralLookupResponse) => {
     if (res.boundary && res.boundary.coordinates.length > 0) {
       const ring = res.boundary.coordinates[0];
@@ -692,7 +770,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   };
 
-  // File Upload for Genuine Survey Shapefile / GeoJSON
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -731,7 +808,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     if (e.target) e.target.value = '';
   };
 
-  // Commit / Save Boundary
   const handleCommitBoundary = () => {
     if (polygonCoords.length < 3 || !measurements.isValid) return;
 
@@ -761,13 +837,14 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     onSaveBoundary?.(boundaryData, measurements.acres, measurements.cents);
   };
 
+  const availableDistricts = SOUTH_INDIA_STATES[selectedState]?.districts || [];
+
   return (
     <div
       className={`relative bg-[#0B241B] text-[#F5F4EA] rounded-[16px] overflow-hidden border border-[#217451]/30 shadow-md flex flex-col ${
         isFullscreen ? 'fixed inset-0 z-50 rounded-none' : className
       }`}
     >
-      {/* Hidden file input for GeoJSON import */}
       <input
         type="file"
         ref={fileInputRef}
@@ -778,7 +855,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       />
 
       {/* ========================================================
-          1. GIS WORKSPACE TOP TOOLBAR
+          1. GIS WORKSPACE TOP TOOLBAR (South India Aware)
           ======================================================== */}
       <div className="bg-[#0B241B] border-b border-white/10 p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 z-10">
         <div className="flex items-center gap-2.5">
@@ -787,51 +864,50 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
           <div>
             <div className="text-xs font-mono uppercase text-[#70B77E] font-bold flex items-center gap-1.5">
-              <span>SATELLITE CADASTRAL GIS</span>
+              <span>SOUTH INDIA LOCATION-AWARE GIS</span>
               <span>·</span>
-              <span className="text-white/60">HYBRID IMAGERY & REVENUE BOUNDARIES</span>
+              <span className="text-white/60">HYBRID CADASTRE</span>
             </div>
             <h3 className="text-sm sm:text-base font-bold text-white font-['Plus_Jakarta_Sans'] flex items-center gap-2">
-              <span>{isTa ? 'செயற்கைக்கோள் நில அளவை & பரப்பளவு' : 'Interactive Cadastre & Live Farm Measurement'}</span>
+              <span>{isTa ? 'செயற்கைக்கோள் நில வரைபடம் & பரப்பளவு' : 'Interactive Cadastre & Live Farm Measurement'}</span>
             </h3>
           </div>
         </div>
 
         {/* Toolbar Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Official Cadastre Lookup Button */}
-          <button
-            onClick={() => setIsLookupModalOpen(true)}
-            className="px-3 py-1.5 bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 border border-[#F59E0B]/40 text-[#F59E0B] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
-            title="Lookup official government survey & subdivision record"
-          >
-            <Landmark className="w-3.5 h-3.5 text-[#F59E0B]" />
-            <span>{isTa ? 'அரசு நில அளவை சரிபார்ப்பு' : 'Official Cadastre'}</span>
-          </button>
+          {/* South India State Selector */}
+          <div className="relative">
+            <select
+              value={selectedState}
+              onChange={(e) => handleStateChange(e.target.value)}
+              className="bg-[#081813] border border-white/15 text-xs font-mono text-[#70B77E] font-bold px-2.5 py-1.5 rounded-[8px] cursor-pointer focus:border-[#70B77E] min-h-[36px]"
+              aria-label="Select South Indian State"
+            >
+              {Object.keys(SOUTH_INDIA_STATES).map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          {/* Import Survey File Button */}
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 bg-[#A855F7]/20 hover:bg-[#A855F7]/30 border border-[#A855F7]/40 text-[#A855F7] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
-            title="Import surveyor GeoJSON / spatial file"
-          >
-            <FileUp className="w-3.5 h-3.5 text-[#A855F7]" />
-            <span className="hidden sm:inline">{isTa ? 'கோப்பு இறக்குமதி' : 'Import GeoJSON'}</span>
-          </button>
-
-          {/* District Quick Fly-to */}
+          {/* District Selector */}
           <div className="relative">
             <select
               value={selectedDistrict}
               onChange={(e) => handleDistrictChange(e.target.value)}
               className="bg-[#081813] border border-white/15 text-xs font-mono text-[#F5F4EA] px-2.5 py-1.5 rounded-[8px] cursor-pointer focus:border-[#70B77E] min-h-[36px]"
-              aria-label="Select Tamil Nadu District"
+              aria-label="Select District"
             >
-              {Object.keys(TN_DISTRICT_GEODATA).map((dist) => (
-                <option key={dist} value={dist}>
-                  {dist} ({TN_DISTRICT_GEODATA[dist].nameTamil})
-                </option>
-              ))}
+              {availableDistricts.map((dist) => {
+                const geo = SOUTH_INDIA_DISTRICTS_GEODATA[dist];
+                return (
+                  <option key={dist} value={dist}>
+                    {dist} {geo?.nameTamil ? `(${geo.nameTamil})` : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -879,15 +955,35 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </button>
           </div>
 
-          {/* GPS Locate Me Button */}
+          {/* Official Cadastre Lookup Button */}
           <button
-            onClick={handleGpsLocate}
+            onClick={() => setIsLookupModalOpen(true)}
+            className="px-3 py-1.5 bg-[#F59E0B]/20 hover:bg-[#F59E0B]/30 border border-[#F59E0B]/40 text-[#F59E0B] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Lookup official government survey & subdivision record"
+          >
+            <Landmark className="w-3.5 h-3.5 text-[#F59E0B]" />
+            <span className="hidden sm:inline">{isTa ? 'அரசு நில அளவை' : 'Official Cadastre'}</span>
+          </button>
+
+          {/* Import Survey File Button */}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-3 py-1.5 bg-[#A855F7]/20 hover:bg-[#A855F7]/30 border border-[#A855F7]/40 text-[#A855F7] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Import surveyor GeoJSON / spatial file"
+          >
+            <FileUp className="w-3.5 h-3.5 text-[#A855F7]" />
+            <span className="hidden sm:inline">Import GeoJSON</span>
+          </button>
+
+          {/* Explicit GPS Locate Button */}
+          <button
+            onClick={handleRequestGpsLocation}
             disabled={gpsLoading}
             className="px-3 py-1.5 bg-[#081813] border border-white/15 hover:border-[#70B77E] text-xs font-mono text-[#F5F4EA] rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
-            title="Locate with device GPS"
+            title="Locate with device GPS (requests explicit browser permission)"
           >
             <Crosshair className={`w-3.5 h-3.5 text-[#00E5FF] ${gpsLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">{isTa ? 'GPS இருப்பிடம்' : 'GPS'}</span>
+            <span className="hidden sm:inline">{isTa ? 'GPS இருப்பிடம்' : 'Use Current Location'}</span>
           </button>
 
           {/* Fullscreen Toggle */}
@@ -897,6 +993,73 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen Map'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* ========================================================
+          LOCATION HIERARCHY BREADCRUMB & RESOLUTION BANNER
+          ======================================================== */}
+      <div className="bg-[#081813] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+        <div className="flex items-center gap-1.5 text-white/70 flex-wrap">
+          <Globe2 className="w-3.5 h-3.5 text-[#70B77E] shrink-0" />
+          <span className="text-white/40 uppercase">HIERARCHY:</span>
+          <span className="font-bold text-white">India</span>
+          <span className="text-white/40">❯</span>
+          <span className="text-[#70B77E] font-semibold">{resolvedLocation.hierarchy.state}</span>
+          {resolvedLocation.hierarchy.district && (
+            <>
+              <span className="text-white/40">❯</span>
+              <span className="text-white font-bold">{resolvedLocation.hierarchy.district}</span>
+            </>
+          )}
+          {resolvedLocation.hierarchy.taluk && (
+            <>
+              <span className="text-white/40">❯</span>
+              <span className="text-white/80">{resolvedLocation.hierarchy.taluk} Taluk</span>
+            </>
+          )}
+          {resolvedLocation.hierarchy.village && (
+            <>
+              <span className="text-white/40">❯</span>
+              <span className="text-[#00E5FF]">{resolvedLocation.hierarchy.village}</span>
+            </>
+          )}
+          {resolvedLocation.hierarchy.parcelName && (
+            <>
+              <span className="text-white/40">❯</span>
+              <span className="text-[#F59E0B] font-bold">"{resolvedLocation.hierarchy.parcelName}"</span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {resolvedLocation.isExactField ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[4px] bg-[#217451]/30 text-[#70B77E] border border-[#70B77E]/40 text-[11px] font-bold">
+              🎯 Exact Farm Boundary Loaded
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-[4px] bg-[#F59E0B]/20 text-[#F59E0B] border border-[#F59E0B]/30 text-[11px] font-bold">
+              📍 District Center ({resolvedLocation.hierarchy.district || 'Regional'}) · Field Unmapped
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Resolution Guidance Notice */}
+      <div className="bg-[#0B241B]/95 border-b border-white/10 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-sans text-white/80">
+        <div className="flex items-center gap-2">
+          <Info className="w-4 h-4 text-[#70B77E] shrink-0" />
+          <span>{resolvedLocation.actionGuidance}</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 font-mono text-[11px]">
+          <button
+            onClick={handleLocateSavedDistrict}
+            className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-[6px] cursor-pointer flex items-center gap-1 transition-colors"
+            title="Re-center on saved profile location"
+          >
+            <Compass className="w-3 h-3 text-[#70B77E]" />
+            <span>Locate My District</span>
           </button>
         </div>
       </div>
@@ -983,7 +1146,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           <form onSubmit={handleSearchSubmit} className="flex items-center">
             <input
               type="text"
-              placeholder={isTa ? 'மாவட்டம் அல்லது Lat, Lng...' : 'District or Lat, Lng...'}
+              placeholder={isTa ? 'மாவட்டம் அல்லது Lat, Lng...' : 'District, town, or Lat, Lng...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-[#0B241B]/90 backdrop-blur-md border border-white/20 text-xs font-mono text-white px-3 py-1.5 rounded-l-[8px] focus:outline-none focus:border-[#00E5FF] w-48"
@@ -1014,11 +1177,10 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                         : 'Redraw Boundary'
                       : isTa
                       ? 'எல்லை வரைக'
-                      : 'Draw Boundary'}
+                      : 'Draw Farm Boundary'}
                   </span>
                 </button>
 
-                {/* Revert / Cancel edits button if initial coords were loaded */}
                 {initialCoords.length >= 3 && isProposedEdit && (
                   <button
                     onClick={handleRevertEdits}
@@ -1078,7 +1240,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           3. LIVE GEOSPATIAL MEASUREMENTS & CADASTRE DASHBOARD
           ======================================================== */}
       <div className="bg-[#081813] border-t border-white/10 p-4 sm:p-5 space-y-4">
-        {/* Geometry Validation Notice if invalid */}
         {!measurements.isValid && measurements.validationError && (
           <div className="p-3 bg-[#B8423A]/20 border border-[#B8423A]/40 rounded-[8px] text-xs font-mono text-[#F5F4EA] flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-[#B8423A] shrink-0" />
@@ -1088,7 +1249,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
         {/* Live Metrics Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {/* Metric 1: Acres */}
           <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
             <div className="text-[10px] font-mono uppercase text-[#70B77E] font-bold">
               {isTa ? 'ஏக்கர் பரப்பளவு' : 'CALCULATED ACRES'}
@@ -1099,7 +1259,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </div>
           </div>
 
-          {/* Metric 2: Cents (Standard TN Unit) */}
           <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
             <div className="text-[10px] font-mono uppercase text-[#00E5FF] font-bold">
               {isTa ? 'சென்ட் பரப்பளவு' : 'TAMIL NADU CENTS'}
@@ -1110,7 +1269,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </div>
           </div>
 
-          {/* Metric 3: Square Metres */}
           <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
             <div className="text-[10px] font-mono uppercase text-white/60 font-semibold">
               {isTa ? 'சதுர மீட்டர்கள்' : 'SQUARE METRES'}
@@ -1121,7 +1279,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </div>
           </div>
 
-          {/* Metric 4: Hectares */}
           <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
             <div className="text-[10px] font-mono uppercase text-white/60 font-semibold">
               {isTa ? 'ஹெக்டேர்' : 'HECTARES'}
@@ -1132,7 +1289,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </div>
           </div>
 
-          {/* Metric 5: Perimeter */}
           <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 col-span-2 sm:col-span-1">
             <div className="text-[10px] font-mono uppercase text-white/60 font-semibold">
               {isTa ? 'சுற்றளவு' : 'PERIMETER'}
@@ -1144,7 +1300,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
         </div>
 
-        {/* Cadastral Extent Comparison (if official record has documented extent) */}
+        {/* Cadastral Extent Comparison */}
         {officialExtentAcres !== undefined && (
           <div className="p-3 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-[8px] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[#F59E0B]">
             <div className="flex items-center gap-1.5">
@@ -1316,7 +1472,6 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               </button>
             </form>
 
-            {/* Cadastral Lookup Result / Honest Technical Fallback */}
             {lookupResult && (
               <div
                 className={`p-4 rounded-[10px] border text-xs font-mono space-y-2.5 ${
@@ -1392,6 +1547,62 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          5. EXPLICIT GPS CONSENT & PERMISSION MODAL
+          ======================================================== */}
+      {isGpsConsentModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-[#0B241B] border-2 border-[#00E5FF]/40 max-w-md w-full p-6 shadow-2xl rounded-[14px] text-white space-y-4">
+            <div className="flex items-center gap-3 border-b border-white/10 pb-3">
+              <div className="w-9 h-9 rounded-full bg-[#00E5FF]/20 flex items-center justify-center text-[#00E5FF] shrink-0">
+                <Navigation className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-['Plus_Jakarta_Sans'] text-lg font-bold text-white">
+                  {isTa ? 'GPS இருப்பிட அனுமதி' : 'Device Location Access'}
+                </h3>
+                <span className="text-xs font-mono text-[#70B77E]">EXPLICIT PERMISSION REQUIRED</span>
+              </div>
+            </div>
+
+            <p className="text-xs font-sans text-white/80 leading-relaxed">
+              {isTa
+                ? 'செயற்கைக்கோள் வரைபடத்தில் உங்கள் தற்போதைய வயல்வெளியை தானாகக் கண்டறிய உங்கள் உலாவியின் GPS இருப்பிட அனுமதி தேவைப்படுகிறது. உங்கள் இருப்பிடம் வேறு எங்கும் பகிரப்படாது.'
+                : 'CropShield AI requests your browser GPS permission strictly to center the satellite map at your current field location to assist you in outlining boundaries. Your device coordinates are not saved without your explicit confirmation.'}
+            </p>
+
+            <div className="p-3 bg-black/40 rounded-[8px] text-[11px] font-mono text-white/70 space-y-1">
+              <span className="text-[#00E5FF] font-bold block">CURRENT SAVED LOCATION:</span>
+              <span>
+                {resolvedLocation.hierarchy.district}, {resolvedLocation.hierarchy.state} ({resolvedLocation.statusMessage})
+              </span>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setIsGpsConsentModalOpen(false)}
+                className="px-4 py-2 text-xs font-mono text-white/70 hover:text-white cursor-pointer"
+              >
+                {isTa ? 'ரத்துசெய்' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmGpsPermission}
+                className="px-5 py-2.5 bg-[#00E5FF] hover:bg-[#00cce6] text-[#0B241B] font-mono text-xs font-bold rounded-[8px] cursor-pointer shadow-sm flex items-center gap-1.5"
+              >
+                <Crosshair className="w-3.5 h-3.5" />
+                <span>{isTa ? 'அனுமதிக்கவும் & கண்டறியவும்' : 'Allow & Locate Field'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

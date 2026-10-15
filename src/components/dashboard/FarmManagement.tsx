@@ -64,7 +64,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
 
   // Form Fields
   const [farmName, setFarmName] = useState('');
-  const [district, setDistrict] = useState('Thanjavur');
+  const [district, setDistrict] = useState(profile?.district || 'Karur');
   const [locality, setLocality] = useState('');
   const [cropType, setCropType] = useState('Rice (Paddy)');
   const [riceVariety, setRiceVariety] = useState('CR 1009 Sub 1 (Samba)');
@@ -121,7 +121,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
   const openCreateModal = () => {
     setEditingFarm(null);
     setFarmName('');
-    setDistrict(profile?.district || 'Thanjavur');
+    setDistrict(profile?.district || 'Karur');
     setLocality(profile?.locality || '');
     setCropType(profile?.primaryCrop || 'Rice (Paddy)');
     setRiceVariety(profile?.activeVariety || 'CR 1009 Sub 1 (Samba)');
@@ -375,7 +375,9 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
             <FarmGISMap
               farms={farms}
               selectedFarm={selectedMapFarm}
-              initialDistrict={selectedMapFarm?.district || profile?.district || 'Thanjavur'}
+              farmerProfile={profile}
+              initialDistrict={selectedMapFarm?.district || profile?.district || 'Karur'}
+              initialState={profile?.state || 'Tamil Nadu'}
               onSelectFarm={(farm) => setSelectedMapFarm(farm)}
               onSaveBoundary={async (savedBoundary, measuredAcres, measuredCents) => {
                 if (selectedMapFarm && selectedMapFarm.id && user) {
@@ -902,7 +904,9 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                 {isMappingDrawerOpen && (
                   <div className="pt-3 border-t border-[#D9DED3]">
                     <FarmGISMap
-                      initialDistrict={district}
+                      initialDistrict={district || profile?.district || 'Karur'}
+                      initialState={profile?.state || 'Tamil Nadu'}
+                      farmerProfile={profile}
                       selectedFarm={editingFarm ? { ...editingFarm, boundary } : boundary ? ({ farmName: farmName || 'New Plot', district, cropType, boundary } as any) : undefined}
                       className="min-h-[440px]"
                       onSaveBoundary={(newBoundary, measuredAcres, measuredCents) => {
