@@ -1118,6 +1118,11 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       maxZoom: 19,
     });
 
+    // Remove only the default "Leaflet" branding prefix, preserving all map tile, imagery, and OpenStreetMap credits
+    if (map.attributionControl) {
+      map.attributionControl.setPrefix(false);
+    }
+
     L.control.zoom({ position: 'topright' }).addTo(map);
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 

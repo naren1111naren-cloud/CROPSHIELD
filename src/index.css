@@ -299,3 +299,36 @@ body {
   align-items: center;
   gap: 0.35rem;
 }
+
+/* Premium Geospatial Map Attribution Styling */
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(11, 33, 26, 0.82) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  color: #DCE4D9 !important;
+  font-family: var(--font-mono, monospace), ui-monospace, SFMono-Regular, Menlo, Consolas, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 450 !important;
+  line-height: 1.35 !important;
+  padding: 3px 8px !important;
+  border-top-left-radius: 6px;
+  border-left: 1px solid rgba(184, 220, 193, 0.2);
+  border-top: 1px solid rgba(184, 220, 193, 0.2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  margin: 0 !important;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: #70B77E !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  transition: color 150ms ease, text-decoration 150ms ease;
+}
+
+.leaflet-container .leaflet-control-attribution a:hover,
+.leaflet-container .leaflet-control-attribution a:focus-visible {
+  color: #B8DCC1 !important;
+  text-decoration: underline !important;
+  outline: none;
+}
+
