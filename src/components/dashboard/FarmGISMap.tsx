@@ -10,6 +10,11 @@ import {
   FarmerProfile,
   SatelliteVegetationReport,
   SatelliteObservation,
+  ScanData,
+  FarmTimelineEvent,
+  FarmComparisonItem,
+  FarmComparisonReport,
+  ExplainableInsight,
 } from '../../types';
 import {
   SOUTH_INDIA_STATES,
@@ -41,6 +46,11 @@ import {
   rateLaboratorySoilTest,
   SoilIntelligenceResponse,
 } from '../../services/soilIntelligenceService';
+import {
+  buildFarmHistoricalTimeline,
+  buildMultiFarmComparison,
+  generateExplainableComparisonInsights,
+} from '../../services/multiFarmIntelligenceService';
 import {
   FarmSoilProfile,
   LaboratorySoilTest,
@@ -96,10 +106,20 @@ import {
   Beaker,
   Save,
   Pencil,
+  GitCompare,
+  Filter,
+  ArrowUpDown,
+  CheckSquare,
+  Square,
+  SlidersHorizontal,
+  Clock,
+  Eye,
+  Target,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
   farms?: FarmRecord[];
+  scans?: ScanData[];
   selectedFarm?: FarmRecord | null;
   onSelectFarm?: (farm: FarmRecord) => void;
   onScanFarm?: (farm: FarmRecord) => void;
@@ -128,6 +148,7 @@ export interface LiveMeasurements {
 
 export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   farms = [],
+  scans = [],
   selectedFarm,
   onSelectFarm,
   onScanFarm,
@@ -206,6 +227,14 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const [isCopernicusSetupModalOpen, setIsCopernicusSetupModalOpen] = useState<boolean>(false);
   const [isVegetationDetailsOpen, setIsVegetationDetailsOpen] = useState<boolean>(true);
 
+  // Phase 5: Multi-Farm Intelligence & Historical Comparison State
+  const [cropFilter, setCropFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedComparisonFarmIds, setSelectedComparisonFarmIds] = useState<string[]>([]);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState<boolean>(false);
+  const [comparisonReport, setComparisonReport] = useState<FarmComparisonReport | null>(null);
+  const [timelineCategoryFilter, setTimelineCategoryFilter] = useState<string>('all');
+
   // Drawing & Geometry State
   const [polygonCoords, setPolygonCoords] = useState<[number, number][]>([]);
   const [initialCoords, setInitialCoords] = useState<[number, number][]>([]);
@@ -224,6 +253,10 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const stageExpectation = selectedFarm
     ? getCropStageNdviExpectation(selectedFarm.cropType, selectedFarm.cropStage)
     : null;
+
+  // Multi-Farm aggregations for practical map filtering
+  const uniqueCrops = Array.from(new Set(farms.map((f) => f.cropType).filter(Boolean)));
+  const unmappedFarmsCount = farms.filter((f) => !f.boundary?.coordinates || f.boundary.coordinates.length === 0).length;
 
   // Geolocation & Permissions State
   const [gpsLoading, setGpsLoading] = useState<boolean>(false);
@@ -982,6 +1015,74 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   };
 
+  // Phase 5: Fit All Farms Bounds Handler
+  const handleFitAllFarms = () => {
+    if (!mapInstanceRef.current || farms.length === 0) return;
+    const points: [number, number][] = [];
+    farms.forEach((f) => {
+      if (f.boundary?.coordinates && f.boundary.coordinates.length > 0) {
+        f.boundary.coordinates[0].forEach(([lng, lat]) => points.push([lat, lng]));
+      } else if (f.latitude && f.longitude) {
+        points.push([f.latitude, f.longitude]);
+      }
+    });
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points.map(([lat, lng]) => L.latLng(lat, lng)));
+      mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    } else {
+      handleResetView();
+    }
+  };
+
+  // Phase 5: Zoom to Selected Farm Handler
+  const handleZoomToFarm = (farm: FarmRecord) => {
+    onSelectFarm?.(farm);
+    if (!mapInstanceRef.current) return;
+    if (farm.boundary?.coordinates && farm.boundary.coordinates.length > 0) {
+      try {
+        const ring = farm.boundary.coordinates[0];
+        const coords: [number, number][] = ring.map(([lng, lat]) => [lat, lng]);
+        const poly = L.polygon(coords);
+        mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18 });
+      } catch {
+        if (farm.latitude && farm.longitude) {
+          mapInstanceRef.current.flyTo([farm.latitude, farm.longitude], 17);
+        }
+      }
+    } else if (farm.latitude && farm.longitude) {
+      mapInstanceRef.current.flyTo([farm.latitude, farm.longitude], 17);
+    }
+  };
+
+  // Phase 5: Comparison Farm Selection Handlers
+  const handleToggleComparisonFarm = (farmId: string) => {
+    const next = selectedComparisonFarmIds.includes(farmId)
+      ? selectedComparisonFarmIds.filter((id) => id !== farmId)
+      : [...selectedComparisonFarmIds, farmId];
+    setSelectedComparisonFarmIds(next);
+
+    const comparedFarms = farms.filter((f) => f.id && next.includes(f.id));
+    const rep = buildMultiFarmComparison(comparedFarms, scans);
+    setComparisonReport(rep);
+  };
+
+  const handleOpenComparisonModal = () => {
+    let targetIds = [...selectedComparisonFarmIds];
+    if (targetIds.length < 2 && farms.length >= 2) {
+      const remaining = farms.filter((f) => f.id && !targetIds.includes(f.id));
+      while (targetIds.length < 2 && remaining.length > 0) {
+        targetIds.push(remaining.shift()!.id!);
+      }
+      setSelectedComparisonFarmIds(targetIds);
+    }
+
+    const comparedFarms = farms.filter((f) => f.id && targetIds.includes(f.id));
+    const rep = buildMultiFarmComparison(comparedFarms, scans);
+    setComparisonReport(rep);
+    setIsComparisonModalOpen(true);
+  };
+
   // Search Location / Coordinates Query
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1255,7 +1356,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   }, [selectedFarm]);
 
-  // Render All Saved Farms as Cadastral Overlays on Satellite Map
+  // Render All Saved Farms as Cadastral Overlays on Satellite Map (Phase 5: Multi-Farm GIS)
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !savedFarmsLayerGroupRef.current) return;
@@ -1263,7 +1364,15 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     savedFarmsLayerGroupRef.current.clearLayers();
 
     farms.forEach((farm) => {
-      if (farm.id === selectedFarm?.id) return;
+      // 1. Apply multi-farm practical filters
+      if (cropFilter !== 'all' && farm.cropType !== cropFilter) return;
+      if (statusFilter !== 'all') {
+        const st = farm.boundary?.surveyStatus || 'farmer_drawn';
+        if (st !== statusFilter) return;
+      }
+
+      const isSelected = farm.id === selectedFarm?.id;
+
       if (farm.boundary?.coordinates && farm.boundary.coordinates.length > 0) {
         try {
           const ring = farm.boundary.coordinates[0];
@@ -1272,36 +1381,101 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           const isOfficial = farm.boundary.surveyStatus === 'official_source';
           const isImported = farm.boundary.surveyStatus === 'imported';
 
-          const strokeColor = isOfficial ? '#F59E0B' : isImported ? '#A855F7' : farm.isPrimary ? '#70B77E' : '#DFE6DB';
-          const fillColor = isOfficial ? '#F59E0B' : isImported ? '#A855F7' : farm.isPrimary ? '#70B77E' : '#B8DCC1';
+          // Selectable outlines with high readability against satellite imagery
+          const strokeColor = isSelected
+            ? '#00E5FF'
+            : isOfficial
+            ? '#F59E0B'
+            : isImported
+            ? '#A855F7'
+            : farm.isPrimary
+            ? '#70B77E'
+            : '#86EFAC';
+
+          const fillColor = isSelected
+            ? '#00E5FF'
+            : isOfficial
+            ? '#F59E0B'
+            : isImported
+            ? '#A855F7'
+            : farm.isPrimary
+            ? '#70B77E'
+            : '#86EFAC';
 
           const savedPoly = L.polygon(coords, {
             color: strokeColor,
-            weight: 2,
-            opacity: 0.8,
+            weight: isSelected ? 4 : 2,
+            opacity: isSelected ? 1.0 : 0.85,
             fillColor,
-            fillOpacity: 0.15,
+            fillOpacity: isSelected ? 0.32 : 0.16,
+            dashArray: isSelected ? '6, 4' : undefined,
           });
 
-          const statusBadge = isOfficial ? '🏛️ Official Cadastre' : isImported ? '📂 Imported Survey' : '✏️ Farmer-Mapped';
+          const statusBadge = isOfficial
+            ? '🏛️ Official Cadastre'
+            : isImported
+            ? '📂 Imported Survey'
+            : '✏️ Farmer-Mapped';
+
+          const areaText = farm.landSizeArea
+            ? `${farm.landSizeArea} ${farm.areaUnit || 'Acres'}`
+            : farm.landSizeAcres
+            ? `${farm.landSizeAcres.toFixed(2)} Acres`
+            : '—';
 
           savedPoly.bindTooltip(`
-            <div style="font-family: Plus Jakarta Sans, sans-serif; font-size: 12px; color: #0B241B;">
-              <strong>${farm.farmName}</strong> (${farm.cropType})<br/>
-              <span style="font-family: monospace; color: #217451;">${farm.landSizeArea || farm.landSizeAcres || '—'} ${farm.areaUnit || 'Acres'}</span><br/>
-              <span style="font-size: 10px; color: #64766B;">${statusBadge}</span>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 11px; background: rgba(11, 36, 27, 0.95); color: #FFFFFF; border: 1px solid ${isSelected ? '#00E5FF' : '#70B77E'}; padding: 6px 9px; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.45); min-width: 140px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; font-weight: bold; margin-bottom: 2px;">
+                <span style="font-size: 12px; color: ${isSelected ? '#00E5FF' : '#FFFFFF'};">${farm.farmName}</span>
+                ${isSelected ? '<span style="font-size: 9px; background: rgba(0,229,255,0.25); color: #00E5FF; padding: 1px 4px; border-radius: 3px; font-family: monospace;">SELECTED</span>' : ''}
+              </div>
+              <div style="font-size: 10px; color: #CBD5E1; font-family: monospace; margin-bottom: 3px;">
+                ${farm.cropType}${farm.plantingDate ? ` · Sown: ${farm.plantingDate}` : ''}
+              </div>
+              <div style="display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #70B77E; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 3px;">
+                <span style="font-weight: 600;">${areaText}</span>
+                <span style="color: #94A3B8; font-size: 9px;">${statusBadge}</span>
+              </div>
             </div>
-          `);
+          `, { permanent: false, direction: 'center', className: 'custom-farm-tooltip' });
 
           savedPoly.on('click', () => {
             onSelectFarm?.(farm);
           });
 
           savedFarmsLayerGroupRef.current?.addLayer(savedPoly);
-        } catch {}
+        } catch (err) {
+          console.warn('Failed to render farm polygon:', err);
+        }
+      } else if (farm.latitude && farm.longitude) {
+        // Missing Geometry Fallback: Coordinates Pin for unmapped parcel
+        const unmappedIcon = L.divIcon({
+          className: 'custom-unmapped-farm-pin',
+          html: `
+            <div class="flex items-center gap-1 bg-[#B8423A]/90 text-white border border-amber-300 px-2 py-0.5 rounded-full shadow-lg font-mono text-[10px] whitespace-nowrap cursor-pointer hover:scale-105 transition-transform">
+              <span>⚠️</span>
+              <span class="font-bold">${farm.farmName}</span>
+              <span class="text-amber-200 text-[9px]">(Unmapped)</span>
+            </div>
+          `,
+          iconAnchor: [45, 12],
+        });
+
+        const unmappedMarker = L.marker([farm.latitude, farm.longitude], { icon: unmappedIcon });
+        unmappedMarker.bindPopup(`
+          <div style="font-family: monospace; font-size: 11px; color: #0B241B; min-width: 180px;">
+            <strong style="color: #B8423A; font-size: 12px;">⚠️ Missing Parcel Geometry</strong><br/>
+            <strong>${farm.farmName}</strong> (${farm.cropType})<br/>
+            <span>District: ${farm.district}</span><br/>
+            <span style="color: #64766B;">Coordinates saved, but polygon boundary not yet drawn.</span><br/>
+            <div style="margin-top: 6px; font-weight: bold; color: #1F6B4A;">Click to select and draw boundary polygon.</div>
+          </div>
+        `);
+        unmappedMarker.on('click', () => onSelectFarm?.(farm));
+        savedFarmsLayerGroupRef.current?.addLayer(unmappedMarker);
       }
     });
-  }, [farms, selectedFarm]);
+  }, [farms, selectedFarm, cropFilter, statusFilter]);
 
   // Start Drawing Mode
   const handleStartDrawing = () => {
@@ -1607,6 +1781,37 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             <span className="hidden sm:inline">{isTa ? 'மீட்டமைக்க' : 'Reset View'}</span>
           </button>
 
+          {/* Phase 5: Fit All Registered Farms Button */}
+          <button
+            onClick={handleFitAllFarms}
+            className="px-3 py-1.5 bg-[#217451]/20 hover:bg-[#217451]/30 border border-[#70B77E]/40 text-[#70B77E] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Fit all registered farm parcels into visible map bounds"
+          >
+            <Layers className="w-3.5 h-3.5 text-[#70B77E]" />
+            <span className="hidden sm:inline">Fit All ({farms.length})</span>
+          </button>
+
+          {/* Phase 5: Focus Selected Farm Button */}
+          <button
+            onClick={() => selectedFarm && handleZoomToFarm(selectedFarm)}
+            disabled={!selectedFarm}
+            className="px-3 py-1.5 bg-[#081813] border border-white/15 hover:border-[#00E5FF] disabled:opacity-40 text-xs font-mono text-[#00E5FF] rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title={selectedFarm ? `Zoom directly to ${selectedFarm.farmName}` : 'Select a farm parcel first'}
+          >
+            <Target className="w-3.5 h-3.5 text-[#00E5FF]" />
+            <span className="hidden sm:inline">Focus Farm</span>
+          </button>
+
+          {/* Phase 5: Multi-Farm Comparison Modal Opener */}
+          <button
+            onClick={handleOpenComparisonModal}
+            className="px-3 py-1.5 bg-[#A855F7]/20 hover:bg-[#A855F7]/30 border border-[#A855F7]/40 text-[#F5F4EA] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[36px] transition-colors"
+            title="Compare 2 or more farm parcels side-by-side with real metrics"
+          >
+            <GitCompare className="w-3.5 h-3.5 text-[#A855F7]" />
+            <span>Compare ({selectedComparisonFarmIds.length > 0 ? selectedComparisonFarmIds.length : farms.length >= 2 ? 2 : farms.length})</span>
+          </button>
+
           {/* Provider Setup / Status Button */}
           <button
             onClick={() => setIsProviderModalOpen(true)}
@@ -1748,6 +1953,81 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           ) : null}
         </div>
       </div>
+
+      {/* ========================================================
+          MULTI-FARM PRACTICAL FILTER STRIP (Phase 5)
+          ======================================================== */}
+      {farms.length > 0 && (
+        <div className="bg-[#061410] border-b border-white/10 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[#70B77E] font-bold uppercase text-[10px] flex items-center gap-1">
+              <SlidersHorizontal className="w-3 h-3 text-[#70B77E]" />
+              <span>PARCELS ({farms.length}):</span>
+            </span>
+
+            {/* Farm Parcel Selector */}
+            <select
+              value={selectedFarm?.id || ''}
+              onChange={(e) => {
+                const targetFarm = farms.find((f) => f.id === e.target.value);
+                if (targetFarm) handleZoomToFarm(targetFarm);
+              }}
+              className="bg-[#0B241B] border border-white/20 text-[#00E5FF] font-semibold text-[11px] px-2 py-1 rounded-[6px] focus:border-[#00E5FF] outline-none cursor-pointer"
+            >
+              <option value="">— Select Farm Parcel —</option>
+              {farms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.farmName} ({f.cropType}) {f.isPrimary ? '★ Primary' : ''}
+                </option>
+              ))}
+            </select>
+
+            {/* Crop Practical Filter */}
+            {uniqueCrops.length > 1 && (
+              <select
+                value={cropFilter}
+                onChange={(e) => setCropFilter(e.target.value)}
+                className="bg-[#0B241B] border border-white/20 text-white/90 text-[11px] px-2 py-1 rounded-[6px] focus:border-[#70B77E] outline-none cursor-pointer"
+              >
+                <option value="all">All Crops ({farms.length})</option>
+                {uniqueCrops.map((crop) => (
+                  <option key={crop} value={crop}>
+                    🌾 {crop}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Boundary Survey Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="bg-[#0B241B] border border-white/20 text-white/90 text-[11px] px-2 py-1 rounded-[6px] focus:border-[#70B77E] outline-none cursor-pointer"
+            >
+              <option value="all">All Survey Statuses</option>
+              <option value="official_source">🏛️ Official Cadastre</option>
+              <option value="imported">📂 Imported Survey</option>
+              <option value="farmer_drawn">✏️ Farmer-Mapped</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {unmappedFarmsCount > 0 && (
+              <span className="text-[10px] text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-[4px] flex items-center gap-1 font-bold">
+                ⚠️ {unmappedFarmsCount} Parcel{unmappedFarmsCount > 1 ? 's' : ''} Missing Geometry
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={handleOpenComparisonModal}
+              className="text-[11px] text-[#A855F7] bg-[#A855F7]/15 hover:bg-[#A855F7]/25 border border-[#A855F7]/40 px-2.5 py-0.5 rounded-[4px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <GitCompare className="w-3 h-3 text-[#A855F7]" />
+              <span>Multi-Farm Comparison</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Weather Sub-Layer Toggle Bar */}
       {activeMapMode === 'weather' && (
@@ -2773,58 +3053,187 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
         )}
 
-        {/* Floating Historical Observation Timeline */}
-        {activeMapMode === 'history' && (
-          <div className="absolute bottom-16 right-4 left-4 sm:left-auto sm:max-w-xs z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#A855F7]/50 rounded-[12px] p-2.5 text-xs font-mono shadow-2xl text-white space-y-2">
-            <div className="flex items-center justify-between border-b border-white/10 pb-1">
-              <div className="flex items-center gap-1.5 text-[#A855F7] font-bold text-[11px]">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>OBSERVATION TIMELINE</span>
-              </div>
-              <span className="text-[9px] text-white/50">5-Day Revisit</span>
-            </div>
+        {/* Floating Historical Chronological Timeline (Phase 5) */}
+        {activeMapMode === 'history' && (() => {
+          const activeFarm = selectedFarm || (farms.length > 0 ? farms[0] : null);
+          const allTimelineEvents = activeFarm ? buildFarmHistoricalTimeline(activeFarm, scans) : [];
+          const filteredEvents = timelineCategoryFilter === 'all'
+            ? allTimelineEvents
+            : allTimelineEvents.filter((e) => e.category === timelineCategoryFilter);
 
-            {vegetationReport?.historicalObservations && vegetationReport.historicalObservations.length > 0 ? (
-              <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-                {vegetationReport.historicalObservations.map((obs) => {
-                  const isSelected = selectedObsDate === obs.date;
-                  return (
+          return (
+            <div className="absolute top-4 right-4 z-20 max-w-[360px] sm:max-w-md w-full bg-[#0B241B]/95 backdrop-blur-md border border-[#A855F7]/60 rounded-[12px] p-3.5 text-xs font-mono shadow-2xl text-white space-y-3 max-h-[85vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#A855F7]" />
+                  <div>
+                    <span className="font-bold text-xs sm:text-sm text-white font-['Plus_Jakarta_Sans'] block">
+                      {isTa ? 'நில காலவரிசை வரலாறு' : 'Chronological Parcel Timeline'}
+                    </span>
+                    <span className="text-[10px] text-white/60">
+                      {activeFarm ? `Parcel: "${activeFarm.farmName}"` : 'No parcel selected'} · {allTimelineEvents.length} Real Records
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[9px] px-2 py-0.5 rounded bg-[#A855F7]/20 text-[#A855F7] font-bold uppercase">
+                  Zero Synthetic Data
+                </span>
+              </div>
+
+              {/* Category Filter Chips */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('all')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'all'
+                      ? 'bg-[#A855F7] text-white font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  All ({allTimelineEvents.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('sowing')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'sowing'
+                      ? 'bg-[#00E5FF] text-[#0B241B] font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  Sowing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('boundary')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'boundary'
+                      ? 'bg-[#F59E0B] text-[#0B241B] font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  Cadastre
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('soil_test')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'soil_test'
+                      ? 'bg-[#7C3AED] text-white font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  Soil Lab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('satellite')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'satellite'
+                      ? 'bg-[#70B77E] text-[#0B241B] font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  Sentinel-2
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('diagnosis')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'diagnosis'
+                      ? 'bg-[#EF4444] text-white font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  Diagnostics
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTimelineCategoryFilter('activity')}
+                  className={`px-2 py-0.5 rounded-[4px] transition-colors cursor-pointer shrink-0 ${
+                    timelineCategoryFilter === 'activity'
+                      ? 'bg-[#38BDF8] text-[#0B241B] font-bold'
+                      : 'bg-white/5 text-white/60 hover:text-white'
+                  }`}
+                >
+                  Field Activity
+                </button>
+              </div>
+
+              {/* Chronological Event Cards List */}
+              {filteredEvents.length > 0 ? (
+                <div className="space-y-2 max-h-[55vh] overflow-y-auto pr-1">
+                  {filteredEvents.map((evt) => (
                     <div
-                      key={obs.id}
-                      onClick={() => setSelectedObsDate(obs.date)}
-                      className={`p-1.5 rounded-[4px] border transition-colors cursor-pointer flex items-center justify-between text-[10px] ${
-                        isSelected
-                          ? 'bg-[#A855F7]/25 border-[#A855F7] text-white font-bold'
-                          : 'bg-black/30 border-white/10 hover:border-white/30 text-white/80'
-                      }`}
+                      key={evt.id}
+                      className="p-2.5 bg-black/40 border border-white/10 rounded-[8px] space-y-1.5 transition-all hover:border-white/25"
                     >
-                      <div className="flex items-center gap-1.5">
-                        {obs.isCloudCovered ? (
-                          <CloudRain className="w-3 h-3 text-amber-400" />
-                        ) : (
-                          <Sprout className="w-3 h-3 text-[#70B77E]" />
-                        )}
-                        <span>{obs.date}</span>
-                        {obs.isCloudCovered && <span className="text-[9px] text-amber-300">(Cloud)</span>}
+                      <div className="flex items-center justify-between gap-1 text-[10px]">
+                        <span className="font-bold font-mono text-[#00E5FF] flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-[#00E5FF]" />
+                          <span>{evt.date}</span>
+                        </span>
+                        <span
+                          className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+                          style={{
+                            backgroundColor: `${evt.badgeColor}25`,
+                            color: evt.badgeColor,
+                            border: `1px solid ${evt.badgeColor}40`,
+                          }}
+                        >
+                          {evt.statusBadge}
+                        </span>
                       </div>
-                      <div>
-                        {!obs.isCloudCovered ? (
-                          <span className="font-bold text-[#70B77E]">{obs.meanNdvi.toFixed(2)}</span>
-                        ) : (
-                          <span className="text-[9px] text-white/50">No Data</span>
-                        )}
+
+                      <div className="font-['Plus_Jakarta_Sans'] font-bold text-[11px] text-white">
+                        {isTa && evt.titleTamil ? evt.titleTamil : evt.title}
+                      </div>
+
+                      <p className="font-sans text-[10px] text-white/80 leading-relaxed">
+                        {isTa && evt.descriptionTamil ? evt.descriptionTamil : evt.description}
+                      </p>
+
+                      {/* Explicit Metrics Grid if available */}
+                      {evt.metrics && Object.keys(evt.metrics).length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1 pt-1 font-mono text-[9px]">
+                          {Object.entries(evt.metrics).map(([k, v]) => (
+                            <div key={k} className="bg-white/5 px-1.5 py-0.5 rounded-[4px]">
+                              <span className="text-white/40 block text-[8px] uppercase">{k}</span>
+                              <span className="text-white/90 font-semibold truncate block">
+                                {String(v ?? '—')}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="text-[8.5px] text-white/45 flex items-center justify-between pt-1 border-t border-white/10">
+                        <span>Source: {evt.source}</span>
+                        <span className="font-mono text-white/30 uppercase">Verified Entry</span>
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 bg-white/5 border border-white/10 rounded-[8px] text-center space-y-1 text-white/60">
+                  <p className="text-[10.5px]">No records found for category: <strong>{timelineCategoryFilter}</strong>.</p>
+                  <p className="text-[9px] font-sans text-white/40">
+                    Real events accumulate automatically as you log field activities, record certified laboratory tests, or perform leaf pathology scans.
+                  </p>
+                </div>
+              )}
+
+              {/* Data Provenance & Methodology Notice */}
+              <div className="p-2 bg-black/50 border border-white/10 rounded-[6px] space-y-1 text-[8.5px] font-sans text-white/50 leading-tight">
+                <p>
+                  <strong className="text-white/70">Historical Integrity Guarantee:</strong> CropShield AI builds timelines strictly from authenticated database records. Unrecorded events are shown as unavailable rather than synthetically backfilled.
+                </p>
               </div>
-            ) : (
-              <p className="text-white/70 font-sans text-[10px] leading-tight py-1">
-                Sentinel-2 5-day cycle observations will populate once Copernicus API credentials are authenticated. Missing or cloudy dates are not artificially interpolated.
-              </p>
-            )}
-          </div>
-        )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ========================================================
@@ -3727,6 +4136,372 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          PHASE 5: MULTI-FARM FIELD COMPARISON MODAL
+          ======================================================== */}
+      {isComparisonModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="bg-[#0B241B] border border-[#A855F7]/60 rounded-[16px] max-w-5xl w-full max-h-[92vh] flex flex-col shadow-2xl text-white font-mono overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between bg-black/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-[#A855F7]/20 border border-[#A855F7]/40 flex items-center justify-center text-[#A855F7]">
+                  <GitCompare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg text-white font-['Plus_Jakarta_Sans'] flex items-center gap-2">
+                    <span>{isTa ? 'பண்ணைகள் ஒப்பீட்டு நுண்ணறிவு' : 'Multi-Farm Evidence-Based Comparison'}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-[#A855F7]/25 text-[#A855F7] font-mono">
+                      Phase 5
+                    </span>
+                  </h3>
+                  <p className="text-xs text-white/60 font-sans">
+                    {isTa
+                      ? 'உண்மையான பதிவு செய்யப்பட்ட அளவீடுகளை மட்டுமே ஒப்பிடுகிறது (விடுபட்ட மதிப்புகள் — எனக் குறிக்கப்படும்).'
+                      : 'Compares only metrics that genuinely exist. Missing values are shown as unavailable (—), never zero.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsComparisonModalOpen(false)}
+                className="p-1.5 rounded-[8px] bg-white/5 hover:bg-white/15 text-white/70 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
+              {/* 1. Farm Selection Checkbox Strip */}
+              <div className="p-3 bg-black/40 border border-white/10 rounded-[10px] space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-[#00E5FF] font-bold uppercase flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-[#00E5FF]" />
+                    <span>Select Registered Farm Parcels to Compare:</span>
+                  </span>
+                  <span className="text-white/50 text-[11px]">
+                    {selectedComparisonFarmIds.length} of {farms.length} parcels selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  {farms.map((farm) => {
+                    const isChecked = selectedComparisonFarmIds.includes(farm.id!);
+                    return (
+                      <button
+                        key={farm.id}
+                        type="button"
+                        onClick={() => handleToggleComparisonFarm(farm.id!)}
+                        className={`px-3 py-1.5 rounded-[8px] border text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                          isChecked
+                            ? 'bg-[#A855F7]/25 border-[#A855F7] text-white font-bold shadow-xs'
+                            : 'bg-white/5 border-white/10 text-white/60 hover:text-white'
+                        }`}
+                      >
+                        {isChecked ? (
+                          <CheckSquare className="w-3.5 h-3.5 text-[#A855F7]" />
+                        ) : (
+                          <Square className="w-3.5 h-3.5 text-white/40" />
+                        )}
+                        <span>{farm.farmName}</span>
+                        <span className="text-[10px] text-white/40 font-normal">({farm.cropType})</span>
+                        {farm.isPrimary && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-[#70B77E]/30 text-[#70B77E]">★ Primary</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Compatibility & Qualification Alerts */}
+              {comparisonReport && comparisonReport.farms.length >= 2 && (
+                <div className="space-y-2">
+                  {!comparisonReport.commonCrop && (
+                    <div className="p-3 bg-amber-500/15 border border-amber-500/40 rounded-[8px] text-amber-200 text-xs font-sans flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block font-mono text-[11px] uppercase text-amber-300">
+                          Cross-Crop Comparison Qualification
+                        </strong>
+                        <span>
+                          Selected parcels cultivate different crops ({Array.from(new Set(comparisonReport.farms.map((f) => f.cropType))).join(' vs ')}).
+                          Phenological growth stages, water demands, and expected NDVI spectral curves are crop-specific. Differences in vegetative indices must not be interpreted as disease or yield disparity.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {!comparisonReport.compatibleObservationDates && (
+                    <div className="p-3 bg-[#0284C7]/15 border border-[#38BDF8]/40 rounded-[8px] text-sky-200 text-xs font-sans flex items-start gap-2.5">
+                      <Info className="w-4 h-4 text-[#38BDF8] shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block font-mono text-[11px] uppercase text-sky-300">
+                          Observation Date Notice
+                        </strong>
+                        <span>
+                          Satellite revisits or physical soil tests were sampled on disparate dates across parcels. Comparisons reflect different temporal conditions.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. Side-by-Side Comparison Matrix */}
+              {comparisonReport && comparisonReport.farms.length >= 2 ? (
+                <div className="overflow-x-auto border border-white/10 rounded-[12px] bg-black/40">
+                  <table className="w-full border-collapse text-xs text-left">
+                    <thead>
+                      <tr className="border-b border-white/15 bg-black/60">
+                        <th className="p-3 font-mono uppercase text-[#70B77E] text-[11px] min-w-[180px] sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          Metric Category
+                        </th>
+                        {comparisonReport.farms.map((f) => (
+                          <th key={f.farmId} className="p-3 font-bold text-white min-w-[200px] border-r border-white/10 last:border-r-0">
+                            <div className="font-['Plus_Jakarta_Sans'] text-sm text-[#00E5FF] flex items-center justify-between">
+                              <span>{f.farmName}</span>
+                              {f.isPrimary && <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#70B77E]/30 text-[#70B77E] font-mono">PRIMARY</span>}
+                            </div>
+                            <div className="text-[10px] text-white/50 font-mono mt-0.5">{f.district} District</div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10 font-mono text-[11px]">
+                      {/* Row: Crop & Sowing */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🌾 Crop & Variety
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            <div className="font-bold text-white">{f.cropType}</div>
+                            <div className="text-[10px] text-white/50">{f.variety}</div>
+                            {f.plantingDate && <div className="text-[9px] text-[#00E5FF]">Sown: {f.plantingDate}</div>}
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Area */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          📐 Registered Area
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            <div className="font-bold text-[#70B77E] text-xs">{f.areaFormatted}</div>
+                            {f.measuredAcres !== undefined && (
+                              <div className="text-[9px] text-white/50">GIS Geodesic: {f.measuredAcres.toFixed(2)} Ac</div>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Survey Provenance */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🏛️ Boundary Status
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase inline-block ${
+                              f.boundaryStatus === 'official_source'
+                                ? 'bg-amber-500/20 text-[#F59E0B] border border-amber-500/40'
+                                : f.boundaryStatus === 'imported'
+                                ? 'bg-purple-500/20 text-[#A855F7] border border-purple-500/40'
+                                : f.boundaryStatus === 'unmapped'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                : 'bg-emerald-500/20 text-[#70B77E] border border-emerald-500/40'
+                            }`}>
+                              {f.boundaryStatus === 'official_source' ? '🏛️ Official Cadastre' : f.boundaryStatus === 'imported' ? '📂 Imported Survey' : f.boundaryStatus === 'unmapped' ? '⚠️ Missing Geometry' : '✏️ Farmer-Mapped'}
+                            </span>
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Sentinel-2 NDVI */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🛰️ Sentinel-2 L2A NDVI
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            {f.satelliteNdvi !== undefined ? (
+                              <div>
+                                <span className="text-sm font-bold text-[#70B77E]">{f.satelliteNdvi.toFixed(2)}</span>
+                                <span className="text-[10px] text-white/60 ml-1">({f.satelliteCategory || 'Active'})</span>
+                                <div className="text-[9px] text-white/40">Pass: {f.satelliteObsDate || '—'}</div>
+                              </div>
+                            ) : (
+                              <span className="text-white/40 font-bold">— (Unavailable)</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Weather Microclimate */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🌧️ Weather & 72h Rain
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            {f.weatherPrecip72hMm !== undefined || f.weatherTempC !== undefined ? (
+                              <div>
+                                <div className="font-bold text-white">{f.weatherTempC ?? '—'}°C</div>
+                                <div className="text-[10px] text-[#38BDF8]">Rainfall: {f.weatherPrecip72hMm ?? '—'} mm</div>
+                                {f.weatherHeatRisk && (
+                                  <div className="text-[9px] uppercase text-white/50">Heat: {f.weatherHeatRisk}</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-white/40 font-bold">— (Unavailable)</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Physical Soil Chemistry */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🧪 Soil Lab Test (SHC)
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            {f.soilPh !== undefined ? (
+                              <div className="space-y-0.5">
+                                <div className="text-[10px] font-bold text-[#F59E0B]">pH: {f.soilPh} · EC: {f.soilEc ?? '—'} dS/m</div>
+                                <div className="text-[8.5px] text-white/40 truncate max-w-[180px]">{f.soilTestLab || 'Physical Laboratory SHC'} ({f.soilTestDate || 'On Record'})</div>
+                              </div>
+                            ) : (
+                              <span className="text-white/40 font-bold">— (No Lab Record)</span>
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Pathology Scans */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🔬 Crop Pathology History
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            <div>
+                              <span className="font-bold text-white">{f.diagnosisCount} Scans</span>
+                              {f.highSeverityAlerts > 0 && (
+                                <span className="ml-1 text-[9px] px-1 py-0.2 rounded bg-rose-500/20 text-rose-300">
+                                  {f.highSeverityAlerts} High Alert
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* Row: Field Activities */}
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 font-semibold text-white/70 sticky left-0 bg-[#0B241B] z-10 border-r border-white/10">
+                          🚜 Logged Field Actions
+                        </td>
+                        {comparisonReport.farms.map((f) => (
+                          <td key={f.farmId} className="p-3 border-r border-white/10 last:border-r-0">
+                            <div>
+                              <span className="font-bold text-white">{f.activitiesCount} Activities</span>
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-8 text-center bg-black/40 border border-white/10 rounded-[12px] space-y-2">
+                  <GitCompare className="w-8 h-8 text-white/30 mx-auto" />
+                  <p className="text-sm font-bold text-white">Select at least 2 farm parcels above to compare.</p>
+                  <p className="text-xs text-white/60 font-sans max-w-md mx-auto">
+                    Compare vegetation health, rainfall exposure, soil chemistry, and diagnosis history side-by-side using genuine records.
+                  </p>
+                </div>
+              )}
+
+              {/* 4. Explainable Insights Section */}
+              {comparisonReport && comparisonReport.insights.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                    <span className="font-bold font-['Plus_Jakarta_Sans'] text-sm text-[#00E5FF] flex items-center gap-1.5 uppercase">
+                      <Sprout className="w-4 h-4 text-[#00E5FF]" />
+                      <span>Explainable Agronomic Insights (Derived from Genuine Records)</span>
+                    </span>
+                    <span className="text-[10px] text-white/50">
+                      {comparisonReport.insights.length} Evidence-Based Insights
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {comparisonReport.insights.map((ins) => (
+                      <div
+                        key={ins.id}
+                        className="p-3.5 bg-black/50 border border-white/10 rounded-[10px] space-y-2 hover:border-white/20 transition-all"
+                      >
+                        <div className="flex items-center justify-between gap-1 text-[10px]">
+                          <span className="font-bold text-white font-['Plus_Jakarta_Sans'] text-xs">
+                            {ins.title}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded bg-[#A855F7]/20 text-[#A855F7] font-bold uppercase text-[9px]">
+                            {ins.category}
+                          </span>
+                        </div>
+
+                        <p className="font-sans text-[11px] text-white/90 leading-relaxed">
+                          {isTa && ins.descriptionTamil ? ins.descriptionTamil : ins.description}
+                        </p>
+
+                        {/* Explicit Calculation Method & Math */}
+                        <div className="p-2 bg-white/5 border border-white/10 rounded-[6px] space-y-1">
+                          <div className="text-[9px] uppercase text-[#70B77E] font-bold">Calculation Method:</div>
+                          <div className="font-mono text-[10px] text-white/90 break-words">
+                            {ins.calculationMethod}
+                          </div>
+                        </div>
+
+                        {/* Data Points and Methodology Notice */}
+                        <div className="pt-1 border-t border-white/10 flex flex-col gap-0.5 text-[8.5px] font-sans text-white/50">
+                          {ins.dataPoints && ins.dataPoints.length > 0 && (
+                            <div>
+                              <strong className="text-white/70">Data Points:</strong>{' '}
+                              {ins.dataPoints.map((dp) => `${dp.farmName}: ${dp.value} (${dp.source})`).join(' · ')}
+                            </div>
+                          )}
+                          <p className="text-white/40 italic pt-0.5 leading-tight">
+                            {ins.methodologyNotice}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-white/10 bg-black/40 flex items-center justify-between">
+              <span className="text-[10px] text-white/50 font-sans">
+                Non-fabrication guarantee: Missing data is represented as unavailable (—), never zero.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsComparisonModalOpen(false)}
+                className="px-4 py-2 bg-[#217451] hover:bg-[#1b5e42] text-white font-bold text-xs rounded-[8px] transition-colors cursor-pointer"
+              >
+                Close Comparison
+              </button>
+            </div>
           </div>
         </div>
       )}

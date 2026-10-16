@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { FarmRecord, FarmBoundary } from '../../types';
+import { FarmRecord, FarmBoundary, ScanData } from '../../types';
 import { FarmGISMap } from './FarmGISMap';
+import { subscribeFarmerScans } from '../../services/scanService';
 import {
   subscribeFarms,
   createFarm,
@@ -49,6 +50,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
   const isTa = language === 'ta';
 
   const [farms, setFarms] = useState<FarmRecord[]>([]);
+  const [scans, setScans] = useState<ScanData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -86,10 +88,11 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
   const [quickStage, setQuickStage] = useState('');
   const [isQuickUpdating, setIsQuickUpdating] = useState(false);
 
-  // Subscribe to farmer farms
+  // Subscribe to farmer farms and diagnostic pathology scans
   useEffect(() => {
     if (!user) {
       setFarms([]);
+      setScans([]);
       setIsLoading(false);
       return;
     }
@@ -97,7 +100,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
     setIsLoading(true);
     setErrorMsg(null);
 
-    const unsubscribe = subscribeFarms(
+    const unsubscribeFarms = subscribeFarms(
       user.uid,
       (loadedFarms) => {
         setFarms(loadedFarms);
@@ -115,7 +118,20 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
       }
     );
 
-    return () => unsubscribe();
+    const unsubscribeScans = subscribeFarmerScans(
+      user.uid,
+      (loadedScans) => {
+        setScans(loadedScans);
+      },
+      (err) => {
+        console.warn('Failed to load scans for timeline comparison:', err);
+      }
+    );
+
+    return () => {
+      unsubscribeFarms();
+      unsubscribeScans();
+    };
   }, [user, isTa]);
 
   const openCreateModal = () => {
@@ -374,6 +390,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           <div className="space-y-5">
             <FarmGISMap
               farms={farms}
+              scans={scans}
               selectedFarm={selectedMapFarm}
               farmerProfile={profile}
               initialDistrict={selectedMapFarm?.district || profile?.district}

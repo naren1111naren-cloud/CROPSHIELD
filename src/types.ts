@@ -289,8 +289,100 @@ export interface FarmRecord {
   soilTests?: LaboratorySoilTest[];
   irrigationInfrastructure?: FarmIrrigationInfrastructure;
   waterGuidance?: WaterManagementGuidance;
+  activities?: FarmActivityRecord[];
   createdAt?: any;
   updatedAt?: any;
+}
+
+export interface FarmActivityRecord {
+  id: string;
+  activityType: 'sowing' | 'irrigation' | 'fertilizer' | 'pesticide_spray' | 'weeding' | 'harvest' | 'scouting' | 'soil_amendment';
+  activityDate: string; // 'YYYY-MM-DD'
+  title: string;
+  titleTamil?: string;
+  description: string;
+  descriptionTamil?: string;
+  quantity?: string; // e.g. "50 kg Urea", "2 hours borewell run"
+  costInr?: number;
+  recordedBy?: string;
+}
+
+export interface FarmTimelineEvent {
+  id: string;
+  date: string; // 'YYYY-MM-DD' or timestamp string
+  category: 'registration' | 'sowing' | 'boundary' | 'satellite' | 'soil_test' | 'diagnosis' | 'activity' | 'weather_alert';
+  title: string;
+  titleTamil: string;
+  description: string;
+  descriptionTamil: string;
+  source: string;
+  statusBadge?: string;
+  badgeColor?: string;
+  metrics?: Record<string, string | number | undefined>;
+}
+
+export interface FarmComparisonItem {
+  farmId: string;
+  farmName: string;
+  district: string;
+  locality?: string;
+  cropType: string;
+  variety?: string;
+  cropStage?: string;
+  plantingDate?: string;
+  isPrimary: boolean;
+  registeredAreaAcres?: number;
+  areaFormatted: string;
+  boundaryStatus: 'official_source' | 'imported' | 'farmer_drawn' | 'unmapped';
+  hasBoundaryGeometry: boolean;
+  measuredAcres?: number;
+  irrigationSource?: string;
+  irrigationMethod?: string;
+  soilSeriesName?: string;
+  soilClassification?: string;
+  soilPh?: number;
+  soilEc?: number;
+  soilTestDate?: string;
+  soilTestLab?: string;
+  isLabSoilVerified: boolean;
+  satelliteNdvi?: number;
+  satelliteObsDate?: string;
+  satelliteCategory?: string;
+  satelliteCloudCover?: number;
+  weatherTempC?: number;
+  weatherHumidity?: number;
+  weatherPrecip72hMm?: number;
+  weatherHeatRisk?: string;
+  diagnosisCount: number;
+  highSeverityAlerts: number;
+  activitiesCount: number;
+}
+
+export interface ExplainableInsight {
+  id: string;
+  category: 'vegetation' | 'weather' | 'soil' | 'health_incidents' | 'management';
+  title: string;
+  titleTamil: string;
+  description: string;
+  descriptionTamil: string;
+  comparisonType: 'descriptive_differential' | 'temporal_change' | 'threshold_alert';
+  dataPoints: {
+    farmName: string;
+    metricLabel: string;
+    value: string | number;
+    dateOrPeriod?: string;
+    source: string;
+  }[];
+  calculationMethod: string;
+  methodologyNotice: string;
+}
+
+export interface FarmComparisonReport {
+  farms: FarmComparisonItem[];
+  commonCrop: boolean;
+  compatibleObservationDates: boolean;
+  insights: ExplainableInsight[];
+  generatedAt: string;
 }
 
 export interface SatelliteObservation {
