@@ -2436,7 +2436,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                     setIrrigPumpHpInput(String(selectedFarm.irrigationInfrastructure.pumpHorsepower));
                   }
                   if (selectedFarm.irrigationInfrastructure.waterAvailability) {
-                    setIrrigAvailInput(selectedFarm.irrigationInfrastructure.waterAvailability);
+                    setIrrigAvailInput(selectedFarm.irrigationInfrastructure.waterAvailability as 'perennial' | 'seasonal' | 'critical_deficit');
                   }
                 }
                 setIsIrrigationModalOpen(true);
@@ -3311,7 +3311,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                             setIrrigPumpHpInput(String(selectedFarm.irrigationInfrastructure.pumpHorsepower));
                           }
                           if (selectedFarm.irrigationInfrastructure.waterAvailability) {
-                            setIrrigAvailInput(selectedFarm.irrigationInfrastructure.waterAvailability);
+                            setIrrigAvailInput(selectedFarm.irrigationInfrastructure.waterAvailability as 'perennial' | 'seasonal' | 'critical_deficit');
                           }
                         }
                         setIsIrrigationModalOpen(true);

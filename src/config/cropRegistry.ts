@@ -69,7 +69,7 @@ export const CROP_REGISTRY: Record<string, CropConfig> = {
     },
     acceptedImageTypes: ['image/jpeg', 'image/png', 'image/webp'],
     guidanceLanguage: ['en', 'ta'],
-    modelIdentifier: 'gemini-3.8-flash',
+    modelIdentifier: 'gemini-2.5-flash',
     modelVersion: 'cropshield-rice-v3.0',
     sampleVarieties: [
       'CR 1009 Sub 1 (Samba)',
@@ -279,7 +279,7 @@ export const CROP_REGISTRY: Record<string, CropConfig> = {
     },
     acceptedImageTypes: ['image/jpeg', 'image/png', 'image/webp'],
     guidanceLanguage: ['en', 'ta'],
-    modelIdentifier: 'gemini-3.8-flash',
+    modelIdentifier: 'gemini-2.5-flash',
     modelVersion: 'cropshield-tomato-v1.0',
     sampleVarieties: ['Shivam Hybrid', 'PKM 1', 'Arka Rakshak', 'Local Delta Cultivar'],
     supportedDiseases: [
@@ -383,7 +383,7 @@ export const CROP_REGISTRY: Record<string, CropConfig> = {
     },
     acceptedImageTypes: ['image/jpeg', 'image/png', 'image/webp'],
     guidanceLanguage: ['en', 'ta'],
-    modelIdentifier: 'gemini-3.8-flash',
+    modelIdentifier: 'gemini-2.5-flash',
     modelVersion: 'cropshield-chilli-v1.0',
     sampleVarieties: ['K1', 'K2', 'CO 4', 'Guntur Sannam', 'Local Delta Chilli'],
     supportedDiseases: [
@@ -481,7 +481,7 @@ export const CROP_REGISTRY: Record<string, CropConfig> = {
     },
     acceptedImageTypes: ['image/jpeg', 'image/png', 'image/webp'],
     guidanceLanguage: ['en', 'ta'],
-    modelIdentifier: 'gemini-3.8-flash',
+    modelIdentifier: 'gemini-2.5-flash',
     modelVersion: 'cropshield-cotton-v1.0',
     sampleVarieties: ['MCU 5', 'MCU 7', 'Suraj', 'Bt Cotton Hybrid', 'Suvin'],
     supportedDiseases: [
@@ -584,7 +584,7 @@ export const CROP_REGISTRY: Record<string, CropConfig> = {
     },
     acceptedImageTypes: ['image/jpeg', 'image/png', 'image/webp'],
     guidanceLanguage: ['en', 'ta'],
-    modelIdentifier: 'gemini-3.8-flash',
+    modelIdentifier: 'gemini-2.5-flash',
     modelVersion: 'cropshield-maize-v1.0',
     sampleVarieties: ['CoH(M) 6', 'CoH(M) 8', 'Pioneer 30V92', 'NK 6240', 'CP 818'],
     supportedDiseases: [

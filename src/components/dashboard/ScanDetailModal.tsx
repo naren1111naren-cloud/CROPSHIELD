@@ -194,7 +194,7 @@ export const ScanDetailModal: React.FC<ScanDetailModalProps> = ({
                 </div>
                 <div className="flex items-center justify-between text-[#4A584D]">
                   <span>EVALUATION ENGINE:</span>
-                  <span className="text-[#426B43]">{scan.analysisMethod || 'gemini-3.8-flash'}</span>
+                  <span className="text-[#426B43]">{scan.analysisMethod || 'gemini-2.5-flash'}</span>
                 </div>
               </div>
 

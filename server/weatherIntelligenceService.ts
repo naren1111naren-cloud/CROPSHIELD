@@ -17,6 +17,7 @@ export interface WeatherQueryOptions {
   latitude: number;
   longitude: number;
   locationName: string;
+  district?: string;
   isFarmCoordinate?: boolean;
   cropType?: string;
   cropStage?: string;

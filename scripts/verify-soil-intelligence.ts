@@ -101,10 +101,10 @@ async function runSoilIntelligenceTests() {
     },
     forecastPrecipitation48hMm: 2.0,
   });
-  assert(guidance1.recommendedFrequencyDays >= 2, 'Paddy in delta clay gets >=2 day interval');
-  assert(guidance1.waterConservationPotentialPercent > 15, 'AWD indicates ~20-25% water conservation');
+  assert((guidance1.recommendedFrequencyDays ?? 0) >= 2, 'Paddy in delta clay gets >=2 day interval');
+  assert((guidance1.waterConservationPotentialPercent ?? 0) > 15, 'AWD indicates ~20-25% water conservation');
   assert(
-    guidance1.alternateWettingDryingAdvice.includes('AWD Pani Pipe'),
+    Boolean(guidance1.alternateWettingDryingAdvice?.includes('AWD Pani Pipe')),
     'Guidance contains TNAU AWD Pani Pipe protocol'
   );
   assert(
@@ -160,7 +160,7 @@ async function runSoilIntelligenceTests() {
     'Organic carbon g/kg positive'
   );
   assert(
-    karurSoilGrids.attribution?.includes('SoilGrids') || karurSoilGrids.attribution?.includes('TNAU'),
+    Boolean(karurSoilGrids.attribution?.includes('SoilGrids') || karurSoilGrids.attribution?.includes('TNAU')),
     'SoilGrids or TNAU attribution explicitly cited'
   );
 

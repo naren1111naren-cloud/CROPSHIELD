@@ -52,11 +52,14 @@ export async function fetchFarmSoilIntelligence(params: {
 
   if (params.farm) {
     if (params.farm.boundary?.centroid) {
-      lat = params.farm.boundary.centroid.lat;
-      lng = params.farm.boundary.centroid.lng;
+      lat = params.farm.boundary.centroid[0];
+      lng = params.farm.boundary.centroid[1];
     } else if (params.farm.coordinates) {
-      lat = params.farm.coordinates.lat;
-      lng = params.farm.coordinates.lng;
+      lat = params.farm.coordinates[0];
+      lng = params.farm.coordinates[1];
+    } else if (params.farm.latitude !== undefined && params.farm.longitude !== undefined) {
+      lat = params.farm.latitude;
+      lng = params.farm.longitude;
     }
     district = params.farm.district || district;
     cropType = cropType || params.farm.cropType;
@@ -128,6 +131,10 @@ export async function fetchFarmSoilIntelligence(params: {
       isLaboratoryVerified: false,
     },
     waterGuidance: {
+      recommendedAction: 'Adopt TNAU Alternate Wetting and Drying (AWD) to optimize root aeration.',
+      recommendedActionTamil: 'வேர் காற்றோட்டத்தை மேம்படுத்த மாற்றுப் பாசன முறையைக் கடைப்பிடிக்கவும்.',
+      irrigationSchedule: 'Irrigate to 5 cm depth, then allow water to naturally subside.',
+      irrigationScheduleTamil: '5 செ.மீ ஆழத்திற்கு நீர் பாய்ச்சி, நீர் வடிந்த பின் மீண்டும் பாசனம் செய்யவும்.',
       cropType: cropType || 'Rice (Paddy)',
       cropStage: cropStage || 'Tillering',
       recommendedFrequencyDays: 3,
@@ -175,13 +182,15 @@ export async function rateLaboratorySoilTest(test: LaboratorySoilTest): Promise<
   // Client-side fallback rating (GoI Standards)
   const rated = { ...test };
   if (test.ph < 6.5) rated.phRating = 'acidic';
-  else if (test.ph > 8.5) rated.phRating = 'strongly_alkaline';
-  else if (test.ph > 7.5) rated.phRating = 'moderately_alkaline';
-  else rated.phRating = 'neutral';
+  else if (test.ph > 8.5) rated.phRating = 'sodic';
+  else if (test.ph > 7.8) rated.phRating = 'alkaline';
+  else rated.phRating = 'normal';
 
-  if (test.electricalConductivityDsm < 1.0) rated.salinityRating = 'normal';
-  else if (test.electricalConductivityDsm < 2.0) rated.salinityRating = 'critical';
-  else rated.salinityRating = 'injurious';
+  const ec = test.electricalConductivityDsM ?? test.electricalConductivityDsm ?? 0.6;
+  if (ec >= 4.0) rated.salinityRating = 'highly_saline';
+  else if (ec >= 2.0) rated.salinityRating = 'moderately_saline';
+  else if (ec >= 1.0) rated.salinityRating = 'slightly_saline';
+  else rated.salinityRating = 'non_saline';
 
   if (test.availableNitrogenKgPerHa !== undefined) {
     if (test.availableNitrogenKgPerHa < 280) rated.nitrogenRating = 'low';

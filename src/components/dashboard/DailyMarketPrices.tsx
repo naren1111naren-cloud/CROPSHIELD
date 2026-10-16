@@ -202,7 +202,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
     const originDistrictKey = activeDistrict || (selectedDistrict !== 'all' ? selectedDistrict : undefined);
     const originGeo =
       originDistrictKey && TN_DISTRICT_GEODATA[originDistrictKey]
-        ? { lat: TN_DISTRICT_GEODATA[originDistrictKey].lat, lng: TN_DISTRICT_GEODATA[originDistrictKey].lng }
+        ? { lat: TN_DISTRICT_GEODATA[originDistrictKey].latitude, lng: TN_DISTRICT_GEODATA[originDistrictKey].longitude }
         : null;
 
     return list.map((r) => {

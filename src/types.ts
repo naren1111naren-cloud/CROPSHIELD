@@ -96,10 +96,13 @@ export interface CommunityReport {
 
 export interface FarmerProfile {
   uid: string;
-  displayName: string;
+  displayName?: string;
+  fullName?: string;
   email?: string;
   phone?: string;
-  preferredLanguage: 'en' | 'ta';
+  phoneNumber?: string;
+  landSize?: number;
+  preferredLanguage?: 'en' | 'ta';
   state?: string;
   district: string;
   locality?: string;
@@ -121,9 +124,11 @@ export interface FarmerProfile {
 export type BoundarySurveyStatus = 'official_source' | 'farmer_drawn' | 'imported' | 'unavailable';
 
 export interface CadastralSourceMetadata {
-  provider: string;
+  provider?: string;
+  sourceName?: string;
   district?: string;
   taluk?: string;
+  village?: string;
   revenueVillage?: string;
   surveyNumber?: string;
   subdivisionNumber?: string;
@@ -145,6 +150,7 @@ export interface FarmBoundary {
   measuredHectares?: number;
   surveyStatus?: BoundarySurveyStatus;
   sourceMetadata?: CadastralSourceMetadata;
+  cadastralInfo?: CadastralSourceMetadata;
   officialExtentAcres?: number;
   officialExtentCents?: number;
   proposedCoordinates?: [number, number][][]; // If user proposes an edit to an official boundary
@@ -189,7 +195,7 @@ export interface FarmSoilProfile {
   regionalSeriesNameTamil: string;
   regionalDescription: string;
   regionalDescriptionTamil: string;
-  source: 'TNAU & ICAR-NBSS&LUP Soil Resource Atlas' | 'SoilGrids ISRIC 250m' | 'Farmer Laboratory Assay';
+  source: 'TNAU & ICAR-NBSS&LUP Soil Resource Atlas' | 'SoilGrids ISRIC 250m' | 'Farmer Laboratory Assay' | 'Farmer Laboratory Assay (Soil Health Card)';
   soilGridsEstimate?: SoilGridsProperties;
   drainageClass: 'well_drained' | 'moderately_drained' | 'imperfectly_drained' | 'poorly_drained';
   isLaboratoryVerified: boolean;
@@ -220,6 +226,7 @@ export interface LaboratorySoilTest {
   phosphorusRating?: 'low' | 'medium' | 'high';
   potassiumRating?: 'low' | 'medium' | 'high';
   organicCarbonRating?: 'low' | 'medium' | 'high';
+  source?: string;
   notes?: string;
 }
 
@@ -237,7 +244,9 @@ export type IrrigationDistributionMethod =
   | 'drip'                    // சொட்டுநீர்ப் பாசனம்
   | 'sprinkler'               // தெளிப்புநீர்ப் பாசனம்
   | 'basin_flooding'          // பாத்திப் பாசனம்
+  | 'flood_furrow'            // சால் பாசனம்
   | 'furrow'                  // சால் பாசனம்
+  | 'basin'                   // பாத்தி
   | 'none';
 
 export interface FarmIrrigationInfrastructure {
@@ -245,8 +254,11 @@ export interface FarmIrrigationInfrastructure {
   sourceName?: string;
   distributionMethod: IrrigationDistributionMethod;
   waterQualityIndex?: 'sweet_potable' | 'normal_irrigation' | 'brackish' | 'saline_unsuitable';
-  waterAvailabilityStatus: 'year_round' | 'seasonal_monsoon' | 'critical_scarcity' | 'tank_dependent';
+  waterAvailabilityStatus?: 'year_round' | 'seasonal_monsoon' | 'critical_scarcity' | 'tank_dependent';
+  waterAvailability?: 'perennial' | 'seasonal' | 'critical_deficit' | string;
+  pumpHorsepower?: number;
   depthFeet?: number;
+  lastInspectedDate?: string;
 }
 
 export interface WaterManagementGuidance {
@@ -270,11 +282,15 @@ export interface WaterManagementGuidance {
 
 export interface FarmRecord {
   id?: string;
+  farmerId?: string;
   farmName: string;
   cropType: string;
   riceVariety?: string;
   district: string;
   locality?: string;
+  latitude?: number;
+  longitude?: number;
+  coordinates?: [number, number];
   plantingDate?: string;
   cropStage?: string;
   landSizeAcres?: number;
@@ -296,7 +312,7 @@ export interface FarmRecord {
 
 export interface FarmActivityRecord {
   id: string;
-  activityType: 'sowing' | 'irrigation' | 'fertilizer' | 'pesticide_spray' | 'weeding' | 'harvest' | 'scouting' | 'soil_amendment';
+  activityType: 'sowing' | 'irrigation' | 'fertilizer' | 'fertilizer_application' | 'pesticide_spray' | 'weeding' | 'harvest' | 'scouting' | 'soil_amendment';
   activityDate: string; // 'YYYY-MM-DD'
   title: string;
   titleTamil?: string;
@@ -333,7 +349,7 @@ export interface FarmComparisonItem {
   isPrimary: boolean;
   registeredAreaAcres?: number;
   areaFormatted: string;
-  boundaryStatus: 'official_source' | 'imported' | 'farmer_drawn' | 'unmapped';
+  boundaryStatus: 'official_source' | 'imported' | 'farmer_drawn' | 'unmapped' | 'unavailable';
   hasBoundaryGeometry: boolean;
   measuredAcres?: number;
   irrigationSource?: string;
@@ -393,6 +409,7 @@ export interface SatelliteObservation {
   productLevel: 'Level-2A' | 'BOA Surface Reflectance';
   resolutionMeters: number; // 10
   cloudCoverPercent: number;
+  cloudCoveragePercent?: number;
   validPixelPercent: number; // percentage of field free from clouds/shadows
   meanNdvi: number;
   minNdvi: number;
@@ -403,6 +420,7 @@ export interface SatelliteObservation {
   alertFlag?: 'normal' | 'water_stress' | 'canopy_loss' | 'rapid_growth';
   suggestFieldInspection: boolean;
   imageryOverlayUrl?: string;
+  sceneId?: string;
   bounds: [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
   isCloudCovered: boolean;
   cloudShadowMaskApplied: boolean;
@@ -411,13 +429,17 @@ export interface SatelliteObservation {
 export interface SatelliteVegetationReport {
   farmId: string;
   farmName: string;
+  district?: string;
   cropType: string;
   cropStage?: string;
   sowingDate?: string;
-  geometryAreaAcres: number;
+  meanNdvi?: number;
+  source?: string;
+  lastUpdated?: string;
+  geometryAreaAcres?: number;
   status: 'available' | 'credentials_required' | 'cloud_covered' | 'no_observations' | 'geometry_required';
-  provider: string; // 'ESA Copernicus Data Space Ecosystem' or 'Sentinel Hub'
-  providerAttribution: string;
+  provider?: string; // 'ESA Copernicus Data Space Ecosystem' or 'Sentinel Hub'
+  providerAttribution?: string;
   revisitFrequencyDays: number; // 5
   spectralBandsUsed: {
     nir: string; // 'B08 (842 nm, 10m)'
@@ -440,13 +462,17 @@ export interface ScanData {
   id?: string;
   scanId: string;
   ownerUid?: string;
+  farmId?: string;
   cropId?: string;
   cropName?: string;
   cropNameTamil?: string;
+  cropType?: string;
   imagePath: string;
   status: 'pending' | 'processing' | 'completed' | 'inconclusive' | 'failed';
   possibleCondition: string;
   possibleConditionTamil?: string;
+  predictedDisease?: string;
+  confidence?: number;
   alternativeConditions?: string[];
   pathogen?: string;
   severity?: 'low' | 'moderate' | 'high' | 'nominal';
@@ -469,11 +495,10 @@ export interface ScanData {
   analysisMethod: string;
   modelVersion: string;
   isHealthy?: boolean;
-  farmId?: string;
   variety?: string;
   district?: string;
-  createdAt: any;
-  updatedAt: any;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface ScanRecord {

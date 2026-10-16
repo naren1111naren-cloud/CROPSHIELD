@@ -413,7 +413,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
       if (resData.success && resData.data) {
         setAnalysisResult({
           ...resData.data,
-          source: resData.data.source || 'gemini-3.8-flash',
+          source: resData.data.source || 'gemini-2.5-flash',
           timestamp: resData.data.timestamp || new Date().toISOString(),
         });
       } else {
@@ -1500,7 +1500,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
               {/* Bottom Action Controls */}
               <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
                 <div className="text-xs font-mono text-[#64766B]">
-                  MODEL: {analysisResult.analysisMethod || 'gemini-3.8-flash (preliminary screening)'}
+                  MODEL: {analysisResult.analysisMethod || 'gemini-2.5-flash (preliminary screening)'}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2.5">

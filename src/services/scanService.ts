@@ -167,7 +167,7 @@ export async function saveCropScanToFirestore(
       expertReviewRecommended: analysisResult.expertReviewRecommended ?? (analysisResult.severity === 'high'),
       expertReviewAdvice: analysisResult.expertReviewAdvice || '',
       expertReviewAdviceTamil: analysisResult.expertReviewAdviceTamil || '',
-      analysisMethod: analysisResult.analysisMethod || analysisResult.source || 'gemini-3.8-flash (preliminary screening)',
+      analysisMethod: analysisResult.analysisMethod || analysisResult.source || 'gemini-2.5-flash (preliminary screening)',
       modelVersion: analysisResult.modelVersion || 'cropshield-v3-multicrop',
       isHealthy: analysisResult.isHealthy ?? (analysisResult.severity === 'nominal'),
       variety,
