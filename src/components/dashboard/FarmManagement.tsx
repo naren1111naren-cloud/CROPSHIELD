@@ -38,6 +38,8 @@ import {
   HelpCircle,
   Compass,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { toastVariants, emptyStateVariants, buttonHoverTap } from '../../lib/motion';
 
 interface FarmManagementProps {
   onScanFarm?: (farm: FarmRecord) => void;
@@ -353,29 +355,42 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
           </div>
         </div>
 
-        {/* Success Banner */}
-        {actionSuccess && (
-          <div className="mb-4 p-3 bg-[#EAEFE5] border border-[#B8DCC1] text-[#1F6B4A] text-xs font-sans flex items-center gap-2 rounded-[10px] animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-[#1F6B4A] shrink-0" />
-            <span>{actionSuccess}</span>
-          </div>
-        )}
-
-        {/* Error Banner */}
-        {errorMsg && (
-          <div className="mb-4 p-3 bg-[#FAF2F1] border border-[#B8423A]/30 text-[#B8423A] text-xs font-sans flex items-center justify-between rounded-[10px]">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-            <button
-              onClick={() => setErrorMsg(null)}
-              className="text-xs font-mono underline hover:text-[#102D24] cursor-pointer"
+        {/* Animated Feedback Banners */}
+        <AnimatePresence>
+          {actionSuccess && (
+            <motion.div
+              variants={toastVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mb-4 p-3 bg-[#EAEFE5] border border-[#B8DCC1] text-[#1F6B4A] text-xs font-sans flex items-center gap-2 rounded-[10px]"
             >
-              Dismiss
-            </button>
-          </div>
-        )}
+              <CheckCircle2 className="w-4 h-4 text-[#1F6B4A] shrink-0" />
+              <span>{actionSuccess}</span>
+            </motion.div>
+          )}
+
+          {errorMsg && (
+            <motion.div
+              variants={toastVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mb-4 p-3 bg-[#FAF2F1] border border-[#B8423A]/30 text-[#B8423A] text-xs font-sans flex items-center justify-between rounded-[10px]"
+            >
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-[#B8423A]" />
+                <span>{errorMsg}</span>
+              </div>
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="text-xs font-mono underline hover:text-[#102D24] cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Loading State */}
         {isLoading && (
@@ -508,7 +523,12 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
 
         {/* Empty State in List View */}
         {activeView === 'list' && !isLoading && farms.length === 0 && (
-          <div className="p-8 sm:p-12 text-center bg-[#FAF9F3] border border-dashed border-[#DCE4D9] rounded-[12px] space-y-4">
+          <motion.div
+            variants={emptyStateVariants}
+            initial="hidden"
+            animate="visible"
+            className="p-8 sm:p-12 text-center bg-[#FAF9F3] border border-dashed border-[#DCE4D9] rounded-[12px] space-y-4"
+          >
             <div className="w-12 h-12 mx-auto rounded-full bg-[#1F6B4A]/10 flex items-center justify-center text-[#1F6B4A]">
               <Sprout className="w-6 h-6" />
             </div>
@@ -529,7 +549,7 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
               <Plus className="w-4 h-4" />
               <span>{isTa ? 'முதல் பண்ணையைச் சேர்க்க' : 'Register Your First Farm'}</span>
             </button>
-          </div>
+          </motion.div>
         )}
 
         {/* Farms Grid in List View */}

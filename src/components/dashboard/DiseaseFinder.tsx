@@ -46,6 +46,7 @@ import {
   staggerContainer,
   itemVariants,
   meterBarVariants,
+  toastVariants,
 } from '../../lib/motion';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 
@@ -649,14 +650,17 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                 <motion.div
                   key="dropzone"
                   initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.25 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    scale: isDragging ? 1.02 : 1,
+                  }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
                   onDragEnter={handleDragEnter}
                   onDragLeave={handleDragLeave}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  className={`relative border-2 border-dashed transition-all p-8 sm:p-12 text-center cursor-pointer flex flex-col items-center justify-center min-h-[320px] rounded-[16px] group ${
+                  className={`relative border-2 border-dashed transition-all p-8 sm:p-12 text-center cursor-pointer flex flex-col items-center justify-center min-h-[320px] rounded-[16px] group overflow-hidden ${
                     isDragging
                       ? 'border-[#217451] bg-[#E5F1E8]/70 ring-2 ring-[#217451]/30'
                       : 'border-[#DFE6DB] hover:border-[#217451] bg-[#F5F4EA] hover:bg-white'
@@ -672,6 +676,29 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                   }}
                   aria-label="Upload clear photo of your crop foliage"
                 >
+                  {isDragging && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.18 }}
+                      className="absolute inset-0 bg-[#E5F1E8]/95 backdrop-blur-[2px] rounded-[14px] flex flex-col items-center justify-center pointer-events-none z-30 border-2 border-[#217451]"
+                    >
+                      <motion.div
+                        animate={{ y: [-4, 4, -4], scale: [1, 1.08, 1] }}
+                        transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                        className="p-4 bg-[#217451] text-white rounded-full shadow-md mb-2.5"
+                      >
+                        <Camera className="w-8 h-8" />
+                      </motion.div>
+                      <span className="text-base font-bold text-[#0B241B]">
+                        {isTa ? 'இலைப்படத்தை இங்கே விடவும்' : 'Release to upload leaf photo'}
+                      </span>
+                      <span className="text-xs font-mono text-[#217451] mt-1">
+                        {isTa ? 'தானியங்கி AI ஆய்வு தயாராக உள்ளது' : 'Automated AI vision analysis will begin'}
+                      </span>
+                    </motion.div>
+                  )}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -1011,12 +1038,14 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
 
             {/* Primary Analysis Action Trigger */}
             <div className="pt-2">
-              <button
+              <motion.button
+                whileHover={isLoading || !imagePreview ? {} : { scale: 1.015 }}
+                whileTap={isLoading || !imagePreview ? {} : { scale: 0.98 }}
                 onClick={handleAnalyze}
                 disabled={isLoading || !imagePreview}
                 className={`w-full py-3.5 min-h-[48px] text-sm font-semibold tracking-wide transition-all rounded-[10px] flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
                   isLoading || !imagePreview
-                    ? 'bg-[#64766B]/30 text-white cursor-not-allowed'
+                    ? 'bg-[#64766B]/30 text-white cursor-not-allowed opacity-80'
                     : 'bg-[#217451] hover:bg-[#1b5e42] text-white shadow-sm'
                 }`}
               >
@@ -1036,7 +1065,7 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
-              </button>
+              </motion.button>
 
               {/* Multi-step progress indicator */}
               {isLoading && loadingStep && (
@@ -1049,12 +1078,60 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
         </div>
       </div>
 
+      {/* Failure State & Graceful Retry Action */}
+      <AnimatePresence>
+        {errorMsg && !isLoading && (
+          <motion.div
+            variants={toastVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="p-5 sm:p-6 bg-[#FAF2F1] border-2 border-[#B8423A]/40 rounded-[14px] shadow-sm space-y-3"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-[#B8423A]/10 text-[#B8423A] rounded-full shrink-0 mt-0.5">
+                <AlertTriangle className="w-5 h-5 text-[#B8423A]" />
+              </div>
+              <div className="space-y-1 flex-1">
+                <h4 className="text-base font-bold text-[#0B241B]">
+                  {isTa ? 'ஆய்வில் பிழை ஏற்பட்டது' : 'Analysis Request Could Not Complete'}
+                </h4>
+                <p className="text-xs sm:text-sm text-[#64766B] font-sans leading-relaxed">
+                  {errorMsg}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#DFE6DB]">
+              <motion.button
+                {...buttonHoverTap}
+                onClick={handleAnalyze}
+                disabled={isLoading || !imagePreview}
+                className="px-4 py-2 bg-[#217451] hover:bg-[#1b5e42] text-white text-xs font-semibold rounded-[8px] cursor-pointer flex items-center gap-1.5 shadow-xs"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{isTa ? 'மீண்டும் முயற்சிக்கவும்' : 'Retry Analysis'}</span>
+              </motion.button>
+
+              <button
+                type="button"
+                onClick={() => setErrorMsg(null)}
+                className="px-3 py-2 text-xs font-mono text-[#64766B] hover:text-[#0B241B] cursor-pointer"
+              >
+                {isTa ? 'மூடுக' : 'Dismiss'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ========================================================
           3. DIAGNOSIS RESULTS DOSSIER
           ======================================================== */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {analysisResult && (
           <motion.div
+            key={analysisResult.timestamp || analysisResult.conditionName}
             variants={resultRevealVariants}
             initial="hidden"
             animate="visible"

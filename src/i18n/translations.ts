@@ -32,9 +32,9 @@ export const translations = {
     heroHeadingPart1: 'Protect Every Crop.',
     heroHeadingPart2: 'Grow With Confidence.',
     heroSubtext: 'AI-powered crop disease insights and practical agricultural intelligence to help you make better farming decisions.',
-    heroPrimaryCta: 'Diagnose a Crop',
+    heroPrimaryCta: 'Analyze Crop Health',
     heroPrimaryCtaSub: 'Camera capture or file upload · Instant AI inference',
-    heroSecondaryCta: 'Explore Crop Intelligence',
+    heroSecondaryCta: 'Explore Farm Map',
     heroTrustStatement: 'Calibrated for Tamil Nadu rice, cotton, tomato, chilli, and maize crops. Real field conditions.',
 
     // Section B (How It Works): Observe -> Assess -> Verify -> Act
@@ -208,9 +208,9 @@ export const translations = {
     heroHeadingPart1: 'பயிர்களைப் பாதுகாப்போம்.',
     heroHeadingPart2: 'நம்பிக்கையுடன் அறுவடை செய்வோம்.',
     heroSubtext: 'செயற்கை நுண்ணறிவு பயிர் நோய் நுண்ணறிவு மற்றும் கள ஆலோசனைகள் மூலம் சிறந்த விவசாய முடிவுகளை எடுக்க உதவும் தளம்.',
-    heroPrimaryCta: 'பயிரை ஆய்வு செய்',
+    heroPrimaryCta: 'பயிர் ஆரோக்கியத்தை ஆய்வு செய்',
     heroPrimaryCtaSub: 'கேமரா புகைப்படம் அல்லது கோப்புப் பதிவேற்றம் · உடனடி AI ஆய்வு',
-    heroSecondaryCta: 'பயிர் நுண்ணறிவு அறிக',
+    heroSecondaryCta: 'பண்ணை வரைபடத்தை அறி',
     heroTrustStatement: 'தமிழ்நாடு நெல், பருத்தி, தக்காளி, மிளகாய், மக்காச்சோளப் பயிர்களுக்கு உகந்தது.',
 
     // Section B (How It Works)

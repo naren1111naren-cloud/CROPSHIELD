@@ -18,7 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { backdropVariants, modalVariants, buttonHoverTap } from '../../lib/motion';
+import { backdropVariants, modalVariants, buttonHoverTap, errorMessageVariants } from '../../lib/motion';
 
 interface FarmerProfileModalProps {
   isOpen: boolean;
@@ -319,35 +319,48 @@ export const FarmerProfileModal: React.FC<FarmerProfileModalProps> = ({
           )}
         </div>
 
-        {/* Success Alert */}
-        {savedSuccess && (
-          <div className="mb-5 p-3.5 bg-[#426B43]/10 border border-[#426B43] text-[#183B2A] text-xs sm:text-sm font-sans flex items-center gap-2 rounded-xs animate-in fade-in">
-            <CheckCircle2 className="w-4 h-4 text-[#426B43] shrink-0" />
-            <span>
-              {isTa ? 'சுயவிவரம் Cloud Firestore இல் வெற்றிகரமாக சேமிக்கப்பட்டது!' : 'Farmer profile successfully saved to Cloud Firestore!'}
-            </span>
-          </div>
-        )}
-
-        {/* Error Alert with Retry */}
-        {errorMessage && (
-          <div className="mb-5 p-4 bg-[#A94338]/10 border border-[#A94338] text-[#A94338] text-xs font-sans rounded-xs space-y-2">
-            <div className="flex items-center gap-2 font-semibold">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{isTa ? 'பிழை ஏற்பட்டது:' : 'Save Error:'}</span>
-            </div>
-            <p className="text-xs text-[#202B22]">{errorMessage}</p>
-            <button
-              type="button"
-              onClick={() => handleSave()}
-              disabled={isSaving}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#A94338] text-white font-mono text-xs hover:bg-[#8e372e] rounded-xs cursor-pointer transition-colors"
+        {/* Animated Feedback Alerts */}
+        <AnimatePresence>
+          {savedSuccess && (
+            <motion.div
+              variants={errorMessageVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mb-5 p-3.5 bg-[#426B43]/10 border border-[#426B43] text-[#183B2A] text-xs sm:text-sm font-sans flex items-center gap-2 rounded-xs overflow-hidden"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSaving ? 'animate-spin' : ''}`} />
-              <span>{isTa ? 'மீண்டும் முயற்சிக்கவும்' : 'Retry Save'}</span>
-            </button>
-          </div>
-        )}
+              <CheckCircle2 className="w-4 h-4 text-[#426B43] shrink-0" />
+              <span>
+                {isTa ? 'சுயவிவரம் Cloud Firestore இல் வெற்றிகரமாக சேமிக்கப்பட்டது!' : 'Farmer profile successfully saved to Cloud Firestore!'}
+              </span>
+            </motion.div>
+          )}
+
+          {errorMessage && (
+            <motion.div
+              variants={errorMessageVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mb-5 p-4 bg-[#A94338]/10 border border-[#A94338] text-[#A94338] text-xs font-sans rounded-xs space-y-2 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 font-semibold">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{isTa ? 'பிழை ஏற்பட்டது:' : 'Save Error:'}</span>
+              </div>
+              <p className="text-xs text-[#202B22]">{errorMessage}</p>
+              <button
+                type="button"
+                onClick={() => handleSave()}
+                disabled={isSaving}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#A94338] text-white font-mono text-xs hover:bg-[#8e372e] rounded-xs cursor-pointer transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSaving ? 'animate-spin' : ''}`} />
+                <span>{isTa ? 'மீண்டும் முயற்சிக்கவும்' : 'Retry Save'}</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <form onSubmit={handleSave} className="space-y-5">
           {/* Section 1: Farmer Identity */}
@@ -680,7 +693,9 @@ export const FarmerProfileModal: React.FC<FarmerProfileModalProps> = ({
               </button>
             )}
 
-            <button
+            <motion.button
+              whileHover={isSaving ? {} : { scale: 1.015 }}
+              whileTap={isSaving ? {} : { scale: 0.98 }}
               type="submit"
               disabled={isSaving}
               className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] text-xs font-mono font-semibold text-white bg-[#183B2A] hover:bg-[#122c20] rounded-xs flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-60 transition-colors"
@@ -697,7 +712,7 @@ export const FarmerProfileModal: React.FC<FarmerProfileModalProps> = ({
                     : (isTa ? 'சுயவிவர மாற்றங்களைச் சேமி' : 'Save Profile Changes')}
                 </span>
               )}
-            </button>
+            </motion.button>
           </div>
         </form>
       </motion.div>

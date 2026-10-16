@@ -348,6 +348,60 @@ export const heroHeadingItem: Variants = {
   },
 };
 
+// Word-level staggered reveals for editorial headline
+export const heroWordContainer: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.07,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+export const heroWordItem: Variants = {
+  hidden: {
+    opacity: 0,
+    y: 16,
+    filter: 'blur(3px)',
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    filter: 'blur(0px)',
+    transition: {
+      duration: 0.48,
+      ease: forestEase,
+    },
+  },
+};
+
+// Organic botanical gentle movement (rice leaf and panicle)
+export const botanicalSwayVariants: Variants = {
+  initial: { rotate: 0 },
+  animate: {
+    rotate: [-1.2, 1.2, -1.2],
+    transition: {
+      duration: 7.5,
+      repeat: Infinity,
+      ease: 'easeInOut',
+    },
+  },
+};
+
+export const panicleDroopVariants: Variants = {
+  initial: { rotate: 0 },
+  animate: {
+    rotate: [0, 1.8, 0],
+    transition: {
+      duration: 6,
+      repeat: Infinity,
+      ease: 'easeInOut',
+    },
+  },
+};
+
 // High-tech Leaf Pathology Scanning Animations
 export const scanLaserVariants: Variants = {
   initial: { top: '2%', opacity: 0 },
@@ -494,6 +548,110 @@ export const meterBarVariants: Variants = {
   }),
 };
 
+// Unified Toast & Notification Banner Animation
+export const toastVariants: Variants = {
+  hidden: { opacity: 0, y: -16, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 420,
+      damping: 26,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -10,
+    scale: 0.96,
+    transition: {
+      duration: 0.18,
+      ease: forestEase,
+    },
+  },
+};
+
+// Empty States & No-Results Animation
+export const emptyStateVariants: Variants = {
+  hidden: { opacity: 0, y: 12, scale: 0.98 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.4,
+      ease: forestEase,
+    },
+  },
+};
+
+// Form Validation Error Message Transition
+export const errorMessageVariants: Variants = {
+  hidden: { opacity: 0, height: 0, marginTop: 0, y: -4 },
+  visible: {
+    opacity: 1,
+    height: 'auto',
+    marginTop: 6,
+    y: 0,
+    transition: {
+      duration: 0.22,
+      ease: forestEase,
+    },
+  },
+  exit: {
+    opacity: 0,
+    height: 0,
+    marginTop: 0,
+    y: -4,
+    transition: {
+      duration: 0.16,
+      ease: forestEase,
+    },
+  },
+};
+
+// Collapsible & Accordion Panel Animation
+export const collapsibleVariants: Variants = {
+  hidden: { opacity: 0, height: 0, overflow: 'hidden' },
+  visible: {
+    opacity: 1,
+    height: 'auto',
+    transition: {
+      duration: 0.32,
+      ease: forestEase,
+    },
+  },
+  exit: {
+    opacity: 0,
+    height: 0,
+    transition: {
+      duration: 0.22,
+      ease: forestEase,
+    },
+  },
+};
+
+// Subtle Chart Bar Transitions for Real Datasets
+export const chartBarVariants: Variants = {
+  hidden: { scaleY: 0, originY: 1 },
+  visible: {
+    scaleY: 1,
+    originY: 1,
+    transition: {
+      duration: 0.65,
+      ease: forestEase,
+    },
+  },
+};
+
+// Spring button feedback
+export const buttonSpringFeedback = {
+  whileHover: { scale: 1.02 },
+  whileTap: { scale: 0.97 },
+  transition: { type: 'spring' as const, stiffness: 420, damping: 24 },
+};
+
 // Common viewport configuration: trigger once when 15% visible
 export const defaultViewport = {
   once: true,
@@ -501,4 +659,5 @@ export const defaultViewport = {
 };
 
 export { useReducedMotion } from 'motion/react';
+
 

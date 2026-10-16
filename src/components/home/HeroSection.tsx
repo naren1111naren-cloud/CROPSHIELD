@@ -4,12 +4,13 @@ import { motion } from 'motion/react';
 import {
   pageVariants,
   buttonHoverTap,
-  heroHeadingContainer,
-  heroHeadingItem,
+  heroWordContainer,
+  heroWordItem,
   staggerContainerFast,
   itemVariants,
   forestEase,
 } from '../../lib/motion';
+import { RiceBotanicalGraphic } from '../brand/RiceBotanicalGraphic';
 import {
   ArrowRight,
   Camera,
@@ -19,16 +20,45 @@ import {
   Sprout,
   Sparkles,
   TrendingUp,
+  MapPin,
 } from 'lucide-react';
 
 interface HeroSectionProps {
   onScanCrop: () => void;
-  onExplore: () => void;
+  onExplore?: () => void;
+  onExploreFarmMap?: () => void;
 }
 
-export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore }) => {
+export const HeroSection: React.FC<HeroSectionProps> = ({
+  onScanCrop,
+  onExplore,
+  onExploreFarmMap,
+}) => {
   const { language, t } = useLanguage();
   const isTa = language === 'ta';
+
+  const headingPart1Words = t('heroHeadingPart1').split(' ');
+  const headingPart2Words = t('heroHeadingPart2').split(' ');
+
+  const handlePrimaryClick = () => {
+    if (onScanCrop) {
+      onScanCrop();
+    } else {
+      const el = document.getElementById('disease-intelligence');
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleSecondaryClick = () => {
+    if (onExploreFarmMap) {
+      onExploreFarmMap();
+    } else if (onExplore) {
+      onExplore();
+    } else {
+      const el = document.getElementById('field-alerts');
+      el?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <motion.section
@@ -46,25 +76,41 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.4, ease: forestEase }}
-              className="inline-flex items-center gap-2 px-3 py-1 bg-[#EAEFE5] border border-[#B8DCC1]/60 rounded-full text-xs font-semibold text-[#1F6B4A] tracking-wide mb-6 w-fit shadow-2xs"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#EAEFE5] border border-[#B8DCC1]/70 rounded-full text-xs font-semibold text-[#1F6B4A] tracking-wide mb-6 w-fit shadow-2xs"
             >
               <Compass className="w-3.5 h-3.5 text-[#1F6B4A]" />
               <span className="uppercase">{t('regionTag')}</span>
             </motion.div>
 
-            {/* Main Hero Headline with Staggered Reveal */}
+            {/* Main Hero Headline with Editorial Staggered Word Reveals */}
             <motion.h1
-              variants={heroHeadingContainer}
+              variants={heroWordContainer}
               initial="hidden"
               animate="visible"
-              className="font-['Manrope'] text-[38px] sm:text-[46px] lg:text-[58px] leading-[1.08] font-bold text-[#0B211A] tracking-[-0.03em] mb-6"
+              className="font-['Manrope'] text-[38px] sm:text-[46px] lg:text-[58px] leading-[1.08] font-bold tracking-[-0.03em] mb-6"
             >
-              <motion.span variants={heroHeadingItem} className="block text-[#0B211A]">
-                {t('heroHeadingPart1')}
-              </motion.span>
-              <motion.span variants={heroHeadingItem} className="block text-[#1F6B4A]">
-                {t('heroHeadingPart2')}
-              </motion.span>
+              <span className="block text-[#0B211A] mb-1">
+                {headingPart1Words.map((word, i) => (
+                  <motion.span
+                    key={`p1-${i}-${word}`}
+                    variants={heroWordItem}
+                    className="inline-block mr-[0.24em]"
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+              </span>
+              <span className="block text-[#1F6B4A]">
+                {headingPart2Words.map((word, i) => (
+                  <motion.span
+                    key={`p2-${i}-${word}`}
+                    variants={heroWordItem}
+                    className="inline-block mr-[0.24em]"
+                  >
+                    {word}
+                  </motion.span>
+                ))}
+              </span>
             </motion.h1>
 
             {/* Clear, Farmer-Friendly Supporting Text */}
@@ -72,7 +118,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.25, ease: forestEase }}
-              className="text-[17px] sm:text-[18px] text-[#52665A] leading-relaxed max-w-xl mb-8 font-normal"
+              className="text-[17px] sm:text-[18px] text-[#52665A] leading-relaxed max-w-xl mb-8 font-normal font-sans"
             >
               {t('heroSubtext')}
             </motion.p>
@@ -85,10 +131,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
               className="space-y-4 mb-10"
             >
               <div className="flex flex-wrap items-stretch sm:items-center gap-3.5">
-                {/* Primary Action Button */}
+                {/* Primary Action Button: Analyze Crop Health */}
                 <motion.button
                   {...buttonHoverTap}
-                  onClick={onScanCrop}
+                  onClick={handlePrimaryClick}
                   className="px-7 py-3.5 min-h-[48px] text-[15px] sm:text-[16px] font-semibold text-white bg-[#1F6B4A] hover:bg-[#165439] transition-all rounded-[11px] flex items-center justify-center gap-2.5 cursor-pointer shadow-[0_2px_8px_rgba(31,107,74,0.25)] hover:shadow-[0_4px_14px_rgba(31,107,74,0.32)] focus-visible:ring-2 focus-visible:ring-[#1F6B4A]"
                   aria-label={t('heroPrimaryCta')}
                 >
@@ -97,13 +143,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
                   <ArrowRight className="w-4 h-4 text-white/80" />
                 </motion.button>
 
-                {/* Secondary Action */}
+                {/* Secondary Action: Explore Farm Map */}
                 <motion.button
                   {...buttonHoverTap}
-                  onClick={onExplore}
-                  className="px-6 py-3.5 min-h-[48px] text-[15px] font-medium text-[#102D24] border border-[#DCE4D9] bg-white hover:bg-[#EAEFE5] transition-all rounded-[11px] cursor-pointer flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#1F6B4A]"
+                  onClick={handleSecondaryClick}
+                  className="px-6 py-3.5 min-h-[48px] text-[15px] font-medium text-[#102D24] border border-[#DCE4D9] bg-white hover:bg-[#EAEFE5] transition-all rounded-[11px] cursor-pointer flex items-center justify-center gap-2 focus-visible:ring-2 focus-visible:ring-[#1F6B4A] shadow-2xs"
                 >
-                  {t('heroSecondaryCta')}
+                  <MapPin className="w-4 h-4 text-[#1F6B4A]" />
+                  <span>{t('heroSecondaryCta')}</span>
                 </motion.button>
               </div>
 
@@ -165,15 +212,15 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
             </motion.div>
           </div>
 
-          {/* Column 2: Authentic Agricultural Photography Composition (5 Cols on desktop) */}
+          {/* Column 2: Authentic Agricultural Photography Composition with Restrained Botanical Graphic */}
           <motion.div
             initial={{ opacity: 0, scale: 0.96, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: forestEase }}
-            className="lg:col-span-5"
+            className="lg:col-span-5 relative"
           >
             <div className="relative rounded-[16px] overflow-hidden border border-[#DCE4D9] bg-white shadow-[0_4px_20px_rgba(16,45,36,0.08)] group">
-              {/* Authentic Rice Field Image */}
+              {/* Authentic Rice Field Image with Subtle Depth */}
               <div className="aspect-[4/3] sm:aspect-[16/11] w-full overflow-hidden relative">
                 <img
                   src="/images/tamil_nadu_rice_field.jpg"
@@ -186,9 +233,9 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
                   loading="eager"
                 />
                 {/* Subtle dark vignette overlay at bottom to guarantee badge contrast */}
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0B211A]/80 via-[#0B211A]/20 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0B211A]/85 via-[#0B211A]/20 to-transparent pointer-events-none" />
 
-                {/* Top Badge: Verified Field Provenance with Animated Radar Pulse */}
+                {/* Top Left Badge: Verified Field Provenance with Animated Radar Pulse */}
                 <motion.div
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -200,6 +247,24 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-[#70B77E]" />
                   </span>
                   <span>{isTa ? 'காவேரி பாசனப் படுகை · தஞ்சாவூர்' : 'Cauvery Delta Basin · Thanjavur'}</span>
+                </motion.div>
+
+                {/* Top Right Specimen Chip: Restrained Animated Botanical Rice Graphic */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.6, ease: forestEase }}
+                  className="absolute top-3.5 right-3.5 bg-white/95 backdrop-blur-md rounded-[12px] border border-[#DCE4D9] px-2.5 py-1.5 flex items-center gap-2 shadow-md"
+                >
+                  <RiceBotanicalGraphic size="sm" className="w-7 h-9 shrink-0" />
+                  <div className="text-left">
+                    <div className="text-[10px] font-mono font-bold text-[#1F6B4A] uppercase tracking-wider leading-none">
+                      ORYZA SATIVA
+                    </div>
+                    <div className="text-[9px] font-mono text-[#52665A] mt-0.5 leading-none">
+                      {isTa ? 'நெல் மாதிரி' : 'Paddy Specimen'}
+                    </div>
+                  </div>
                 </motion.div>
 
                 {/* Bottom Overlay Information Ribbon */}
@@ -214,7 +279,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
                       <Sprout className="w-3.5 h-3.5 text-[#1F6B4A]" />
                       <span>{isTa ? 'பயிர் ஆய்வு மாதிரி' : 'FIELD MONITORING'}</span>
                       <span>·</span>
-                      <span className="text-[#1F6B4A]">ORYZA SATIVA</span>
+                      <span className="text-[#1F6B4A]">PADDY INTELLIGENCE</span>
                     </div>
                     <div className="text-[14px] font-semibold text-[#17271E] mt-0.5">
                       {isTa ? 'நெல், பருத்தி, தக்காளி, மிளகாய், மக்காச்சோளம்' : 'Paddy, Cotton, Tomato, Chilli, Maize'}
@@ -223,7 +288,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onScanCrop, onExplore 
 
                   <motion.button
                     {...buttonHoverTap}
-                    onClick={onScanCrop}
+                    onClick={handlePrimaryClick}
                     className="px-3.5 py-2 bg-[#1F6B4A] hover:bg-[#165439] text-white text-[12px] font-semibold rounded-[8px] transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <Camera className="w-3.5 h-3.5" />

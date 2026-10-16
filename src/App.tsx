@@ -165,10 +165,8 @@ function MainApp() {
               {/* 1. Hero with Clear Primary Action: Check Your Crop Health */}
               <HeroSection
                 onScanCrop={() => handleNavigate('diagnose')}
-                onExplore={() => {
-                  const el = document.getElementById('how-it-works');
-                  el?.scrollIntoView({ behavior: 'smooth' });
-                }}
+                onExploreFarmMap={() => handleNavigate('my-farm')}
+                onExplore={() => handleNavigate('my-farm')}
               />
 
               {/* 2. 4-step protocol for field action */}
@@ -231,7 +229,7 @@ function MainApp() {
                   : currentView === 'market-weather'
                   ? 'prices'
                   : currentView === 'my-farm'
-                  ? (user ? 'farms' : 'history')
+                  ? 'farms'
                   : 'overview'
               }
               onBackToHome={() => handleNavigate('home')}

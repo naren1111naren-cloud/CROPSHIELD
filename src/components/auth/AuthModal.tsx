@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { formatAuthError } from '../../services/authService';
 import { X, Lock, Mail, User, MapPin, ArrowRight, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { backdropVariants, modalVariants, buttonHoverTap } from '../../lib/motion';
+import { backdropVariants, modalVariants, buttonHoverTap, errorMessageVariants } from '../../lib/motion';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -220,7 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Tab Controls for Sign In / Register */}
-        <div className="flex items-center gap-1 p-1 bg-[#EAEFE5] border border-[#DCE4D9] mb-6 rounded-[10px]">
+        <div className="flex items-center gap-1 p-1 bg-[#EAEFE5] border border-[#DCE4D9] mb-6 rounded-[10px] relative">
           <button
             type="button"
             onClick={() => {
@@ -228,13 +228,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setErrorMsg(null);
               setErrorCode(null);
             }}
-            className={`flex-1 py-2 text-xs font-mono font-medium rounded-[8px] transition-colors cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-mono font-medium rounded-[8px] transition-colors cursor-pointer relative z-10 ${
               mode === 'signin'
-                ? 'bg-[#1F6B4A] text-white shadow-xs'
+                ? 'text-white font-bold'
                 : 'text-[#52665A] hover:text-[#102D24]'
             }`}
           >
-            {isTa ? 'உள்நுழைக' : 'Sign In'}
+            {mode === 'signin' && (
+              <motion.div
+                layoutId="authModalTabIndicator"
+                className="absolute inset-0 bg-[#1F6B4A] rounded-[8px] -z-10 shadow-xs"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              />
+            )}
+            <span>{isTa ? 'உள்நுழைக' : 'Sign In'}</span>
           </button>
           <button
             type="button"
@@ -243,46 +250,67 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               setErrorMsg(null);
               setErrorCode(null);
             }}
-            className={`flex-1 py-2 text-xs font-mono font-medium rounded-[8px] transition-colors cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-mono font-medium rounded-[8px] transition-colors cursor-pointer relative z-10 ${
               mode === 'register'
-                ? 'bg-[#1F6B4A] text-white shadow-xs'
+                ? 'text-white font-bold'
                 : 'text-[#52665A] hover:text-[#102D24]'
             }`}
           >
-            {isTa ? 'புதிய பதிவு' : 'Register'}
+            {mode === 'register' && (
+              <motion.div
+                layoutId="authModalTabIndicator"
+                className="absolute inset-0 bg-[#1F6B4A] rounded-[8px] -z-10 shadow-xs"
+                transition={{ type: 'spring', stiffness: 500, damping: 32 }}
+              />
+            )}
+            <span>{isTa ? 'புதிய பதிவு' : 'Register'}</span>
           </button>
         </div>
 
-        {/* Notifications */}
-        {errorMsg && (
-          <div className="mb-5 p-3.5 bg-[#FAF3F2] border border-[#B8423A]/30 text-[#B8423A] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px]">
-            <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#B8423A]" />
-            <div className="flex-1">
-              <span>{errorMsg}</span>
-              {mode === 'signin' && (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found') && (
-                <div className="mt-2 pt-2 border-t border-[#B8423A]/20">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('register');
-                      setErrorMsg(null);
-                      setErrorCode(null);
-                    }}
-                    className="text-xs font-semibold underline hover:text-[#B8423A] cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <span>{isTa ? 'புதிய விவசாயியா? கணக்கை உருவாக்க இங்கே சொடுக்கவும் →' : "Don't have an account yet? Register here →"}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        {successMsg && (
-          <div className="mb-5 p-3.5 bg-[#EAEFE5] border border-[#70B77E]/50 text-[#17271E] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px]">
-            <CheckCircle2 className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#1F6B4A]" />
-            <span>{successMsg}</span>
-          </div>
-        )}
+        {/* Animated Notifications */}
+        <AnimatePresence>
+          {errorMsg && (
+            <motion.div
+              variants={errorMessageVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mb-5 p-3.5 bg-[#FAF3F2] border border-[#B8423A]/30 text-[#B8423A] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px] overflow-hidden"
+            >
+              <AlertCircle className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#B8423A]" />
+              <div className="flex-1">
+                <span>{errorMsg}</span>
+                {mode === 'signin' && (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found') && (
+                  <div className="mt-2 pt-2 border-t border-[#B8423A]/20">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('register');
+                        setErrorMsg(null);
+                        setErrorCode(null);
+                      }}
+                      className="text-xs font-semibold underline hover:text-[#B8423A] cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <span>{isTa ? 'புதிய விவசாயியா? கணக்கை உருவாக்க இங்கே சொடுக்கவும் →' : "Don't have an account yet? Register here →"}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+          {successMsg && (
+            <motion.div
+              variants={errorMessageVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="mb-5 p-3.5 bg-[#EAEFE5] border border-[#70B77E]/50 text-[#17271E] text-xs sm:text-sm font-sans flex items-start gap-2.5 rounded-[10px] overflow-hidden"
+            >
+              <CheckCircle2 className="w-4.5 h-4.5 shrink-0 mt-0.5 text-[#1F6B4A]" />
+              <span>{successMsg}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Continue with Google Section */}
         {mode !== 'reset' && (
@@ -485,10 +513,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div className="pt-2">
-            <button
+            <motion.button
+              whileHover={isLoading ? {} : { scale: 1.015 }}
+              whileTap={isLoading ? {} : { scale: 0.98 }}
               type="submit"
               disabled={isLoading}
-              className="btn-primary w-full py-3 min-h-[46px] rounded-[10px] flex items-center justify-center gap-2"
+              className="btn-primary w-full py-3 min-h-[46px] rounded-[10px] flex items-center justify-center gap-2 cursor-pointer shadow-xs disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -505,7 +535,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
-            </button>
+            </motion.button>
           </div>
         </form>
 

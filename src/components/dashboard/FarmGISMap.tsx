@@ -1618,13 +1618,21 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
         if (mapInstanceRef.current && leafletCoords.length >= 3) {
           const poly = L.polygon(leafletCoords);
-          mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18 });
+          mapInstanceRef.current.fitBounds(poly.getBounds(), { padding: [40, 40], maxZoom: 18, animate: true, duration: 0.8 });
         }
       } catch (err) {
         console.warn('Failed to parse selected farm boundary:', err);
       }
     }
   }, [selectedFarm]);
+
+  // Invalidate map size only when genuinely necessary (fullscreen toggle)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      mapInstanceRef.current?.invalidateSize();
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [isFullscreen]);
 
   // Render All Saved Farms as Cadastral Overlays on Satellite Map (Phase 5: Multi-Farm GIS)
   useEffect(() => {

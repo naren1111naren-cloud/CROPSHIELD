@@ -393,106 +393,160 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
             </div>
             <nav className="space-y-1">
               {/* 1. Overview */}
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('overview')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer relative ${
                   activeTab === 'overview'
-                    ? 'bg-[#1F6B4A] text-white shadow-xs font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/80 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {activeTab === 'overview' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="flex items-center gap-3 relative z-10">
                   <LayoutDashboard className="w-4.5 h-4.5 shrink-0" />
                   <span>{t('navOverview')}</span>
                 </div>
-              </button>
+              </motion.button>
 
               {/* 2. Crop Diagnosis */}
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('scan')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer relative ${
                   activeTab === 'scan'
-                    ? 'bg-[#1F6B4A] text-white shadow-xs font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/80 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {activeTab === 'scan' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="flex items-center gap-3 relative z-10">
                   <Camera className="w-4.5 h-4.5 shrink-0 text-[#70B77E]" />
                   <span>{t('navCropDiagnosis')}</span>
                 </div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[4px] bg-[#1F6B4A]/60 text-white">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-[4px] bg-[#1F6B4A]/60 text-white relative z-10">
                   AI
                 </span>
-              </button>
+              </motion.button>
 
               {/* 3. My Farms */}
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('farms')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer relative ${
                   activeTab === 'farms'
-                    ? 'bg-[#1F6B4A] text-white shadow-xs font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/80 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {activeTab === 'farms' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="flex items-center gap-3 relative z-10">
                   <Layers className="w-4.5 h-4.5 shrink-0" />
                   <span>{t('navMyFarm')}</span>
                 </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white font-semibold">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white font-semibold relative z-10">
                   {farms.length}
                 </span>
-              </button>
+              </motion.button>
 
               {/* 4. Scan History */}
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('history')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer relative ${
                   activeTab === 'history'
-                    ? 'bg-[#1F6B4A] text-white shadow-xs font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/80 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {activeTab === 'history' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="flex items-center gap-3 relative z-10">
                   <Clock className="w-4.5 h-4.5 shrink-0" />
                   <span>{t('navScanHistory')}</span>
                 </div>
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white font-semibold">
+                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white font-semibold relative z-10">
                   {scans.length}
                 </span>
-              </button>
+              </motion.button>
 
               {/* 5. Market Prices */}
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('prices')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer relative ${
                   activeTab === 'prices'
-                    ? 'bg-[#1F6B4A] text-white shadow-xs font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/80 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {activeTab === 'prices' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="flex items-center gap-3 relative z-10">
                   <IndianRupee className="w-4.5 h-4.5 shrink-0 text-[#D7AD63]" />
                   <span>{t('navMarketWeather')}</span>
                 </div>
-                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-[4px] bg-[#D7AD63]/20 text-[#D7AD63] font-semibold">
+                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded-[4px] bg-[#D7AD63]/20 text-[#D7AD63] font-semibold relative z-10">
                   LIVE
                 </span>
-              </button>
+              </motion.button>
 
               {/* 6. Farming Guidance */}
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('guidance')}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-[10px] text-[14px] font-medium transition-all cursor-pointer relative ${
                   activeTab === 'guidance'
-                    ? 'bg-[#1F6B4A] text-white shadow-xs font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/80 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <div className="flex items-center gap-3">
+                {activeTab === 'guidance' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <div className="flex items-center gap-3 relative z-10">
                   <BookOpen className="w-4.5 h-4.5 shrink-0" />
                   <span>{t('navFarmingGuidance')}</span>
                 </div>
-              </button>
+              </motion.button>
             </nav>
           </div>
 
@@ -502,53 +556,89 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
               {isTa ? 'வேளாண் நுண்ணறிவு' : 'AGRI-INTELLIGENCE'}
             </div>
             <nav className="space-y-1">
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('risks')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer relative ${
                   activeTab === 'risks'
-                    ? 'bg-[#1F6B4A] text-white font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/75 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <CloudSun className="w-4 h-4 shrink-0 text-[#B8DCC1]" />
-                <span>{isTa ? 'வானிலை & பருவங்கள்' : 'Weather & Seasons'}</span>
-              </button>
+                {activeTab === 'risks' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <CloudSun className="w-4 h-4 shrink-0 text-[#B8DCC1] relative z-10" />
+                <span className="relative z-10">{isTa ? 'வானிலை & பருவங்கள்' : 'Weather & Seasons'}</span>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('alerts')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer relative ${
                   activeTab === 'alerts'
-                    ? 'bg-[#1F6B4A] text-white font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/75 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <AlertTriangle className="w-4 h-4 shrink-0 text-[#D7AD63]" />
-                <span>{isTa ? 'மாவட்ட எச்சரிக்கைகள்' : 'District Alerts'}</span>
-              </button>
+                {activeTab === 'alerts' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <AlertTriangle className="w-4 h-4 shrink-0 text-[#D7AD63] relative z-10" />
+                <span className="relative z-10">{isTa ? 'மாவட்ட எச்சரிக்கைகள்' : 'District Alerts'}</span>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('expert')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer relative ${
                   activeTab === 'expert'
-                    ? 'bg-[#1F6B4A] text-white font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/75 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <Building2 className="w-4 h-4 shrink-0 text-[#70B77E]" />
-                <span>{isTa ? 'வல்லுநர் மையம்' : 'Expert Knowledge'}</span>
-              </button>
+                {activeTab === 'expert' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <Building2 className="w-4 h-4 shrink-0 text-[#70B77E] relative z-10" />
+                <span className="relative z-10">{isTa ? 'வல்லுநர் மையம்' : 'Expert Knowledge'}</span>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ x: 2 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => switchTab('cases')}
-                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2 rounded-[10px] text-[13.5px] font-medium transition-colors cursor-pointer relative ${
                   activeTab === 'cases'
-                    ? 'bg-[#1F6B4A] text-white font-semibold'
+                    ? 'text-white font-semibold'
                     : 'text-[#F5F7F1]/75 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <FileText className="w-4 h-4 shrink-0" />
-                <span>{isTa ? 'கள ஆய்வு வழக்குகள்' : 'Field Case Hub'}</span>
-              </button>
+                {activeTab === 'cases' && (
+                  <motion.div
+                    layoutId="activeSidebarPill"
+                    className="absolute inset-0 bg-[#1F6B4A] rounded-[10px] shadow-xs -z-0"
+                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                  />
+                )}
+                <FileText className="w-4 h-4 shrink-0 relative z-10" />
+                <span className="relative z-10">{isTa ? 'கள ஆய்வு வழக்குகள்' : 'Field Case Hub'}</span>
+              </motion.button>
             </nav>
           </div>
         </div>
