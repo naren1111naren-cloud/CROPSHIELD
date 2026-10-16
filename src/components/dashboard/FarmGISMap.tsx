@@ -58,7 +58,25 @@ import {
   FarmIrrigationInfrastructure,
   IrrigationSourceType,
   IrrigationDistributionMethod,
+  MandiPriceRecord,
+  MarketPriceWithDiscovery,
+  MarketPriceComparisonSummary,
+  AgriServiceEntity,
+  AgriServiceType,
 } from '../../types';
+import { fetchDailyMandiPrices } from '../../services/marketPriceClient';
+import {
+  enrichMarketPricesWithLocations,
+  compareMarketPrices,
+  LocationOrigin,
+} from '../../services/marketIntelligenceService';
+import {
+  VERIFIED_REGULATED_MARKETS,
+  VERIFIED_AGRI_SERVICES,
+  findNearbyServices,
+  calculateHaversineDistanceKm,
+  generateGoogleMapsDirectionsUrl,
+} from '../../services/nearbyServicesDirectory';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   Compass,
@@ -115,6 +133,10 @@ import {
   Clock,
   Eye,
   Target,
+  Store,
+  Phone,
+  Mail,
+  Building2,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
@@ -185,12 +207,22 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       ''
   );
 
-  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend vs Weather & Ag-Risk vs Soil & Water
-  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history' | 'weather' | 'soil'>('satellite');
+  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend vs Weather & Ag-Risk vs Soil & Water vs Mandi & Services
+  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history' | 'weather' | 'soil' | 'market'>('satellite');
   const [weatherSubLayer, setWeatherSubLayer] = useState<'conditions' | 'rainfall' | 'heat_risk' | 'waterlog_risk' | 'spray_window'>('conditions');
   const [weatherReport, setWeatherReport] = useState<FarmWeatherReport | null>(null);
   const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
   const [isWeatherDetailsOpen, setIsWeatherDetailsOpen] = useState<boolean>(true);
+
+  // Phase 6: Market Intelligence & Nearby Services State
+  const [marketPrices, setMarketPrices] = useState<MarketPriceWithDiscovery[]>([]);
+  const [marketLoading, setMarketLoading] = useState<boolean>(false);
+  const [marketError, setMarketError] = useState<string | null>(null);
+  const [selectedMarketCrop, setSelectedMarketCrop] = useState<string>(selectedFarm?.cropType || 'Paddy');
+  const [marketSubTab, setMarketSubTab] = useState<'prices' | 'comparison' | 'services'>('prices');
+  const [serviceFilterType, setServiceFilterType] = useState<AgriServiceType | 'all'>('all');
+  const [selectedMarketForDetail, setSelectedMarketForDetail] = useState<MarketPriceWithDiscovery | null>(null);
+  const [isMarketDetailsOpen, setIsMarketDetailsOpen] = useState<boolean>(true);
 
   // Phase 4: Soil Intelligence & Farm Water Management State
   const [soilSubLayer, setSoilSubLayer] = useState<'series' | 'soilgrids' | 'lab_test' | 'awd_water'>('series');
@@ -300,6 +332,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
   const weatherOverlayLayerRef = useRef<L.LayerGroup | null>(null);
   const soilOverlayLayerRef = useRef<L.LayerGroup | null>(null);
+  const marketOverlayLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Re-resolve location whenever selectedFarm or farmerProfile updates
   useEffect(() => {
@@ -666,6 +699,227 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   }, [activeMapMode, soilSubLayer, soilReport, polygonCoords]);
 
+  // Phase 6: Fetch real Mandi market prices when in 'market' mode or parameters change
+  useEffect(() => {
+    if (activeMapMode !== 'market') return;
+
+    let originLat: number | undefined;
+    let originLng: number | undefined;
+    let isExactFarm = false;
+    let originLabel = selectedDistrict || 'Tamil Nadu';
+
+    if (selectedFarm?.boundary?.centroid) {
+      [originLat, originLng] = selectedFarm.boundary.centroid;
+      isExactFarm = true;
+      originLabel = selectedFarm.farmName;
+    } else if (selectedFarm?.latitude && selectedFarm?.longitude) {
+      originLat = selectedFarm.latitude;
+      originLng = selectedFarm.longitude;
+      isExactFarm = true;
+      originLabel = selectedFarm.farmName;
+    } else if (resolvedLocation.isExactField && resolvedLocation.coordinates) {
+      [originLat, originLng] = resolvedLocation.coordinates;
+      isExactFarm = true;
+      originLabel = selectedFarm?.farmName || 'Farm Plot';
+    } else {
+      [originLat, originLng] = resolvedLocation.coordinates;
+      isExactFarm = false;
+      originLabel = `${resolvedLocation.hierarchy.district || selectedDistrict || 'District'} Reference Center`;
+    }
+
+    const origin: LocationOrigin | null =
+      originLat && originLng
+        ? {
+            latitude: originLat,
+            longitude: originLng,
+            label: originLabel,
+            isExactFarmPlot: isExactFarm,
+          }
+        : null;
+
+    setMarketLoading(true);
+    setMarketError(null);
+
+    fetchDailyMandiPrices({
+      state: selectedState || 'Tamil Nadu',
+      district: selectedDistrict !== 'all' ? selectedDistrict : undefined,
+      commodity: selectedMarketCrop !== 'all' ? selectedMarketCrop : undefined,
+      limit: 100,
+    })
+      .then((res) => {
+        if (res.success && res.records.length > 0) {
+          const enriched = enrichMarketPricesWithLocations(res.records, origin);
+          setMarketPrices(enriched);
+        } else if (!res.success) {
+          setMarketError(res.message || 'Mandi rates temporarily unavailable.');
+          setMarketPrices([]);
+        } else {
+          // If no records for selected district, try broader state query to discover markets
+          if (selectedDistrict && selectedDistrict !== 'all') {
+            fetchDailyMandiPrices({
+              state: selectedState || 'Tamil Nadu',
+              commodity: selectedMarketCrop !== 'all' ? selectedMarketCrop : undefined,
+              limit: 100,
+            }).then((stateRes) => {
+              if (stateRes.success && stateRes.records.length > 0) {
+                const enriched = enrichMarketPricesWithLocations(stateRes.records, origin);
+                setMarketPrices(enriched);
+              } else {
+                setMarketPrices([]);
+              }
+            });
+          } else {
+            setMarketPrices([]);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('[CropShield] Failed to fetch market prices:', err);
+        setMarketError('Network error retrieving AGMARKNET feed.');
+        setMarketPrices([]);
+      })
+      .finally(() => setMarketLoading(false));
+  }, [activeMapMode, selectedMarketCrop, selectedDistrict, selectedState, selectedFarm, resolvedLocation]);
+
+  // Phase 6: Render Market Intelligence & Agricultural Services Overlay onto Leaflet Map
+  useEffect(() => {
+    if (!mapInstanceRef.current || !marketOverlayLayerRef.current) return;
+    marketOverlayLayerRef.current.clearLayers();
+
+    if (activeMapMode !== 'market') return;
+
+    let originLat: number | undefined;
+    let originLng: number | undefined;
+
+    if (selectedFarm?.boundary?.centroid) {
+      [originLat, originLng] = selectedFarm.boundary.centroid;
+    } else if (selectedFarm?.latitude && selectedFarm?.longitude) {
+      originLat = selectedFarm.latitude;
+      originLng = selectedFarm.longitude;
+    } else {
+      [originLat, originLng] = resolvedLocation.coordinates;
+    }
+
+    // 1. Render Verified Regulated Markets that have reported prices
+    const mappedMarkets = marketPrices.filter((m) => m.hasVerifiedCoordinates && m.latitude && m.longitude);
+
+    mappedMarkets.forEach((m) => {
+      const isStale = m.isStale;
+      const markerHtml = `
+        <div class="market-mandi-marker flex items-center gap-1.5 bg-[#0B241B]/95 text-white border ${
+          isStale ? 'border-[#D97706]' : 'border-[#4ADE80]'
+        } px-2.5 py-1 rounded-full shadow-2xl backdrop-blur-md font-mono text-[11px] whitespace-nowrap cursor-pointer">
+          <span class="text-xs">🏛️</span>
+          <span class="font-bold text-white">${m.market}</span>
+          <span class="text-[#4ADE80] font-bold">₹${m.modalPrice.toLocaleString('en-IN')}/q</span>
+          ${m.straightLineDistanceKm ? `<span class="text-white/60 text-[9px]">· ${m.straightLineDistanceKm}km</span>` : ''}
+        </div>
+      `;
+
+      const divIcon = L.divIcon({
+        className: 'custom-mandi-marker',
+        html: markerHtml,
+        iconAnchor: [50, 15],
+      });
+
+      const marker = L.marker([m.latitude!, m.longitude!], { icon: divIcon }).addTo(marketOverlayLayerRef.current!);
+      marker.bindPopup(`
+        <div style="font-family: monospace; font-size: 11px; color: #0B241B; min-width: 240px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <strong style="color: #1F6B4A; font-size: 13px;">🏛️ ${m.market} Regulated Market</strong>
+            <span style="font-size: 9px; background: #EAEFE5; color: #1F6B4A; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${m.district}</span>
+          </div>
+          ${m.committeeName ? `<div style="color: #52665A; font-size: 10px; margin-bottom: 4px;">${m.committeeName}</div>` : ''}
+          <div style="background: #F4F6F2; padding: 6px; border-radius: 6px; margin: 6px 0;">
+            <div style="font-size: 12px; font-weight: bold; color: #102D24;">${m.commodity} (${m.variety})</div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px;">
+              <span>Modal: <strong style="color: #1F6B4A; font-size: 13px;">₹${m.modalPrice.toLocaleString('en-IN')}</strong> / quintal</span>
+            </div>
+            <div style="font-size: 10px; color: #52665A; margin-top: 2px;">
+              Range: ₹${m.minPrice.toLocaleString('en-IN')} – ₹${m.maxPrice.toLocaleString('en-IN')}
+            </div>
+          </div>
+          <div style="font-size: 10px; color: #52665A; margin-bottom: 4px;">
+            Arrival Date: <strong>${m.arrivalDate}</strong> ${isStale ? '<span style="color: #D97706; font-weight: bold;">(Reported > 5 days ago)</span>' : ''}
+          </div>
+          ${
+            m.straightLineDistanceKm
+              ? `<div style="font-size: 10px; color: #102D24; margin-bottom: 6px;">
+                  Straight-line distance: <strong>${m.straightLineDistanceKm} km</strong> (as the crow flies)
+                </div>`
+              : ''
+          }
+          ${
+            m.directionsUrl
+              ? `<a href="${m.directionsUrl}" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; background: #1F6B4A; color: white; padding: 6px 10px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 11px; margin-top: 6px;">
+                  🚗 Get Road Directions (Google Maps)
+                </a>`
+              : ''
+          }
+          <div style="font-size: 8.5px; color: #777; margin-top: 6px; border-top: 1px solid #DDD; padding-top: 4px;">
+            Source: AGMARKNET wholesale auction record. Not a guaranteed selling price. Transport and quality grading apply.
+          </div>
+        </div>
+      `);
+    });
+
+    // 2. Render Verified Nearby Agricultural Services (Soil Labs, KVKs, Extension Offices)
+    if (originLat && originLng) {
+      const nearbyServices = findNearbyServices(originLat, originLng, {
+        serviceType: serviceFilterType !== 'all' ? serviceFilterType : undefined,
+        maxRadiusKm: 150,
+      });
+
+      nearbyServices.forEach((service) => {
+        const isLab = service.serviceType === 'soil_testing_lab';
+        const isKvk = service.serviceType === 'kvk';
+        const badgeColor = isLab ? '#38BDF8' : isKvk ? '#4ADE80' : '#F59E0B';
+        const emoji = isLab ? '🧪' : isKvk ? '🌾' : '🏢';
+        const shortLabel = isLab ? 'Soil Lab' : isKvk ? 'KVK' : 'Agri Office';
+
+        const serviceMarkerHtml = `
+          <div class="agri-service-marker flex items-center gap-1.5 bg-[#081813]/95 text-white border border-[${badgeColor}]/70 px-2 py-0.5 rounded-full shadow-lg backdrop-blur-md font-mono text-[10px] whitespace-nowrap cursor-pointer">
+            <span>${emoji}</span>
+            <span class="font-bold text-white">${service.district} ${shortLabel}</span>
+            <span class="text-white/60 text-[9px]">${service.distanceKm}km</span>
+          </div>
+        `;
+
+        const serviceDivIcon = L.divIcon({
+          className: 'custom-service-marker',
+          html: serviceMarkerHtml,
+          iconAnchor: [45, 12],
+        });
+
+        const marker = L.marker([service.latitude, service.longitude], { icon: serviceDivIcon }).addTo(marketOverlayLayerRef.current!);
+        marker.bindPopup(`
+          <div style="font-family: monospace; font-size: 11px; color: #0B241B; min-width: 240px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <strong style="color: #1F6B4A; font-size: 12px;">${emoji} ${service.name}</strong>
+            </div>
+            <div style="color: #52665A; font-size: 10px; margin-bottom: 4px;">${service.address}</div>
+            <div style="font-size: 10px; margin-bottom: 2px;">
+              📞 Phone: <strong>${service.contactPhone || 'Available at office'}</strong>
+            </div>
+            ${service.contactEmail ? `<div style="font-size: 10px; margin-bottom: 2px;">✉️ ${service.contactEmail}</div>` : ''}
+            <div style="font-size: 10px; color: #52665A; margin-bottom: 4px;">
+              🕒 Hours: ${service.operatingHours}
+            </div>
+            <div style="font-size: 10px; color: #102D24; margin-bottom: 6px;">
+              Straight-line distance: <strong>${service.distanceKm} km</strong>
+            </div>
+            <a href="${service.directionsUrl}" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; background: #0284C7; color: white; padding: 6px 10px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 11px; margin-top: 6px;">
+              🚗 Directions (Google Maps)
+            </a>
+            <div style="font-size: 8.5px; color: #777; margin-top: 6px; border-top: 1px solid #DDD; padding-top: 4px;">
+              Verified Public Record: ${service.sourceUrl} (${service.verificationDate})
+            </div>
+          </div>
+        `);
+      });
+    }
+  }, [activeMapMode, marketPrices, serviceFilterType, selectedFarm, resolvedLocation]);
+
   // Sync available taluks & villages for selected lookup district
   useEffect(() => {
     const distData = TN_CADASTRAL_HIERARCHY[lookupDistrict];
@@ -871,6 +1125,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     savedFarmsLayerGroupRef.current = L.layerGroup().addTo(map);
     weatherOverlayLayerRef.current = L.layerGroup().addTo(map);
     soilOverlayLayerRef.current = L.layerGroup().addTo(map);
+    marketOverlayLayerRef.current = L.layerGroup().addTo(map);
 
     applyTileLayer(map, 'hybrid');
 
@@ -879,6 +1134,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     return () => {
       weatherOverlayLayerRef.current?.clearLayers();
       soilOverlayLayerRef.current?.clearLayers();
+      marketOverlayLayerRef.current?.clearLayers();
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -1922,11 +2178,30 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             <span>{isTa ? 'மண் & நீர் மேலாண்மை' : 'Soil & Water'}</span>
             {soilLoading && <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping" />}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('market')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'market'
+                ? 'bg-[#15803D] border border-[#4ADE80] text-white font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <Store className="w-3.5 h-3.5 text-[#4ADE80]" />
+            <span>{isTa ? 'மண்டி & சேவைகள்' : 'Mandi & Services'}</span>
+            {marketLoading && <span className="w-2 h-2 rounded-full bg-[#4ADE80] animate-ping" />}
+          </button>
         </div>
 
         {/* Observation Status / Quick Tag */}
         <div className="flex items-center gap-2">
-          {activeMapMode === 'soil' && soilReport ? (
+          {activeMapMode === 'market' ? (
+            <span className="text-[11px] text-[#4ADE80] bg-[#15803D]/20 border border-[#4ADE80]/40 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4ADE80]" />
+              <span>AGMARKNET Mandi Feeds · {marketPrices.length} Records</span>
+            </span>
+          ) : activeMapMode === 'soil' && soilReport ? (
             <span className="text-[11px] text-[#F59E0B] bg-[#F59E0B]/20 border border-[#F59E0B]/40 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
               <span>{soilReport.soilProfile.regionalSeriesName.split(' ')[0]} · {soilReport.soilProfile.isLaboratoryVerified ? '🧪 Lab SHC' : '🗺️ TNAU Atlas'}</span>
@@ -2149,6 +2424,45 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
               <Waves className="w-3 h-3" />
               <span>{isTa ? 'பாசன அமைப்பு' : 'Irrigation Setup'}</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 6: Market & Services Sub-Layer Toggle Bar */}
+      {activeMapMode === 'market' && (
+        <div className="bg-[#081813] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-white/50 uppercase text-[10px] font-bold">INTELLIGENCE VIEWS:</span>
+            <button
+              type="button"
+              onClick={() => setMarketSubTab('prices')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                marketSubTab === 'prices' ? 'bg-[#15803D] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🏛️ Mandi Arrivals & Rates
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarketSubTab('comparison')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                marketSubTab === 'comparison' ? 'bg-[#0284C7] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              📊 Multi-Mandi Price Comparison
+            </button>
+            <button
+              type="button"
+              onClick={() => setMarketSubTab('services')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                marketSubTab === 'services' ? 'bg-[#7C3AED] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🧪 Soil Labs & KVK Directory
+            </button>
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-white/60">
+            <span>AGMARKNET / DMI · data.gov.in</span>
           </div>
         </div>
       )}
@@ -3048,6 +3362,415 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                   <p>{isTa ? soilReport.waterGuidance.cautiousNoticeTamil : soilReport.waterGuidance.cautiousNotice}</p>
                   <p className="text-white/40">{soilReport.sourceAttribution}</p>
                 </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Phase 6: Floating Market Intelligence & Nearby Services Panel */}
+        {activeMapMode === 'market' && (
+          <div className="absolute top-4 right-4 z-20 max-w-[360px] sm:max-w-lg w-full bg-[#0B241B]/95 backdrop-blur-md border border-[#15803D]/60 rounded-[12px] p-3 text-xs font-mono shadow-2xl text-white space-y-2.5 max-h-[85vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-[#4ADE80]" />
+                <span className="font-bold text-xs sm:text-sm text-white font-['Plus_Jakarta_Sans']">
+                  {isTa ? 'சந்தை நுண்ணறிவு & சேவைகள்' : 'Mandi Rates & Nearby Services'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMarketDetailsOpen(!isMarketDetailsOpen)}
+                className="text-white/60 hover:text-white p-0.5 cursor-pointer"
+                title={isMarketDetailsOpen ? 'Collapse panel' : 'Expand panel'}
+              >
+                {isMarketDetailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {isMarketDetailsOpen && (
+              <>
+                {/* Location Provenance Notice */}
+                <div className="p-2 bg-black/40 border border-white/10 rounded-[6px] space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#4ADE80] font-bold">
+                      {selectedFarm ? `Farm: ${selectedFarm.farmName}` : `District: ${selectedDistrict || 'Tamil Nadu'}`}
+                    </span>
+                    <span className="text-[9px] text-white/50">
+                      {selectedFarm ? '🎯 Plot Coordinates' : '🏛️ District Reference'}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-white/70">
+                    {selectedFarm
+                      ? 'Straight-line distances computed from selected farm boundary coordinates.'
+                      : 'District-level search center. Exact farm boundary is not selected.'}
+                  </div>
+                </div>
+
+                {/* Priority Commodity Chips Selector */}
+                <div className="space-y-1">
+                  <div className="text-[9.5px] uppercase text-white/50 font-bold flex items-center justify-between">
+                    <span>SELECT COMMODITY:</span>
+                    <span className="text-[#4ADE80]">{selectedMarketCrop}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {['Paddy', 'Tomato', 'Onion', 'Maize', 'Groundnut', 'Cotton', 'Chilli', 'all'].map((crop) => (
+                      <button
+                        key={crop}
+                        type="button"
+                        onClick={() => setSelectedMarketCrop(crop)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono transition-colors cursor-pointer ${
+                          selectedMarketCrop.toLowerCase() === crop.toLowerCase()
+                            ? 'bg-[#15803D] text-white font-bold border border-[#4ADE80]'
+                            : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+                        }`}
+                      >
+                        {crop === 'all' ? 'All Crops' : crop}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Loading State */}
+                {marketLoading && (
+                  <div className="p-4 bg-black/30 rounded-[6px] flex items-center justify-center gap-2 text-white/70 text-xs">
+                    <span className="w-3 h-3 rounded-full bg-[#4ADE80] animate-ping" />
+                    <span>Synchronizing AGMARKNET wholesale feeds...</span>
+                  </div>
+                )}
+
+                {/* Error Banner */}
+                {marketError && !marketLoading && (
+                  <div className="p-2.5 bg-[#B8423A]/20 border border-[#B8423A]/40 rounded-[6px] text-rose-200 text-[10px] space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>AGMARKNET Notice: {marketError}</span>
+                    </div>
+                    <p className="text-white/60">
+                      Configure your valid <code className="bg-black/50 px-1">DATA_GOV_IN_API_KEY</code> in server environment to enable live mandi sync.
+                    </p>
+                  </div>
+                )}
+
+                {/* TAB 1: Mandi Arrivals & Rates */}
+                {marketSubTab === 'prices' && !marketLoading && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[10px] text-white/60">
+                      <span>{marketPrices.length} REPORTING MANDIS FOUND</span>
+                      <span>Unit: ₹ / quintal</span>
+                    </div>
+
+                    {marketPrices.length === 0 && !marketError && (
+                      <div className="p-4 text-center text-white/60 bg-black/30 rounded-[6px]">
+                        No wholesale mandi arrivals recorded for {selectedMarketCrop} in {selectedDistrict || 'Tamil Nadu'}. Try selecting "All Crops".
+                      </div>
+                    )}
+
+                    {/* Mapped Mandis Section */}
+                    {marketPrices.filter((m) => m.hasVerifiedCoordinates).length > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="text-[9px] uppercase font-bold text-[#4ADE80] flex items-center gap-1">
+                          <span>📍 Plotted Mandis (Verified Geographic Pins)</span>
+                        </div>
+                        <div className="space-y-1.5 max-h-[36vh] overflow-y-auto pr-0.5">
+                          {marketPrices
+                            .filter((m) => m.hasVerifiedCoordinates)
+                            .map((m) => (
+                              <div
+                                key={m.id}
+                                className="p-2 bg-black/40 border border-white/10 rounded-[6px] hover:border-[#4ADE80]/50 transition-colors space-y-1"
+                              >
+                                <div className="flex items-start justify-between gap-1">
+                                  <div>
+                                    <div className="font-bold text-white text-[11px] flex items-center gap-1">
+                                      <span>🏛️ {m.market}</span>
+                                      <span className="text-[9px] text-[#4ADE80] font-normal">({m.district})</span>
+                                    </div>
+                                    <div className="text-[9.5px] text-white/60">
+                                      {m.commodity} · <span className="text-white/80">{m.variety}</span>
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <div className="font-bold text-[#4ADE80] text-xs">
+                                      ₹{m.modalPrice.toLocaleString('en-IN')}
+                                    </div>
+                                    <div className="text-[8.5px] text-white/50">Modal ₹/q</div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[9px] text-white/60 pt-0.5 border-t border-white/10">
+                                  <span>Range: ₹{m.minPrice} – ₹{m.maxPrice}</span>
+                                  <span>Date: {m.arrivalDate}</span>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[9px] pt-0.5">
+                                  {m.straightLineDistanceKm ? (
+                                    <span className="text-[#70B77E]">
+                                      📏 {m.straightLineDistanceKm} km (Straight-line)
+                                    </span>
+                                  ) : (
+                                    <span className="text-white/40">Distance N/A</span>
+                                  )}
+                                  {m.directionsUrl && (
+                                    <a
+                                      href={m.directionsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[#38BDF8] hover:underline flex items-center gap-0.5 font-bold"
+                                    >
+                                      <span>🚗 Road Directions →</span>
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Unmapped Mandis Section (No fabricated pins!) */}
+                    {marketPrices.filter((m) => !m.hasVerifiedCoordinates).length > 0 && (
+                      <div className="space-y-1.5 pt-1 border-t border-white/10">
+                        <div className="text-[9px] uppercase font-bold text-[#F59E0B] flex items-center gap-1">
+                          <span>📋 Other Regional Reporting Mandis (Unverified Coordinates — Not Plotted)</span>
+                        </div>
+                        <div className="space-y-1 max-h-[22vh] overflow-y-auto pr-0.5">
+                          {marketPrices
+                            .filter((m) => !m.hasVerifiedCoordinates)
+                            .map((m) => (
+                              <div
+                                key={m.id}
+                                className="p-1.5 bg-[#081813] border border-white/5 rounded-[4px] flex items-center justify-between text-[10px]"
+                              >
+                                <div>
+                                  <div className="font-semibold text-white/90">
+                                    {m.market} ({m.district})
+                                  </div>
+                                  <div className="text-[8.5px] text-white/50">
+                                    {m.variety} · {m.arrivalDate}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-bold text-[#4ADE80]">
+                                    ₹{m.modalPrice.toLocaleString('en-IN')}/q
+                                  </div>
+                                  <div className="text-[8px] text-white/40">
+                                    ₹{m.minPrice} - ₹{m.maxPrice}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TAB 2: Multi-Mandi Price Comparison */}
+                {marketSubTab === 'comparison' && !marketLoading && (() => {
+                  const comparison = compareMarketPrices(marketPrices, selectedMarketCrop);
+                  return (
+                    <div className="space-y-2.5">
+                      {/* Price Spread Overview Grid */}
+                      <div className="grid grid-cols-3 gap-1 text-center font-mono text-[10px]">
+                        <div className="bg-black/40 border border-white/10 p-1.5 rounded-[6px]">
+                          <div className="text-[8.5px] text-white/50 uppercase">FLOOR MODAL</div>
+                          <div className="text-xs sm:text-sm font-bold text-white">
+                            {comparison.lowestModalRecord ? `₹${comparison.lowestModalRecord.modalPrice.toLocaleString('en-IN')}` : 'N/A'}
+                          </div>
+                          <div className="text-[8px] text-white/40 truncate">
+                            {comparison.lowestModalRecord?.market || '—'}
+                          </div>
+                        </div>
+
+                        <div className="bg-black/40 border border-white/10 p-1.5 rounded-[6px]">
+                          <div className="text-[8.5px] text-white/50 uppercase">AVERAGE MODAL</div>
+                          <div className="text-xs sm:text-sm font-bold text-[#4ADE80]">
+                            {comparison.averageModalPrice > 0 ? `₹${comparison.averageModalPrice.toLocaleString('en-IN')}` : 'N/A'}
+                          </div>
+                          <div className="text-[8px] text-white/40">State Benchmark</div>
+                        </div>
+
+                        <div className="bg-black/40 border border-white/10 p-1.5 rounded-[6px]">
+                          <div className="text-[8.5px] text-white/50 uppercase">PEAK MODAL</div>
+                          <div className="text-xs sm:text-sm font-bold text-[#00E5FF]">
+                            {comparison.highestModalRecord ? `₹${comparison.highestModalRecord.modalPrice.toLocaleString('en-IN')}` : 'N/A'}
+                          </div>
+                          <div className="text-[8px] text-white/40 truncate">
+                            {comparison.highestModalRecord?.market || '—'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Modal Variance Spread Tag */}
+                      {comparison.modalPriceDifference > 0 && (
+                        <div className="p-2 bg-[#15803D]/20 border border-[#4ADE80]/30 rounded-[6px] flex items-center justify-between text-[10px]">
+                          <span className="text-white/80">Cross-Mandi Modal Price Spread:</span>
+                          <span className="font-bold text-[#4ADE80] font-mono">
+                            +₹{comparison.modalPriceDifference.toLocaleString('en-IN')} / quintal
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Stale Data Warning if records vary by date */}
+                      {comparison.hasStaleData && (
+                        <div className="p-1.5 bg-[#D97706]/20 border border-[#D97706]/40 rounded-[6px] text-amber-200 text-[9.5px] flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>Notice: Reporting dates differ across mandis ({comparison.reportingDateRange.min} to {comparison.reportingDateRange.max}). Stale auction prices may not reflect today's spot rate.</span>
+                        </div>
+                      )}
+
+                      {/* Comparative Mandi Table */}
+                      <div className="space-y-1 max-h-[30vh] overflow-y-auto pr-0.5">
+                        {comparison.records.map((r, idx) => {
+                          const diffFromFloor = comparison.lowestModalRecord
+                            ? r.modalPrice - comparison.lowestModalRecord.modalPrice
+                            : 0;
+                          return (
+                            <div
+                              key={`cmp-${r.id}-${idx}`}
+                              className="p-1.5 bg-black/30 border border-white/10 rounded-[4px] flex items-center justify-between text-[10px]"
+                            >
+                              <div>
+                                <span className="font-bold text-white">
+                                  #{idx + 1} {r.market}
+                                </span>{' '}
+                                <span className="text-[9px] text-white/50">({r.district})</span>
+                                <div className="text-[8.5px] text-white/40">
+                                  {r.variety} · {r.arrivalDate}
+                                  {r.straightLineDistanceKm ? ` · ${r.straightLineDistanceKm} km` : ''}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-bold text-[#4ADE80]">₹{r.modalPrice.toLocaleString('en-IN')}</span>
+                                {diffFromFloor > 0 && (
+                                  <div className="text-[8px] text-[#00E5FF]">
+                                    +₹{diffFromFloor} vs floor
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Non-Fabrication Cost Realization Disclaimer */}
+                      <div className="p-2 bg-black/40 border border-white/10 rounded-[6px] text-[8.5px] font-sans text-white/60 leading-tight space-y-1">
+                        <div className="font-bold text-amber-300 uppercase flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Net Farmgate Earnings Guidance</span>
+                        </div>
+                        <p>{isTa ? comparison.disclaimerTamil : comparison.disclaimer}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* TAB 3: Nearby Agricultural Services Directory */}
+                {marketSubTab === 'services' && (() => {
+                  let originLat: number | undefined;
+                  let originLng: number | undefined;
+
+                  if (selectedFarm?.boundary?.centroid) {
+                    [originLat, originLng] = selectedFarm.boundary.centroid;
+                  } else if (selectedFarm?.latitude && selectedFarm?.longitude) {
+                    originLat = selectedFarm.latitude;
+                    originLng = selectedFarm.longitude;
+                  } else {
+                    [originLat, originLng] = resolvedLocation.coordinates;
+                  }
+
+                  const nearby = originLat && originLng
+                    ? findNearbyServices(originLat, originLng, {
+                        serviceType: serviceFilterType !== 'all' ? serviceFilterType : undefined,
+                        maxRadiusKm: 150,
+                      })
+                    : [];
+
+                  return (
+                    <div className="space-y-2">
+                      {/* Service Filter Chips */}
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          { id: 'all', label: 'All Services' },
+                          { id: 'soil_testing_lab', label: '🧪 Soil Labs' },
+                          { id: 'kvk', label: '🌾 KVKs' },
+                          { id: 'extension_office', label: '🏢 Extension' },
+                        ].map((btn) => (
+                          <button
+                            key={btn.id}
+                            type="button"
+                            onClick={() => setServiceFilterType(btn.id as any)}
+                            className={`px-2 py-0.5 rounded text-[9.5px] font-mono transition-colors cursor-pointer ${
+                              serviceFilterType === btn.id
+                                ? 'bg-[#7C3AED] text-white font-bold border border-[#A855F7]'
+                                : 'bg-white/5 text-white/70 hover:text-white border border-white/10'
+                            }`}
+                          >
+                            {btn.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="text-[9.5px] text-white/50 flex items-center justify-between">
+                        <span>{nearby.length} VERIFIED FACILITIES WITHIN 150 KM</span>
+                        <span>Official Directories</span>
+                      </div>
+
+                      {/* Services List */}
+                      <div className="space-y-1.5 max-h-[42vh] overflow-y-auto pr-0.5">
+                        {nearby.map((svc) => (
+                          <div
+                            key={svc.id}
+                            className="p-2 bg-black/40 border border-white/10 rounded-[6px] space-y-1 hover:border-[#7C3AED]/50 transition-colors"
+                          >
+                            <div className="flex items-start justify-between gap-1">
+                              <div>
+                                <div className="font-bold text-white text-[10.5px]">
+                                  {svc.name}
+                                </div>
+                                <div className="text-[9px] text-[#A855F7]">
+                                  {svc.district} District · {svc.serviceType.replace(/_/g, ' ').toUpperCase()}
+                                </div>
+                              </div>
+                              <span className="text-[9px] font-bold text-[#70B77E] shrink-0 font-mono">
+                                📏 {svc.distanceKm} km
+                              </span>
+                            </div>
+
+                            <p className="text-[9px] text-white/70 leading-tight">
+                              {svc.address}
+                            </p>
+
+                            <div className="flex flex-wrap items-center justify-between text-[8.5px] text-white/60 pt-0.5 border-t border-white/10">
+                              <span>📞 {svc.contactPhone || 'Contact office'}</span>
+                              <span>🕒 {svc.operatingHours}</span>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-[8px] text-white/40 truncate max-w-[170px]">
+                                Source: {svc.sourceUrl.replace('https://', '')}
+                              </span>
+                              <a
+                                href={svc.directionsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9.5px] text-[#38BDF8] hover:underline font-bold flex items-center gap-0.5"
+                              >
+                                <span>🚗 Directions →</span>
+                              </a>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Footer Attribution */}
+                <p className="text-[8.5px] font-sans text-white/50 leading-tight pt-1 border-t border-white/10">
+                  Data Sources: AGMARKNET · Directorate of Marketing & Inspection (DMI) · ICAR-KVK Directory · Dept of Agriculture Govt of Tamil Nadu.
+                </p>
               </>
             )}
           </div>

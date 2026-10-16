@@ -23,8 +23,15 @@ import {
   Store,
   Layers,
   Sparkles,
-  BarChart3
+  BarChart3,
+  Navigation,
 } from 'lucide-react';
+import {
+  matchMarketCoordinates,
+  calculateHaversineDistanceKm,
+  generateGoogleMapsDirectionsUrl,
+} from '../../services/nearbyServicesDirectory';
+import { TN_DISTRICT_GEODATA } from '../../config/tamilNaduDistricts';
 
 interface DailyMarketPricesProps {
   activeDistrict?: string;
@@ -140,8 +147,32 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
       return 0;
     });
 
-    return list;
-  }, [response, searchMarket, searchVariety, sortBy]);
+    // Resolve origin coordinates from activeDistrict or selectedDistrict for distance calculation
+    const originDistrictKey = activeDistrict || (selectedDistrict !== 'all' ? selectedDistrict : undefined);
+    const originGeo = originDistrictKey && TN_DISTRICT_GEODATA[originDistrictKey]
+      ? { lat: TN_DISTRICT_GEODATA[originDistrictKey].lat, lng: TN_DISTRICT_GEODATA[originDistrictKey].lng }
+      : null;
+
+    const enrichedList = list.map((r) => {
+      const geo = matchMarketCoordinates(r.market, r.district, r.state);
+      let distanceKm: number | undefined;
+      let directionsUrl: string | undefined;
+
+      if (geo && originGeo) {
+        distanceKm = calculateHaversineDistanceKm(originGeo.lat, originGeo.lng, geo.latitude, geo.longitude);
+        directionsUrl = generateGoogleMapsDirectionsUrl(originGeo.lat, originGeo.lng, geo.latitude, geo.longitude, geo.marketName);
+      }
+
+      return {
+        ...r,
+        hasCoordinates: Boolean(geo),
+        distanceKm,
+        directionsUrl,
+      };
+    });
+
+    return enrichedList;
+  }, [response, searchMarket, searchVariety, sortBy, activeDistrict, selectedDistrict]);
 
   // Price Statistics for Comparison
   const priceStats = useMemo(() => {
@@ -397,11 +428,11 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             <AlertTriangle className="w-6 h-6 text-[#A94338] shrink-0 mt-0.5" />
             <div className="space-y-2">
               <h3 className="font-serif text-lg font-bold text-[#A94338]">
-                {response.error === 'MISSING_API_KEY'
+                {response.error === 'MISSING_API_KEY' || response.error === 'API_KEY_NOT_CONFIGURED'
                   ? isTa
                     ? 'OGD API விசை கட்டமைக்கப்படவில்லை (API Key Required)'
                     : 'AGMARKNET / data.gov.in API Key Required'
-                  : response.error === 'INVALID_API_KEY'
+                  : response.error === 'INVALID_API_KEY' || response.error === 'API_KEY_UNAUTHORIZED'
                   ? isTa
                     ? 'OGD API விசை அங்கீகரிக்கப்படவில்லை (Invalid API Key)'
                     : 'OGD API Key Not Authorized (HTTP 403)'
@@ -413,7 +444,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                 {response.message}
               </p>
 
-              {(response.error === 'MISSING_API_KEY' || response.error === 'INVALID_API_KEY') && (
+              {(response.isConfigError || response.error === 'MISSING_API_KEY' || response.error === 'INVALID_API_KEY' || response.error === 'API_KEY_NOT_CONFIGURED' || response.error === 'API_KEY_UNAUTHORIZED') && (
                 <div className="bg-[#FAF9F3] border border-[#D9DED3] p-4 text-xs font-mono space-y-2 rounded-xs">
                   <div className="font-bold text-[#183B2A]">
                     {isTa ? 'கட்டமைப்பு வழிகாட்டி:' : 'Administrator Setup Instructions:'}
@@ -566,6 +597,21 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                           <div className="text-[11px] font-mono text-[#718176] mt-0.5">
                             {r.district}, {r.state}
                           </div>
+                          {(r as any).distanceKm ? (
+                            <div className="text-[10px] text-[#1F6B4A] font-mono mt-1 flex items-center gap-1.5">
+                              <span>📏 {(r as any).distanceKm} km (Straight-line)</span>
+                              {(r as any).directionsUrl && (
+                                <a
+                                  href={(r as any).directionsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[#0284C7] hover:underline font-bold inline-flex items-center gap-0.5 ml-1"
+                                >
+                                  <span>🚗 Directions →</span>
+                                </a>
+                              )}
+                            </div>
+                          ) : null}
                         </td>
 
                         {/* Min Price */}
@@ -633,6 +679,21 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
                         <Building2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
                         <span className="font-bold text-[#102D24]">{r.market}</span> ({r.district})
                       </div>
+                      {(r as any).distanceKm ? (
+                        <div className="text-[10.5px] text-[#1F6B4A] font-mono mt-0.5 flex items-center gap-2">
+                          <span>📏 {(r as any).distanceKm} km (Straight-line)</span>
+                          {(r as any).directionsUrl && (
+                            <a
+                              href={(r as any).directionsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#0284C7] hover:underline font-bold"
+                            >
+                              🚗 Road Directions →
+                            </a>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="text-right">
                       <div className="bg-[#1F6B4A] text-white px-2.5 py-1 rounded-[6px] font-bold font-mono text-sm inline-block shadow-xs">
@@ -667,7 +728,20 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
         )}
 
         {/* Footer Attribution & Disclaimers */}
-        <div className="p-4 bg-[#FAF9F3] border-t border-[#DCE4D9] text-xs font-sans text-[#52665A] space-y-1">
+        <div className="p-4 bg-[#FAF9F3] border-t border-[#DCE4D9] text-xs font-sans text-[#52665A] space-y-3">
+          {/* Net Farmgate Earnings Realization Guidance */}
+          <div className="p-3 bg-white border border-[#DCE4D9] rounded-[8px] space-y-1 text-[11px] font-sans text-[#52665A]">
+            <div className="font-bold text-[#A96616] flex items-center gap-1.5 font-mono text-xs">
+              <AlertTriangle className="w-3.5 h-3.5 text-[#A96616] shrink-0" />
+              <span>{isTa ? 'விற்பனை விலை மற்றும் நிகர லாப வழிகாட்டுதல்' : 'Reported Price vs Net Farmgate Realization Disclaimer'}</span>
+            </div>
+            <p className="leading-relaxed">
+              {isTa
+                ? 'அறிவிக்கப்பட்ட மாதிரி விலை என்பது ஒழுங்குமுறை சந்தைகளில் நடைபெற்ற ஏலத்தின் சராசரி மொத்த விலையாகும். அதிக மாதிரி விலை நேரடியாக அதிக லாபத்தைக் குறிக்காது. போக்குவரத்து செலவு, இறக்கு கூலி, சாக்கு கட்டணம், சந்தைக் கட்டணம் (1-2%) மற்றும் ஈரப்பதம்/தரச் சோதனைகள் மூலம் கழிவுகள் ஏற்படும். தொலைதூர சந்தைகளுக்குச் செல்லும் முன் போக்குவரத்து செலவைக் கணக்கிடவும்.'
+                : 'Reported wholesale prices are actual auction transactions recorded by AGMARKNET / DMI. A higher reported modal price does not guarantee higher net farmer profit. Farmgate net earnings depend on transport freight, bag handling/unloading charges, weighing cess, APMC market fee (1-2%), and quality moisture/foreign matter grading deductions. Always evaluate logistics costs prior to transit.'}
+            </p>
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[11px]">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-[#1F6B4A]" />

@@ -793,3 +793,77 @@ export interface MarketPricesResponse {
   isConfigError?: boolean;
 }
 
+// ============================================================================
+// Phase 6: Market Intelligence & Nearby Agricultural Services Types
+// ============================================================================
+
+export type MarketType = 'regulated_market' | 'uzhavar_sandhai' | 'apmc_mandi' | 'cooperative_marketing_society';
+
+export interface RegulatedMarketGeocoding {
+  marketName: string;
+  state: string;
+  district: string;
+  latitude: number;
+  longitude: number;
+  committeeName?: string;
+  marketType: MarketType;
+  address?: string;
+  source: string;
+  verificationDate: string;
+}
+
+export type AgriServiceType =
+  | 'soil_testing_lab'
+  | 'kvk'
+  | 'extension_office'
+  | 'tnau_center'
+  | 'regulated_market';
+
+export interface AgriServiceEntity {
+  id: string;
+  name: string;
+  nameTamil?: string;
+  serviceType: AgriServiceType;
+  district: string;
+  state: string;
+  latitude: number;
+  longitude: number;
+  address: string;
+  addressTamil?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  operatingHours: string;
+  operatingHoursTamil?: string;
+  verificationDate: string;
+  sourceUrl: string;
+  verificationStatus: 'verified_public_record' | 'unverified';
+  servicesOffered: string[];
+}
+
+export interface MarketPriceWithDiscovery extends MandiPriceRecord {
+  latitude?: number;
+  longitude?: number;
+  hasVerifiedCoordinates: boolean;
+  marketType?: MarketType;
+  committeeName?: string;
+  straightLineDistanceKm?: number;
+  distanceOriginDescription?: string;
+  directionsUrl?: string;
+  isStale: boolean;
+  reportingAgeDays: number;
+}
+
+export interface MarketPriceComparisonSummary {
+  commodity: string;
+  variety: string;
+  reportingDateRange: { min: string; max: string };
+  records: MarketPriceWithDiscovery[];
+  highestModalRecord?: MarketPriceWithDiscovery;
+  lowestModalRecord?: MarketPriceWithDiscovery;
+  modalPriceDifference: number;
+  averageModalPrice: number;
+  hasStaleData: boolean;
+  disclaimer: string;
+  disclaimerTamil: string;
+}
+
