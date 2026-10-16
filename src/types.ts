@@ -151,6 +151,123 @@ export interface FarmBoundary {
   mappedAt?: string;
 }
 
+export type RegionalSoilClassification =
+  | 'red_sandy_loam'        // செம்மண் (Coimbatore, Karur, Dindigul, Tiruchirappalli)
+  | 'red_loam'
+  | 'black_cotton_clay'     // கரிசல் மண் / Vertisol (Thoothukudi, Tirunelveli, Virudhunagar)
+  | 'vertisol_black'
+  | 'cauvery_alluvial_clay' // வண்டல் மண் (Thanjavur, Tiruvarur, Nagapattinam, Mayiladuthurai)
+  | 'cauvery_delta_clay'
+  | 'coastal_saline_alluvium' // உவர் நிலம் (Coastal Cuddalore, Nagapattinam, Ramanathapuram)
+  | 'coastal_saline'
+  | 'laterite_clay_loam'    // சரளை மண் (Nilgiris, Kanyakumari, Pudukkottai)
+  | 'laterite'
+  | 'sandy_river_basin'     // மணல் கலந்த வண்டல் (Amaravathi / Cauvery floodplains)
+  | 'undetermined';
+
+export interface SoilGridsProperties {
+  depthCm: string; // e.g., '0-30cm'
+  phH2O: number; // e.g. 7.2
+  phTopsoil?: number;
+  organicCarbonGPerKg: number; // e.g. 8.5 g/kg = 0.85%
+  organicCarbonContentGPerKg?: number;
+  clayPercentage: number;
+  clayContentPercent?: number;
+  sandPercentage: number;
+  sandContentPercent?: number;
+  siltPercentage: number;
+  siltContentPercent?: number;
+  bulkDensityGPerCm3: number;
+  cationExchangeCapacityCmolPerKg: number;
+  modelConfidence: string; // e.g. 'ISRIC SoilGrids 250m Machine Learning Prediction'
+  attribution?: string;
+}
+
+export interface FarmSoilProfile {
+  regionalClassification: RegionalSoilClassification;
+  regionalSeriesName: string; // e.g. 'Irugur Series' or 'Adanur Series' (TNAU)
+  regionalSeriesNameTamil: string;
+  regionalDescription: string;
+  regionalDescriptionTamil: string;
+  source: 'TNAU & ICAR-NBSS&LUP Soil Resource Atlas' | 'SoilGrids ISRIC 250m' | 'Farmer Laboratory Assay';
+  soilGridsEstimate?: SoilGridsProperties;
+  drainageClass: 'well_drained' | 'moderately_drained' | 'imperfectly_drained' | 'poorly_drained';
+  isLaboratoryVerified: boolean;
+}
+
+export interface LaboratorySoilTest {
+  id?: string;
+  testId?: string;
+  sampleDate: string; // 'YYYY-MM-DD'
+  sampleId?: string;
+  testingLaboratory?: string; // e.g. 'TNAU Soil Testing Laboratory'
+  laboratoryName?: string;
+  soilHealthCardNumber?: string;
+  ph: number; // 0 - 14
+  electricalConductivityDsM?: number; // dS/m (Salinity index)
+  electricalConductivityDsm?: number;
+  organicCarbonPercent?: number; // Organic Carbon %
+  availableNitrogenKgPerHa?: number; // Available N in kg/ha
+  availablePhosphorusKgPerHa?: number; // Available P2O5 in kg/ha
+  availablePotassiumKgPerHa?: number; // Available K2O in kg/ha
+  zincPpm?: number;
+  ironPpm?: number;
+  boronPpm?: number;
+  sulphurPpm?: number;
+  phRating?: 'acidic' | 'normal' | 'alkaline' | 'sodic';
+  salinityRating?: 'non_saline' | 'slightly_saline' | 'moderately_saline' | 'highly_saline';
+  nitrogenRating?: 'low' | 'medium' | 'high';
+  phosphorusRating?: 'low' | 'medium' | 'high';
+  potassiumRating?: 'low' | 'medium' | 'high';
+  organicCarbonRating?: 'low' | 'medium' | 'high';
+  notes?: string;
+}
+
+export type IrrigationSourceType =
+  | 'open_well'           // துரவு / திறந்த கிணறு
+  | 'borewell'            // ஆழ்துளைக் கிணறு
+  | 'canal_sluice'        // கால்வாய் பாசனம் (Cauvery, Amaravathi, etc.)
+  | 'tank_eri'            // ஏரிப் பாசனம்
+  | 'farm_pond'           // பண்ணைக் குட்டை
+  | 'river_lift'          // ஆற்று நீரேற்று
+  | 'rainfed';            // மானாவாரி (மழை மட்டும்)
+
+export type IrrigationDistributionMethod =
+  | 'alternate_wetting_drying' // AWD (நெல் மாற்றுப் பாசனம்)
+  | 'drip'                    // சொட்டுநீர்ப் பாசனம்
+  | 'sprinkler'               // தெளிப்புநீர்ப் பாசனம்
+  | 'basin_flooding'          // பாத்திப் பாசனம்
+  | 'furrow'                  // சால் பாசனம்
+  | 'none';
+
+export interface FarmIrrigationInfrastructure {
+  sourceType: IrrigationSourceType;
+  sourceName?: string;
+  distributionMethod: IrrigationDistributionMethod;
+  waterQualityIndex?: 'sweet_potable' | 'normal_irrigation' | 'brackish' | 'saline_unsuitable';
+  waterAvailabilityStatus: 'year_round' | 'seasonal_monsoon' | 'critical_scarcity' | 'tank_dependent';
+  depthFeet?: number;
+}
+
+export interface WaterManagementGuidance {
+  recommendedAction: string;
+  recommendedActionTamil: string;
+  irrigationSchedule: string;
+  irrigationScheduleTamil: string;
+  recommendedFrequencyDays?: number;
+  recommendedWaterDepthMm?: number;
+  waterConservationPotentialPercent?: number;
+  cropType?: string;
+  cropStage?: string;
+  alternateWettingDryingAdvice?: string;
+  alternateWettingDryingAdviceTamil?: string;
+  salinitySoilAmendmentAdvice?: string;
+  salinitySoilAmendmentAdviceTamil?: string;
+  precipitationPauseAdvice?: string;
+  cautiousNotice: string;
+  cautiousNoticeTamil: string;
+}
+
 export interface FarmRecord {
   id?: string;
   farmName: string;
@@ -168,6 +285,10 @@ export interface FarmRecord {
   notes?: string;
   boundary?: FarmBoundary;
   satelliteReport?: SatelliteVegetationReport;
+  soilProfile?: FarmSoilProfile;
+  soilTests?: LaboratorySoilTest[];
+  irrigationInfrastructure?: FarmIrrigationInfrastructure;
+  waterGuidance?: WaterManagementGuidance;
   createdAt?: any;
   updatedAt?: any;
 }

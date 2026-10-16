@@ -402,6 +402,12 @@ export const FarmManagement: React.FC<FarmManagementProps> = ({ onScanFarm, onSe
                   setLandSizeArea(areaUnit === 'Cents' ? String(measuredCents.toFixed(1)) : String(measuredAcres.toFixed(2)));
                 }
               }}
+              onUpdateFarm={async (farmId, updates) => {
+                if (user) {
+                  await updateFarm(user.uid, farmId, updates);
+                  showSuccess(isTa ? 'பண்ணை விவரங்கள் புதுப்பிக்கப்பட்டன!' : 'Farm records updated successfully!');
+                }
+              }}
             />
 
             {/* Registered Farm Parcels Quick Selector below Map */}

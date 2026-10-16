@@ -10,6 +10,7 @@ import { evaluateFieldDifferential } from './src/services/differentialEngine';
 import { fetchMandiPrices } from './server/marketPriceService';
 import { getSatelliteCropHealth } from './server/satelliteVegetationService';
 import { fetchFarmWeatherIntelligence } from './server/weatherIntelligenceService';
+import { getFarmSoilIntelligence, rateSoilHealthParameters } from './server/soilIntelligenceService';
 
 dotenv.config();
 
@@ -772,6 +773,115 @@ app.get('/api/weather', async (req: Request, res: Response) => {
       success: false,
       error: 'WEATHER_SERVICE_ERROR',
       message: err.message || 'Failed to retrieve meteorological observation.',
+    });
+  }
+});
+
+// API Route: Farm Soil Intelligence & Evidence-Based Water Management
+app.get('/api/soil/intelligence', async (req: Request, res: Response) => {
+  try {
+    const { lat, lng, district, cropType, cropStage, forecastPrecipitation48hMm } = req.query;
+
+    let latitude = lat ? parseFloat(String(lat)) : NaN;
+    let longitude = lng ? parseFloat(String(lng)) : NaN;
+    const distName = typeof district === 'string' && district ? district : 'Karur';
+
+    if (isNaN(latitude) || isNaN(longitude)) {
+      const geo = getDistrictGeo(distName);
+      latitude = geo.latitude;
+      longitude = geo.longitude;
+    }
+
+    const report = await getFarmSoilIntelligence({
+      latitude,
+      longitude,
+      district: distName,
+      cropType: typeof cropType === 'string' ? cropType : undefined,
+      cropStage: typeof cropStage === 'string' ? cropStage : undefined,
+      forecastPrecipitation48hMm: forecastPrecipitation48hMm ? parseFloat(String(forecastPrecipitation48hMm)) : undefined,
+    });
+
+    return res.json({
+      success: true,
+      data: report,
+      report,
+    });
+  } catch (err: any) {
+    console.error('Error in GET /api/soil/intelligence:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'SOIL_SERVICE_ERROR',
+      message: err.message || 'Failed to retrieve soil intelligence.',
+    });
+  }
+});
+
+app.post('/api/soil/intelligence', async (req: Request, res: Response) => {
+  try {
+    const {
+      latitude,
+      longitude,
+      district = 'Karur',
+      cropType,
+      cropStage,
+      irrigationInfrastructure,
+      latestSoilTest,
+      forecastPrecipitation48hMm,
+    } = req.body;
+
+    let lat = typeof latitude === 'number' ? latitude : parseFloat(String(latitude));
+    let lng = typeof longitude === 'number' ? longitude : parseFloat(String(longitude));
+
+    if (isNaN(lat) || isNaN(lng)) {
+      const geo = getDistrictGeo(district);
+      lat = geo.latitude;
+      lng = geo.longitude;
+    }
+
+    const report = await getFarmSoilIntelligence({
+      latitude: lat,
+      longitude: lng,
+      district,
+      cropType,
+      cropStage,
+      irrigationInfrastructure,
+      latestSoilTest,
+      forecastPrecipitation48hMm,
+    });
+
+    return res.json({
+      success: true,
+      data: report,
+      report,
+    });
+  } catch (err: any) {
+    console.error('Error in POST /api/soil/intelligence:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'SOIL_SERVICE_ERROR',
+      message: err.message || 'Failed to evaluate farm soil intelligence.',
+    });
+  }
+});
+
+// API Route: GoI Soil Health Card Standard Laboratory Rating
+app.post('/api/soil/rate-test', async (req: Request, res: Response) => {
+  try {
+    const soilTest = req.body;
+    if (!soilTest) {
+      return res.status(400).json({ success: false, error: 'MISSING_TEST_RECORD' });
+    }
+    const rated = rateSoilHealthParameters(soilTest);
+    return res.json({
+      success: true,
+      data: rated,
+    });
+  } catch (err: any) {
+    console.error('Error in /api/soil/rate-test:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'SOIL_RATING_ERROR',
+      message: err.message || 'Failed to rate laboratory soil parameters.',
     });
   }
 });

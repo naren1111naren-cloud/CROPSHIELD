@@ -36,6 +36,19 @@ import {
   FarmWeatherReport,
   AgriculturalRiskReport,
 } from '../../services/weatherService';
+import {
+  fetchFarmSoilIntelligence,
+  rateLaboratorySoilTest,
+  SoilIntelligenceResponse,
+} from '../../services/soilIntelligenceService';
+import {
+  FarmSoilProfile,
+  LaboratorySoilTest,
+  WaterManagementGuidance,
+  FarmIrrigationInfrastructure,
+  IrrigationSourceType,
+  IrrigationDistributionMethod,
+} from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   Compass,
@@ -75,6 +88,14 @@ import {
   CloudLightning,
   Umbrella,
   AlertCircle,
+  FlaskConical,
+  Waves,
+  Plus,
+  FileSpreadsheet,
+  TestTube,
+  Beaker,
+  Save,
+  Pencil,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
@@ -87,6 +108,7 @@ interface FarmGISMapProps {
     measuredAcres: number,
     measuredCents: number
   ) => void;
+  onUpdateFarm?: (farmId: string, updates: Partial<FarmRecord>) => Promise<void>;
   farmerProfile?: FarmerProfile | null;
   initialDistrict?: string;
   initialState?: string;
@@ -110,6 +132,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   onSelectFarm,
   onScanFarm,
   onSaveBoundary,
+  onUpdateFarm,
   farmerProfile,
   initialDistrict,
   initialState = 'Tamil Nadu',
@@ -141,12 +164,42 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       ''
   );
 
-  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend vs Weather & Ag-Risk
-  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history' | 'weather'>('satellite');
+  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend vs Weather & Ag-Risk vs Soil & Water
+  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history' | 'weather' | 'soil'>('satellite');
   const [weatherSubLayer, setWeatherSubLayer] = useState<'conditions' | 'rainfall' | 'heat_risk' | 'waterlog_risk' | 'spray_window'>('conditions');
   const [weatherReport, setWeatherReport] = useState<FarmWeatherReport | null>(null);
   const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
   const [isWeatherDetailsOpen, setIsWeatherDetailsOpen] = useState<boolean>(true);
+
+  // Phase 4: Soil Intelligence & Farm Water Management State
+  const [soilSubLayer, setSoilSubLayer] = useState<'series' | 'soilgrids' | 'lab_test' | 'awd_water'>('series');
+  const [soilReport, setSoilReport] = useState<SoilIntelligenceResponse | null>(null);
+  const [soilLoading, setSoilLoading] = useState<boolean>(false);
+  const [isSoilDetailsOpen, setIsSoilDetailsOpen] = useState<boolean>(true);
+  const [isSoilTestModalOpen, setIsSoilTestModalOpen] = useState<boolean>(false);
+  const [isIrrigationModalOpen, setIsIrrigationModalOpen] = useState<boolean>(false);
+
+  // Soil Test Modal Form State
+  const [labNameInput, setLabNameInput] = useState<string>('Tamil Nadu Agricultural University (TNAU) Soil Testing Lab');
+  const [sampleDateInput, setSampleDateInput] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [sampleIdInput, setSampleIdInput] = useState<string>('SHC-TN-' + Math.floor(100000 + Math.random() * 900000));
+  const [phInput, setPhInput] = useState<string>('7.4');
+  const [ecInput, setEcInput] = useState<string>('0.45');
+  const [nitrogenInput, setNitrogenInput] = useState<string>('240');
+  const [phosphorusInput, setPhosphorusInput] = useState<string>('16');
+  const [potassiumInput, setPotassiumInput] = useState<string>('220');
+  const [ocInput, setOcInput] = useState<string>('0.62');
+  const [soilFormError, setSoilFormError] = useState<string | null>(null);
+  const [soilFormSubmitting, setSoilFormSubmitting] = useState<boolean>(false);
+
+  // Irrigation Infrastructure Modal Form State
+  const [irrigSourceInput, setIrrigSourceInput] = useState<IrrigationSourceType>('borewell');
+  const [irrigMethodInput, setIrrigMethodInput] = useState<IrrigationDistributionMethod>('flood_furrow');
+  const [irrigDepthInput, setIrrigDepthInput] = useState<string>('180');
+  const [irrigPumpHpInput, setIrrigPumpHpInput] = useState<string>('7.5');
+  const [irrigAvailInput, setIrrigAvailInput] = useState<'perennial' | 'seasonal' | 'critical_deficit'>('seasonal');
+  const [irrigFormSubmitting, setIrrigFormSubmitting] = useState<boolean>(false);
+
   const [vegetationReport, setVegetationReport] = useState<SatelliteVegetationReport | null>(null);
   const [vegetationLoading, setVegetationLoading] = useState<boolean>(false);
   const [selectedObsDate, setSelectedObsDate] = useState<string | null>(null);
@@ -213,6 +266,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const savedFarmsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
   const weatherOverlayLayerRef = useRef<L.LayerGroup | null>(null);
+  const soilOverlayLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Re-resolve location whenever selectedFarm or farmerProfile updates
   useEffect(() => {
@@ -439,6 +493,146 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     }
   }, [activeMapMode, weatherSubLayer, weatherReport, polygonCoords]);
 
+  // Fetch real farm soil intelligence and evidence-based water guidance
+  useEffect(() => {
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (selectedFarm?.boundary?.centroid) {
+      [lat, lng] = selectedFarm.boundary.centroid;
+    } else if (selectedFarm?.latitude && selectedFarm?.longitude) {
+      lat = selectedFarm.latitude;
+      lng = selectedFarm.longitude;
+    } else if (resolvedLocation.isExactField && resolvedLocation.coordinates) {
+      [lat, lng] = resolvedLocation.coordinates;
+    } else {
+      [lat, lng] = resolvedLocation.coordinates;
+    }
+
+    const dist = selectedFarm?.district || resolvedLocation.hierarchy.district || selectedDistrict || 'Karur';
+    const precip48h = weatherReport?.daily?.slice(0, 2).reduce((sum, d) => sum + (d.precipitationSum || 0), 0) || 0;
+
+    setSoilLoading(true);
+    fetchFarmSoilIntelligence({
+      farm: selectedFarm || undefined,
+      latitude: lat,
+      longitude: lng,
+      district: dist,
+      cropType: selectedFarm?.cropType,
+      cropStage: selectedFarm?.cropStage,
+      irrigationInfrastructure: selectedFarm?.irrigationInfrastructure,
+      latestSoilTest: selectedFarm?.soilTests && selectedFarm.soilTests.length > 0 ? selectedFarm.soilTests[selectedFarm.soilTests.length - 1] : undefined,
+      forecastPrecipitation48hMm: precip48h,
+    })
+      .then((rep) => {
+        if (rep) {
+          setSoilReport(rep);
+        }
+      })
+      .catch((err) => console.warn('[CropShield] Failed to fetch soil intelligence:', err))
+      .finally(() => setSoilLoading(false));
+  }, [selectedFarm, resolvedLocation, selectedDistrict, weatherReport]);
+
+  // Render Soil Intelligence & Irrigation Overlay onto Leaflet Map
+  useEffect(() => {
+    if (!mapInstanceRef.current || !soilOverlayLayerRef.current) return;
+    soilOverlayLayerRef.current.clearLayers();
+
+    if (activeMapMode !== 'soil' || !soilReport) return;
+
+    const centerLat = soilReport.latitude;
+    const centerLng = soilReport.longitude;
+    const soilProfile = soilReport.soilProfile;
+    const waterGuidance = soilReport.waterGuidance;
+    const irrigation = soilReport.irrigationInfrastructure;
+    const latestTest = soilReport.latestSoilTest;
+
+    // Soil classification polygon/circle colors
+    const soilColorMap: Record<string, string> = {
+      cauvery_delta_clay: '#0D9488',
+      vertisol_black: '#334155',
+      red_loam: '#D97706',
+      coastal_saline: '#EA580C',
+      laterite: '#B45309',
+      forest_loam: '#15803D',
+    };
+    const soilColor = soilColorMap[soilProfile.regionalClassification] || '#D97706';
+
+    // 1. Irrigation Source DivIcon Marker at farm centroid
+    const irrigEmoji =
+      irrigation?.sourceType === 'borewell' ? '💧' :
+      irrigation?.sourceType === 'canal_sluice' ? '🌊' :
+      irrigation?.sourceType === 'tank_eri' ? '🏞️' :
+      irrigation?.sourceType === 'open_well' ? '🪣' :
+      irrigation?.sourceType === 'rainfed' ? '🌧️' : '🚜';
+
+    const irrigLabel =
+      irrigation?.sourceType === 'borewell' ? `Borewell (${irrigation.depthFeet || 180}ft)` :
+      irrigation?.sourceType === 'canal_sluice' ? 'Cauvery Canal Sluice' :
+      irrigation?.sourceType === 'tank_eri' ? 'Village Eri / Tank' :
+      irrigation?.sourceType === 'open_well' ? 'Open Well' :
+      irrigation?.sourceType === 'rainfed' ? 'Monsoon Rainfed' : 'Farm Irrigation';
+
+    const soilMarkerHtml = `
+      <div class="soil-station-marker flex items-center gap-1.5 bg-[#0B241B]/95 text-white border border-[#F59E0B]/70 px-2.5 py-1 rounded-full shadow-2xl backdrop-blur-md font-mono text-[11px] whitespace-nowrap cursor-pointer">
+        <span class="text-xs font-bold text-[#F59E0B]">🌾 ${soilProfile.regionalClassification.replace('_', ' ').toUpperCase()}</span>
+        <span class="text-white/60">·</span>
+        <span class="text-[#38BDF8] font-sans text-[11px] font-semibold">${irrigEmoji} ${irrigLabel}</span>
+        <span class="text-white/60">·</span>
+        <span class="text-[#70B77E] text-[10px]">${latestTest ? '🧪 Lab SHC' : '🗺️ TNAU Atlas'}</span>
+      </div>
+    `;
+
+    const soilDivIcon = L.divIcon({
+      className: 'custom-soil-marker',
+      html: soilMarkerHtml,
+      iconAnchor: [70, 20],
+    });
+
+    const marker = L.marker([centerLat, centerLng], { icon: soilDivIcon }).addTo(soilOverlayLayerRef.current);
+    marker.bindPopup(`
+      <div style="font-family: monospace; font-size: 11px; color: #0B241B; min-width: 220px;">
+        <strong style="color: #1F6B4A; font-size: 13px;">${soilProfile.regionalSeriesName}</strong><br/>
+        <span style="color: #64766B;">${soilProfile.source}</span><br/>
+        <strong>Classification:</strong> ${soilProfile.regionalClassification.toUpperCase()}<br/>
+        <strong>Drainage Class:</strong> ${soilProfile.drainageClass.replace('_', ' ')}<br/>
+        <strong>Irrigation Source:</strong> ${irrigLabel}<br/>
+        <strong>Recommended Interval:</strong> Every ${waterGuidance.recommendedFrequencyDays} Days (${waterGuidance.recommendedWaterDepthMm} mm)<br/>
+        <div style="font-size: 9px; color: #777; margin-top: 4px;">TNAU Alternate Wetting & Drying (AWD) Protocol</div>
+      </div>
+    `);
+
+    // 2. Sub-layer parcel styling
+    if (polygonCoords.length >= 3) {
+      const poly = L.polygon(polygonCoords, {
+        color: soilColor,
+        weight: 3,
+        fillColor: soilColor,
+        fillOpacity: 0.35,
+        dashArray: soilSubLayer === 'awd_water' ? '5, 5' : undefined,
+      }).addTo(soilOverlayLayerRef.current);
+
+      if (soilSubLayer === 'series') {
+        poly.bindTooltip(`TNAU Series: ${soilProfile.regionalSeriesName}`, { permanent: false, direction: 'center' });
+      } else if (soilSubLayer === 'soilgrids') {
+        poly.bindTooltip(`SoilGrids 250m: pH ${soilProfile.soilGridsEstimate?.phTopsoil ?? '7.2'} · Clay ${soilProfile.soilGridsEstimate?.clayContentPercent ?? '32'}%`, { permanent: false, direction: 'center' });
+      } else if (soilSubLayer === 'lab_test') {
+        poly.bindTooltip(latestTest ? `Lab SHC: pH ${latestTest.ph} · EC ${latestTest.electricalConductivityDsm} dS/m` : 'Certified Laboratory Test Needed', { permanent: false, direction: 'center' });
+      } else {
+        poly.bindTooltip(`AWD Interval: Every ${waterGuidance.recommendedFrequencyDays} Days (${waterGuidance.recommendedWaterDepthMm} mm)`, { permanent: false, direction: 'center' });
+      }
+    } else {
+      const circle = L.circle([centerLat, centerLng], {
+        radius: 1000,
+        color: soilColor,
+        weight: 2,
+        fillColor: soilColor,
+        fillOpacity: 0.25,
+      }).addTo(soilOverlayLayerRef.current);
+      circle.bindTooltip(`${soilProfile.regionalSeriesName} (${soilReport.district})`, { permanent: false, direction: 'center' });
+    }
+  }, [activeMapMode, soilSubLayer, soilReport, polygonCoords]);
+
   // Sync available taluks & villages for selected lookup district
   useEffect(() => {
     const distData = TN_CADASTRAL_HIERARCHY[lookupDistrict];
@@ -643,6 +837,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
     vertexMarkersLayerRef.current = L.layerGroup().addTo(map);
     savedFarmsLayerGroupRef.current = L.layerGroup().addTo(map);
     weatherOverlayLayerRef.current = L.layerGroup().addTo(map);
+    soilOverlayLayerRef.current = L.layerGroup().addTo(map);
 
     applyTileLayer(map, 'hybrid');
 
@@ -650,6 +845,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
     return () => {
       weatherOverlayLayerRef.current?.clearLayers();
+      soilOverlayLayerRef.current?.clearLayers();
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -862,6 +1058,26 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         fillOpacity = 0.25;
         vertexBgColor = 'bg-[#22C55E] text-[#0B241B]';
       }
+    } else if (activeMapMode === 'soil') {
+      const cls = soilReport?.soilProfile.regionalClassification;
+      if (cls === 'cauvery_delta_clay') {
+        polyStrokeColor = '#0D9488';
+        polyFillColor = '#0D9488';
+        vertexBgColor = 'bg-[#0D9488] text-white';
+      } else if (cls === 'vertisol_black') {
+        polyStrokeColor = '#475569';
+        polyFillColor = '#475569';
+        vertexBgColor = 'bg-[#475569] text-white';
+      } else if (cls === 'coastal_saline') {
+        polyStrokeColor = '#EA580C';
+        polyFillColor = '#EA580C';
+        vertexBgColor = 'bg-[#EA580C] text-white';
+      } else {
+        polyStrokeColor = '#D97706';
+        polyFillColor = '#D97706';
+        vertexBgColor = 'bg-[#D97706] text-white';
+      }
+      fillOpacity = 0.35;
     } else if (boundaryStatus === 'official_source') {
       polyStrokeColor = '#F59E0B';
       polyFillColor = '#F59E0B';
@@ -1487,11 +1703,30 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             <span>{isTa ? 'வானிலை & இடர் பகுப்பாய்வு' : 'Weather & Ag-Risk'}</span>
             {weatherLoading && <span className="w-2 h-2 rounded-full bg-[#00E5FF] animate-ping" />}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('soil')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'soil'
+                ? 'bg-[#B45309] border border-[#F59E0B] text-white font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <FlaskConical className="w-3.5 h-3.5 text-[#F59E0B]" />
+            <span>{isTa ? 'மண் & நீர் மேலாண்மை' : 'Soil & Water'}</span>
+            {soilLoading && <span className="w-2 h-2 rounded-full bg-[#F59E0B] animate-ping" />}
+          </button>
         </div>
 
         {/* Observation Status / Quick Tag */}
         <div className="flex items-center gap-2">
-          {activeMapMode === 'weather' && weatherReport ? (
+          {activeMapMode === 'soil' && soilReport ? (
+            <span className="text-[11px] text-[#F59E0B] bg-[#F59E0B]/20 border border-[#F59E0B]/40 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+              <span>{soilReport.soilProfile.regionalSeriesName.split(' ')[0]} · {soilReport.soilProfile.isLaboratoryVerified ? '🧪 Lab SHC' : '🗺️ TNAU Atlas'}</span>
+            </span>
+          ) : activeMapMode === 'weather' && weatherReport ? (
             <span className="text-[11px] text-[#38BDF8] bg-[#0284C7]/20 border border-[#38BDF8]/40 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
               <span>{weatherReport.isFarmCoordinate ? 'Micro-Climate Farm Station' : 'District Centroid Forecast'} · {weatherReport.current.temperature}°C</span>
@@ -1557,6 +1792,84 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             </button>
           </div>
           <span className="text-white/40 text-[10px]">Open-Meteo High-Resolution NWP · CC BY 4.0</span>
+        </div>
+      )}
+
+      {/* Phase 4: Soil Sub-Layer Toggle Bar */}
+      {activeMapMode === 'soil' && (
+        <div className="bg-[#081813] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-white/50 uppercase text-[10px] font-bold">SOIL & WATER OVERLAYS:</span>
+            <button
+              type="button"
+              onClick={() => setSoilSubLayer('series')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                soilSubLayer === 'series' ? 'bg-[#D97706] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🌾 TNAU Soil Series
+            </button>
+            <button
+              type="button"
+              onClick={() => setSoilSubLayer('soilgrids')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                soilSubLayer === 'soilgrids' ? 'bg-[#0D9488] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🛰️ SoilGrids 250m ML
+            </button>
+            <button
+              type="button"
+              onClick={() => setSoilSubLayer('lab_test')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                soilSubLayer === 'lab_test' ? 'bg-[#7C3AED] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🧪 Lab SHC Records
+            </button>
+            <button
+              type="button"
+              onClick={() => setSoilSubLayer('awd_water')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                soilSubLayer === 'awd_water' ? 'bg-[#0284C7] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              💧 AWD & Irrigation Schedule
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSoilTestModalOpen(true)}
+              className="px-2.5 py-1 rounded-[6px] bg-[#16A34A] hover:bg-[#15803D] text-white font-bold transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+            >
+              <Plus className="w-3 h-3" />
+              <span>{isTa ? '+ ஆய்வக பதிவு' : '+ Record Lab Test'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedFarm?.irrigationInfrastructure) {
+                  setIrrigSourceInput(selectedFarm.irrigationInfrastructure.sourceType);
+                  setIrrigMethodInput(selectedFarm.irrigationInfrastructure.distributionMethod);
+                  if (selectedFarm.irrigationInfrastructure.depthFeet) {
+                    setIrrigDepthInput(String(selectedFarm.irrigationInfrastructure.depthFeet));
+                  }
+                  if (selectedFarm.irrigationInfrastructure.pumpHorsepower) {
+                    setIrrigPumpHpInput(String(selectedFarm.irrigationInfrastructure.pumpHorsepower));
+                  }
+                  if (selectedFarm.irrigationInfrastructure.waterAvailability) {
+                    setIrrigAvailInput(selectedFarm.irrigationInfrastructure.waterAvailability);
+                  }
+                }
+                setIsIrrigationModalOpen(true);
+              }}
+              className="px-2.5 py-1 rounded-[6px] bg-[#0284C7] hover:bg-[#0369A1] text-white font-bold transition-colors cursor-pointer flex items-center gap-1 text-[11px]"
+            >
+              <Waves className="w-3 h-3" />
+              <span>{isTa ? 'பாசன அமைப்பு' : 'Irrigation Setup'}</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -2158,6 +2471,308 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
         )}
 
+        {/* Phase 4: Floating Soil Intelligence & Farm Water Management Panel */}
+        {activeMapMode === 'soil' && soilReport && (
+          <div className="absolute top-4 right-4 z-20 max-w-[340px] sm:max-w-md w-full bg-[#0B241B]/95 backdrop-blur-md border border-[#F59E0B]/60 rounded-[12px] p-3 text-xs font-mono shadow-2xl text-white space-y-2.5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-1.5">
+                <FlaskConical className="w-4 h-4 text-[#F59E0B]" />
+                <span className="font-bold text-xs sm:text-sm text-white font-['Plus_Jakarta_Sans']">
+                  {isTa ? 'மண் & நீர் மேலாண்மை நுண்ணறிவு' : 'Soil & Water Intelligence'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSoilDetailsOpen(!isSoilDetailsOpen)}
+                className="text-white/60 hover:text-white p-0.5 cursor-pointer"
+                title={isSoilDetailsOpen ? 'Collapse panel' : 'Expand panel'}
+              >
+                {isSoilDetailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {isSoilDetailsOpen && (
+              <>
+                {/* Regional Soil Classification & Benchmark Series */}
+                <div className="p-2.5 bg-black/40 border border-white/10 rounded-[8px] space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#F59E0B] font-bold truncate max-w-[200px]">
+                      {soilReport.soilProfile.regionalSeriesName}
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#F59E0B]/20 text-[#F59E0B] font-bold uppercase">
+                      {soilReport.soilProfile.regionalClassification.replace('_', ' ')}
+                    </span>
+                  </div>
+                  {isTa && soilReport.soilProfile.regionalSeriesNameTamil && (
+                    <div className="text-[10px] text-amber-200 font-sans">
+                      {soilReport.soilProfile.regionalSeriesNameTamil}
+                    </div>
+                  )}
+                  <p className="font-sans text-[10px] text-white/80 leading-tight">
+                    {isTa && soilReport.soilProfile.regionalDescriptionTamil
+                      ? soilReport.soilProfile.regionalDescriptionTamil
+                      : soilReport.soilProfile.regionalDescription}
+                  </p>
+                  <div className="flex items-center justify-between text-[9px] text-white/50 pt-1 border-t border-white/10">
+                    <span>Drainage: <strong className="text-white/80 uppercase">{soilReport.soilProfile.drainageClass.replace('_', ' ')}</strong></span>
+                    <span>Source: <strong className="text-[#70B77E]">{soilReport.soilProfile.source}</strong></span>
+                  </div>
+                </div>
+
+                {/* ISRIC SoilGrids 250m Machine Learning Physical Predictions */}
+                <div className="p-2.5 bg-[#081813] border border-[#0D9488]/40 rounded-[8px] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] border-b border-white/10 pb-1">
+                    <span className="text-[#0D9488] font-bold flex items-center gap-1 uppercase">
+                      <span>🛰️ ISRIC SoilGrids 250m ML Estimate</span>
+                    </span>
+                    <span className="text-[8px] text-white/40">CC-BY 4.0 Global Model</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5 text-center font-mono text-[10px]">
+                    <div className="bg-black/40 border border-white/10 p-1 rounded-[4px]">
+                      <div className="text-[8px] text-white/40 uppercase">TOPSOIL pH</div>
+                      <div className="font-bold text-[#00E5FF] text-xs">
+                        {soilReport.soilProfile.soilGridsEstimate?.phTopsoil ?? '7.2'}
+                      </div>
+                      <div className="text-[7.5px] text-white/40">10⁻¹ pH</div>
+                    </div>
+                    <div className="bg-black/40 border border-white/10 p-1 rounded-[4px]">
+                      <div className="text-[8px] text-white/40 uppercase">CLAY FRACTION</div>
+                      <div className="font-bold text-[#70B77E] text-xs">
+                        {soilReport.soilProfile.soilGridsEstimate?.clayContentPercent ?? '32'}%
+                      </div>
+                      <div className="text-[7.5px] text-white/40">0-30cm</div>
+                    </div>
+                    <div className="bg-black/40 border border-white/10 p-1 rounded-[4px]">
+                      <div className="text-[8px] text-white/40 uppercase">SAND FRACTION</div>
+                      <div className="font-bold text-[#F59E0B] text-xs">
+                        {soilReport.soilProfile.soilGridsEstimate?.sandContentPercent ?? '44'}%
+                      </div>
+                      <div className="text-[7.5px] text-white/40">0-30cm</div>
+                    </div>
+                    <div className="bg-black/40 border border-white/10 p-1 rounded-[4px]">
+                      <div className="text-[8px] text-white/40 uppercase">SILT FRACTION</div>
+                      <div className="font-bold text-white text-xs">
+                        {soilReport.soilProfile.soilGridsEstimate?.siltContentPercent ?? '24'}%
+                      </div>
+                      <div className="text-[7.5px] text-white/40">0-30cm</div>
+                    </div>
+                    <div className="bg-black/40 border border-white/10 p-1 rounded-[4px]">
+                      <div className="text-[8px] text-white/40 uppercase">ORGANIC CARBON</div>
+                      <div className="font-bold text-[#A855F7] text-xs">
+                        {soilReport.soilProfile.soilGridsEstimate?.organicCarbonContentGPerKg ?? '8.2'} <span className="text-[8px]">g/kg</span>
+                      </div>
+                      <div className="text-[7.5px] text-white/40">dg/kg / 10</div>
+                    </div>
+                    <div className="bg-black/40 border border-white/10 p-1 rounded-[4px]">
+                      <div className="text-[8px] text-white/40 uppercase">CEC (POTENTIAL)</div>
+                      <div className="font-bold text-[#38BDF8] text-xs">
+                        {soilReport.soilProfile.soilGridsEstimate?.cationExchangeCapacityCmolPerKg ?? '22'} <span className="text-[8px]">cmol</span>
+                      </div>
+                      <div className="text-[7.5px] text-white/40">cmol(+)/kg</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Certified Physical Laboratory Soil Health Card (GoI Standards) */}
+                <div className="p-2.5 bg-black/40 border border-[#7C3AED]/40 rounded-[8px] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] border-b border-white/10 pb-1">
+                    <span className="text-[#A855F7] font-bold flex items-center gap-1 uppercase">
+                      <TestTube className="w-3.5 h-3.5 text-[#A855F7]" />
+                      <span>{isTa ? 'அரசு மண் நல அட்டை (ஆய்வக முடிவு)' : 'Physical Soil Health Card (Lab Record)'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsSoilTestModalOpen(true)}
+                      className="text-[9px] text-[#70B77E] hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Plus className="w-2.5 h-2.5" />
+                      <span>{soilReport.latestSoilTest ? 'Add Test' : 'Record'}</span>
+                    </button>
+                  </div>
+
+                  {soilReport.latestSoilTest ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between text-[9px] text-white/60">
+                        <span className="truncate max-w-[160px] text-white/80 font-bold">{soilReport.latestSoilTest.laboratoryName}</span>
+                        <span>Sample: {soilReport.latestSoilTest.sampleDate}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1 text-center font-mono text-[9px]">
+                        <div className="bg-white/5 border border-white/10 p-1 rounded-[4px]">
+                          <div className="text-[8px] text-white/40">pH</div>
+                          <div className="font-bold text-white text-[11px]">{soilReport.latestSoilTest.ph}</div>
+                          <div className="text-[8px] text-[#70B77E] uppercase">{soilReport.latestSoilTest.phRating || 'Normal'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-1 rounded-[4px]">
+                          <div className="text-[8px] text-white/40">EC (dS/m)</div>
+                          <div className="font-bold text-white text-[11px]">{soilReport.latestSoilTest.electricalConductivityDsm}</div>
+                          <div className="text-[8px] text-[#00E5FF] uppercase">{soilReport.latestSoilTest.salinityRating || 'Normal'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-1 rounded-[4px]">
+                          <div className="text-[8px] text-white/40">NITROGEN</div>
+                          <div className="font-bold text-white text-[11px]">{soilReport.latestSoilTest.availableNitrogenKgPerHa ?? '—'}</div>
+                          <div className="text-[8px] text-[#F59E0B] uppercase">{soilReport.latestSoilTest.nitrogenRating || '—'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-1 rounded-[4px]">
+                          <div className="text-[8px] text-white/40">PHOSPHORUS</div>
+                          <div className="font-bold text-white text-[11px]">{soilReport.latestSoilTest.availablePhosphorusKgPerHa ?? '—'}</div>
+                          <div className="text-[8px] text-[#A855F7] uppercase">{soilReport.latestSoilTest.phosphorusRating || '—'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-1 rounded-[4px]">
+                          <div className="text-[8px] text-white/40">POTASSIUM</div>
+                          <div className="font-bold text-white text-[11px]">{soilReport.latestSoilTest.availablePotassiumKgPerHa ?? '—'}</div>
+                          <div className="text-[8px] text-[#38BDF8] uppercase">{soilReport.latestSoilTest.potassiumRating || '—'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 p-1 rounded-[4px]">
+                          <div className="text-[8px] text-white/40">ORGANIC C %</div>
+                          <div className="font-bold text-white text-[11px]">{soilReport.latestSoilTest.organicCarbonPercent ?? '—'}</div>
+                          <div className="text-[8px] text-[#10B981] uppercase">{soilReport.latestSoilTest.organicCarbonRating || '—'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-[6px] space-y-1">
+                      <p className="text-[9.5px] font-sans text-amber-200 leading-tight">
+                        {isTa
+                          ? 'இந்த நிலத்திற்கு சான்றளிக்கப்பட்ட ஆய்வக மண் பரிசோதனை பதிவு செய்யப்படவில்லை. TNAU மண்டல மாதிரி பயன்படுத்தப்படுகிறது.'
+                          : 'No certified physical laboratory soil test on record for this parcel. Regional TNAU benchmark series active.'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setIsSoilTestModalOpen(true)}
+                        className="w-full py-1 bg-[#16A34A] hover:bg-[#15803D] text-white text-[10px] font-bold rounded-[4px] transition-colors cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>{isTa ? 'மண் பரிசோதனை முடிவை உள்ளிடுக' : '+ Enter Soil Health Card Test'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Farm Irrigation Infrastructure */}
+                <div className="p-2.5 bg-black/40 border border-[#0284C7]/40 rounded-[8px] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] border-b border-white/10 pb-1">
+                    <span className="text-[#38BDF8] font-bold flex items-center gap-1 uppercase">
+                      <Waves className="w-3.5 h-3.5 text-[#38BDF8]" />
+                      <span>{isTa ? 'பாசன உள்கட்டமைப்பு' : 'Irrigation Infrastructure'}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedFarm?.irrigationInfrastructure) {
+                          setIrrigSourceInput(selectedFarm.irrigationInfrastructure.sourceType);
+                          setIrrigMethodInput(selectedFarm.irrigationInfrastructure.distributionMethod);
+                          if (selectedFarm.irrigationInfrastructure.depthFeet) {
+                            setIrrigDepthInput(String(selectedFarm.irrigationInfrastructure.depthFeet));
+                          }
+                          if (selectedFarm.irrigationInfrastructure.pumpHorsepower) {
+                            setIrrigPumpHpInput(String(selectedFarm.irrigationInfrastructure.pumpHorsepower));
+                          }
+                          if (selectedFarm.irrigationInfrastructure.waterAvailability) {
+                            setIrrigAvailInput(selectedFarm.irrigationInfrastructure.waterAvailability);
+                          }
+                        }
+                        setIsIrrigationModalOpen(true);
+                      }}
+                      className="text-[9px] text-[#38BDF8] hover:underline flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Pencil className="w-2.5 h-2.5" />
+                      <span>Edit</span>
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between text-[10.5px]">
+                    <span className="text-white/80 font-bold flex items-center gap-1">
+                      <span>{soilReport.irrigationInfrastructure?.sourceType === 'borewell' ? '💧 Borewell' : soilReport.irrigationInfrastructure?.sourceType === 'canal_sluice' ? '🌊 Cauvery Canal Sluice' : soilReport.irrigationInfrastructure?.sourceType === 'tank_eri' ? '🏞️ Village Eri' : soilReport.irrigationInfrastructure?.sourceType === 'open_well' ? '🪣 Open Well' : '🌧️ Rainfed'}</span>
+                      {soilReport.irrigationInfrastructure?.depthFeet ? (
+                        <span className="text-white/50 text-[9px]">({soilReport.irrigationInfrastructure.depthFeet} ft)</span>
+                      ) : null}
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 text-white/70 uppercase">
+                      {soilReport.irrigationInfrastructure?.distributionMethod ? soilReport.irrigationInfrastructure.distributionMethod.replace('_', ' ') : 'Flood Furrow'}
+                    </span>
+                  </div>
+                  {soilReport.irrigationInfrastructure?.pumpHorsepower && (
+                    <div className="text-[9px] text-white/60">
+                      Pump Capacity: <strong className="text-white/80">{soilReport.irrigationInfrastructure.pumpHorsepower} HP</strong> · Reliability: <strong className="text-[#70B77E] uppercase">{soilReport.irrigationInfrastructure.waterAvailability || 'Seasonal'}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Evidence-Based Water Guidance & AWD Schedule */}
+                <div className="p-2.5 bg-[#217451]/20 border border-[#70B77E]/40 rounded-[8px] space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="text-[#70B77E] font-bold uppercase flex items-center gap-1">
+                      <Sprout className="w-3.5 h-3.5" />
+                      <span>TNAU AWD Water Guidance ({soilReport.waterGuidance.cropType})</span>
+                    </span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#70B77E]/30 text-[#70B77E] font-bold">
+                      ~{soilReport.waterGuidance.waterConservationPotentialPercent}% Savings
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-1.5 text-center font-mono text-[10px]">
+                    <div className="bg-black/30 border border-white/10 p-1.5 rounded-[4px]">
+                      <div className="text-[8px] text-white/50 uppercase">RECOMMENDED INTERVAL</div>
+                      <div className="text-sm font-bold text-[#00E5FF]">
+                        Every {soilReport.waterGuidance.recommendedFrequencyDays} Days
+                      </div>
+                    </div>
+                    <div className="bg-black/30 border border-white/10 p-1.5 rounded-[4px]">
+                      <div className="text-[8px] text-white/50 uppercase">TARGET WATER DEPTH</div>
+                      <div className="text-sm font-bold text-[#70B77E]">
+                        {soilReport.waterGuidance.recommendedWaterDepthMm} mm
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* AWD Protocol Advice */}
+                  <div className="p-1.5 bg-black/40 rounded-[4px] space-y-1">
+                    <div className="text-[9px] text-[#70B77E] font-bold uppercase">Alternate Wetting & Drying (AWD Pani Pipe)</div>
+                    <p className="font-sans text-[10px] text-white/90 leading-tight">
+                      {isTa && soilReport.waterGuidance.alternateWettingDryingAdviceTamil
+                        ? soilReport.waterGuidance.alternateWettingDryingAdviceTamil
+                        : soilReport.waterGuidance.alternateWettingDryingAdvice}
+                    </p>
+                  </div>
+
+                  {/* Rain Pause Advisory if applicable */}
+                  {soilReport.waterGuidance.precipitationPauseAdvice && (
+                    <div className="p-1.5 bg-[#0284C7]/20 border border-[#38BDF8]/40 rounded-[4px] space-y-0.5 text-sky-200">
+                      <div className="text-[9px] font-bold flex items-center gap-1">
+                        <CloudRain className="w-3 h-3 text-[#38BDF8]" />
+                        <span>Precipitation Pause Advisory</span>
+                      </div>
+                      <p className="font-sans text-[9.5px] leading-tight">
+                        {soilReport.waterGuidance.precipitationPauseAdvice}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Soil Amendment Advice if applicable */}
+                  {soilReport.waterGuidance.salinitySoilAmendmentAdvice && (
+                    <div className="p-1.5 bg-[#F59E0B]/20 border border-[#F59E0B]/40 rounded-[4px] space-y-0.5 text-amber-200">
+                      <div className="text-[9px] font-bold flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-[#F59E0B]" />
+                        <span>Soil Amendment Advisory</span>
+                      </div>
+                      <p className="font-sans text-[9.5px] leading-tight">
+                        {isTa && soilReport.waterGuidance.salinitySoilAmendmentAdviceTamil
+                          ? soilReport.waterGuidance.salinitySoilAmendmentAdviceTamil
+                          : soilReport.waterGuidance.salinitySoilAmendmentAdvice}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Caution & Attribution */}
+                <div className="space-y-1 pt-1 border-t border-white/10 text-[8.5px] font-sans text-white/50 leading-tight">
+                  <p>{isTa ? soilReport.waterGuidance.cautiousNoticeTamil : soilReport.waterGuidance.cautiousNotice}</p>
+                  <p className="text-white/40">{soilReport.sourceAttribution}</p>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Floating Historical Observation Timeline */}
         {activeMapMode === 'history' && (
           <div className="absolute bottom-16 right-4 left-4 sm:left-auto sm:max-w-xs z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#A855F7]/50 rounded-[12px] p-2.5 text-xs font-mono shadow-2xl text-white space-y-2">
@@ -2722,6 +3337,396 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 4: Record Laboratory Soil Test (Soil Health Card) Modal */}
+      {isSoilTestModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0B241B] border border-[#7C3AED]/50 rounded-[16px] max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto text-white">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <FlaskConical className="w-5 h-5 text-[#A855F7]" />
+                <h3 className="font-bold text-sm text-white font-mono uppercase tracking-wide">
+                  {isTa ? 'அரசு மண் நல அட்டை ஆய்வக பதிவு' : 'Record Laboratory Soil Test'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSoilTestModalOpen(false)}
+                className="p-1 rounded-[6px] hover:bg-white/10 text-white/70 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-[#7C3AED]/10 border border-[#7C3AED]/30 rounded-[8px] space-y-1 text-xs">
+              <span className="font-bold text-[#A855F7] uppercase text-[10px] block">GoI Soil Health Card Calibration Standard</span>
+              <p className="text-white/80 font-sans text-xs leading-relaxed">
+                Enter certified assay results from your Soil Health Card (SHC) or authorized agricultural testing laboratory. Values are verified against standard ICAR/GoI fertility thresholds.
+              </p>
+            </div>
+
+            {soilFormError && (
+              <div className="p-2 bg-red-500/20 border border-red-500/50 rounded-[6px] text-red-200 text-xs">
+                {soilFormError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setSoilFormError(null);
+                setSoilFormSubmitting(true);
+                try {
+                  const phVal = parseFloat(phInput);
+                  const ecVal = parseFloat(ecInput);
+                  if (isNaN(phVal) || phVal < 0 || phVal > 14) {
+                    throw new Error('Valid soil pH between 0.0 and 14.0 is required.');
+                  }
+                  if (isNaN(ecVal) || ecVal < 0) {
+                    throw new Error('Valid electrical conductivity (EC >= 0.0 dS/m) is required.');
+                  }
+
+                  const rawTest: LaboratorySoilTest = {
+                    testId: `lab_${Date.now()}`,
+                    sampleId: sampleIdInput.trim() || undefined,
+                    sampleDate: sampleDateInput,
+                    laboratoryName: labNameInput.trim() || 'TNAU Soil Testing Laboratory',
+                    ph: phVal,
+                    electricalConductivityDsm: ecVal,
+                    availableNitrogenKgPerHa: nitrogenInput ? parseFloat(nitrogenInput) : undefined,
+                    availablePhosphorusKgPerHa: phosphorusInput ? parseFloat(phosphorusInput) : undefined,
+                    availablePotassiumKgPerHa: potassiumInput ? parseFloat(potassiumInput) : undefined,
+                    organicCarbonPercent: ocInput ? parseFloat(ocInput) : undefined,
+                  };
+
+                  const ratedTest = await rateLaboratorySoilTest(rawTest);
+                  const updatedTests = selectedFarm?.soilTests ? [...selectedFarm.soilTests, ratedTest] : [ratedTest];
+
+                  if (selectedFarm?.id && onUpdateFarm) {
+                    await onUpdateFarm(selectedFarm.id, {
+                      soilTests: updatedTests,
+                    });
+                  }
+
+                  if (selectedFarm) {
+                    selectedFarm.soilTests = updatedTests;
+                  }
+
+                  if (soilReport) {
+                    setSoilReport({
+                      ...soilReport,
+                      latestSoilTest: ratedTest,
+                      soilProfile: {
+                        ...soilReport.soilProfile,
+                        isLaboratoryVerified: true,
+                        source: 'Farmer Laboratory Assay (Soil Health Card)',
+                      },
+                    });
+                  }
+
+                  setIsSoilTestModalOpen(false);
+                } catch (err: any) {
+                  setSoilFormError(err.message || 'Failed to record laboratory test.');
+                } finally {
+                  setSoilFormSubmitting(false);
+                }
+              }}
+              className="space-y-3 font-mono text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-white/70 text-[11px] uppercase mb-1">Testing Laboratory</label>
+                  <input
+                    type="text"
+                    value={labNameInput}
+                    onChange={(e) => setLabNameInput(e.target.value)}
+                    required
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 text-[11px] uppercase mb-1">Sample Date</label>
+                  <input
+                    type="date"
+                    value={sampleDateInput}
+                    onChange={(e) => setSampleDateInput(e.target.value)}
+                    required
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/70 text-[11px] uppercase mb-1">Sample ID / SHC Reference</label>
+                <input
+                  type="text"
+                  value={sampleIdInput}
+                  onChange={(e) => setSampleIdInput(e.target.value)}
+                  placeholder="e.g. SHC-TN-482019"
+                  className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <div>
+                  <label className="block text-white/70 text-[11px] uppercase mb-1">Soil pH (1:2.5)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="14"
+                    value={phInput}
+                    onChange={(e) => setPhInput(e.target.value)}
+                    required
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 text-[11px] uppercase mb-1">EC (dS/m at 25°C)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={ecInput}
+                    onChange={(e) => setEcInput(e.target.value)}
+                    required
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-white/70 text-[10px] uppercase mb-1">Available N (kg/ha)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={nitrogenInput}
+                    onChange={(e) => setNitrogenInput(e.target.value)}
+                    placeholder="240"
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 text-[10px] uppercase mb-1">Available P (kg/ha)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={phosphorusInput}
+                    onChange={(e) => setPhosphorusInput(e.target.value)}
+                    placeholder="16"
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 text-[10px] uppercase mb-1">Available K (kg/ha)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={potassiumInput}
+                    onChange={(e) => setPotassiumInput(e.target.value)}
+                    placeholder="220"
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/70 text-[11px] uppercase mb-1">Organic Carbon (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="10"
+                  value={ocInput}
+                  onChange={(e) => setOcInput(e.target.value)}
+                  placeholder="0.62"
+                  className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsSoilTestModalOpen(false)}
+                  className="px-3 py-1.5 rounded-[6px] bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={soilFormSubmitting}
+                  className="px-4 py-1.5 rounded-[6px] bg-[#16A34A] hover:bg-[#15803D] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{soilFormSubmitting ? 'Saving...' : 'Save Lab Record'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 4: Configure Irrigation Infrastructure Modal */}
+      {isIrrigationModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0B241B] border border-[#0284C7]/50 rounded-[16px] max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto text-white">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Waves className="w-5 h-5 text-[#38BDF8]" />
+                <h3 className="font-bold text-sm text-white font-mono uppercase tracking-wide">
+                  {isTa ? 'பாசன அமைப்பு விவரங்கள்' : 'Farm Irrigation Infrastructure'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsIrrigationModalOpen(false)}
+                className="p-1 rounded-[6px] hover:bg-white/10 text-white/70 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-white/80 font-sans text-xs leading-relaxed">
+              Define the physical water sources and distribution network for this parcel to activate evidence-based irrigation scheduling and AWD Pani Pipe protocols.
+            </p>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIrrigFormSubmitting(true);
+                try {
+                  const infra: FarmIrrigationInfrastructure = {
+                    sourceType: irrigSourceInput,
+                    distributionMethod: irrigMethodInput,
+                    depthFeet: irrigDepthInput ? parseFloat(irrigDepthInput) : undefined,
+                    pumpHorsepower: irrigPumpHpInput ? parseFloat(irrigPumpHpInput) : undefined,
+                    waterAvailability: irrigAvailInput,
+                    lastInspectedDate: new Date().toISOString().split('T')[0],
+                  };
+
+                  if (selectedFarm?.id && onUpdateFarm) {
+                    await onUpdateFarm(selectedFarm.id, {
+                      irrigationInfrastructure: infra,
+                    });
+                  }
+
+                  if (selectedFarm) {
+                    selectedFarm.irrigationInfrastructure = infra;
+                  }
+
+                  if (soilReport) {
+                    setSoilReport({
+                      ...soilReport,
+                      irrigationInfrastructure: infra,
+                    });
+                  }
+
+                  setIsIrrigationModalOpen(false);
+                } catch (err: any) {
+                  console.error('Failed to save irrigation infrastructure:', err);
+                } finally {
+                  setIrrigFormSubmitting(false);
+                }
+              }}
+              className="space-y-3 font-mono text-xs"
+            >
+              <div>
+                <label className="block text-white/70 text-[11px] uppercase mb-1">Primary Water Source</label>
+                <select
+                  value={irrigSourceInput}
+                  onChange={(e) => setIrrigSourceInput(e.target.value as IrrigationSourceType)}
+                  className="w-full bg-[#081813] border border-white/20 rounded-[6px] px-2.5 py-2 text-white focus:border-[#70B77E] outline-none"
+                >
+                  <option value="borewell">💧 Borewell (Submersible / Compressor)</option>
+                  <option value="canal_sluice">🌊 Canal / Sluice (Cauvery, Amaravathi, Bhavani)</option>
+                  <option value="tank_eri">🏞️ Tank / Traditional Tamil Nadu Eri</option>
+                  <option value="open_well">🪣 Open Irrigation Well (Kinaru)</option>
+                  <option value="farm_pond">💧 Farm Pond (Pannai Kuttai)</option>
+                  <option value="river_lift">🌊 River Lift Irrigation</option>
+                  <option value="rainfed">🌧️ Rainfed (Maanavari / Monsoon Dependent)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-white/70 text-[11px] uppercase mb-1">Distribution Method</label>
+                <select
+                  value={irrigMethodInput}
+                  onChange={(e) => setIrrigMethodInput(e.target.value as IrrigationDistributionMethod)}
+                  className="w-full bg-[#081813] border border-white/20 rounded-[6px] px-2.5 py-2 text-white focus:border-[#70B77E] outline-none"
+                >
+                  <option value="flood_furrow">🌊 Flood / Furrow Irrigation</option>
+                  <option value="basin">💧 Basin / Check Basin (Paddy Fields)</option>
+                  <option value="drip">🌱 Drip Irrigation (Micro-irrigation)</option>
+                  <option value="sprinkler">🌧️ Sprinkler System</option>
+                  <option value="rainfed">🌧️ Rainfed Non-Irrigated</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-white/70 text-[11px] uppercase mb-1">Depth (Feet)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={irrigDepthInput}
+                    onChange={(e) => setIrrigDepthInput(e.target.value)}
+                    placeholder="180"
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/70 text-[11px] uppercase mb-1">Pump Power (HP)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={irrigPumpHpInput}
+                    onChange={(e) => setIrrigPumpHpInput(e.target.value)}
+                    placeholder="7.5"
+                    className="w-full bg-black/40 border border-white/20 rounded-[6px] px-2.5 py-1.5 text-white focus:border-[#70B77E] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white/70 text-[11px] uppercase mb-1">Seasonal Water Reliability</label>
+                <select
+                  value={irrigAvailInput}
+                  onChange={(e) => setIrrigAvailInput(e.target.value as 'perennial' | 'seasonal' | 'critical_deficit')}
+                  className="w-full bg-[#081813] border border-white/20 rounded-[6px] px-2.5 py-2 text-white focus:border-[#70B77E] outline-none"
+                >
+                  <option value="perennial">Perennial (Year-round Reliable Yield)</option>
+                  <option value="seasonal">Seasonal (Monsoon Dependent / Kuruvai / Samba)</option>
+                  <option value="critical_deficit">Critical Deficit (Depleted Water Table / Tank Dry)</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsIrrigationModalOpen(false)}
+                  className="px-3 py-1.5 rounded-[6px] bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={irrigFormSubmitting}
+                  className="px-4 py-1.5 rounded-[6px] bg-[#0284C7] hover:bg-[#0369A1] disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{irrigFormSubmitting ? 'Saving...' : 'Update Infrastructure'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
