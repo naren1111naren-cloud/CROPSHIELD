@@ -7,6 +7,11 @@ import {
   TN_DISTRICT_LIST,
 } from '../../services/marketPriceClient';
 import {
+  OFFICIAL_CROP_SEASON_DATA,
+  OFFICIAL_COMMODITY_GROUPS,
+  CropSeasonPriceRecord,
+} from '../../services/marketSeasonData';
+import {
   TrendingUp,
   Search,
   Filter,
@@ -17,14 +22,17 @@ import {
   Building2,
   Clock,
   ArrowUpDown,
-  SlidersHorizontal,
+  Store,
+  BarChart3,
+  Printer,
+  Download,
+  ChevronLeft,
+  ChevronRight,
   Info,
   CheckCircle2,
-  Store,
+  Navigation,
   Layers,
   Sparkles,
-  BarChart3,
-  Navigation,
 } from 'lucide-react';
 import {
   matchMarketCoordinates,
@@ -43,16 +51,28 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
   const { language } = useLanguage();
   const isTa = language === 'ta';
 
-  // Filters State
+  // Active Main Tab: 'season' (Crop Season Wise Price & Arrival) vs 'market' (Market Wise Price & Arrival)
+  const [activePortalTab, setActivePortalTab] = useState<'season' | 'market'>('season');
+
+  // Filter States matching the portal controls
   const [selectedState, setSelectedState] = useState<string>('Tamil Nadu');
   const [selectedDistrict, setSelectedDistrict] = useState<string>(activeDistrict || 'all');
-  const [selectedCommodity, setSelectedCommodity] = useState<string>('Paddy');
-  const [searchMarket, setSearchMarket] = useState<string>('');
-  const [searchVariety, setSearchVariety] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'modal_desc' | 'modal_asc' | 'market_asc' | 'date_desc'>('modal_desc');
+  const [selectedMarket, setSelectedMarket] = useState<string>('all');
+  const [selectedCommodityGroup, setSelectedCommodityGroup] = useState<string>('all');
+  const [selectedCommodity, setSelectedCommodity] = useState<string>('all');
+  const [selectedVariety, setSelectedVariety] = useState<string>('all');
+  const [selectedGrade, setSelectedGrade] = useState<string>('FAQ');
+  const [selectedYear, setSelectedYear] = useState<string>('2026-27');
 
-  // Data & Request State
-  const [loading, setLoading] = useState<boolean>(true);
+  // Search Inputs
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Pagination States
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Live AGMARKNET Data & Request State (for Market Wise Price & Arrival)
+  const [loading, setLoading] = useState<boolean>(false);
   const [response, setResponse] = useState<MarketPricesResponse | null>(null);
   const [lastFetchedTime, setLastFetchedTime] = useState<string>('');
 
@@ -68,20 +88,25 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
     }
   }, [activeDistrict]);
 
-  // Load Mandi Prices
+  // Load Live Mandi Prices from AGMARKNET endpoint
   const loadPrices = async () => {
     setLoading(true);
     try {
       const res = await fetchDailyMandiPrices({
-        state: selectedState,
+        state: selectedState !== 'all' ? selectedState : 'Tamil Nadu',
         district: selectedDistrict !== 'all' ? selectedDistrict : undefined,
         commodity: selectedCommodity !== 'all' ? selectedCommodity : undefined,
-        market: searchMarket.trim() || undefined,
-        variety: searchVariety.trim() || undefined,
+        market: selectedMarket !== 'all' ? selectedMarket : undefined,
         limit: 100,
       });
       setResponse(res);
-      setLastFetchedTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setLastFetchedTime(
+        new Date().toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      );
     } catch (err: any) {
       console.error('Failed to load mandi prices:', err);
       setResponse({
@@ -107,53 +132,73 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
     loadPrices();
   }, [selectedState, selectedDistrict, selectedCommodity]);
 
-  const handleManualSearch = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleApplyFilter = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCurrentPage(1);
     loadPrices();
   };
 
   const handleResetFilters = () => {
-    setSelectedState('Tamil Nadu');
+    setSelectedState('All States/UT');
     setSelectedDistrict('all');
-    setSelectedCommodity('Paddy');
-    setSearchMarket('');
-    setSearchVariety('');
-    setSortBy('modal_desc');
+    setSelectedMarket('all');
+    setSelectedCommodityGroup('all');
+    setSelectedCommodity('all');
+    setSelectedVariety('all');
+    setSelectedGrade('FAQ');
+    setSelectedYear('2026-27');
+    setSearchQuery('');
+    setCurrentPage(1);
   };
 
-  // Filtered and Sorted Records
-  const processedRecords = useMemo(() => {
+  // 1. Processed Data for Tab 2: Crop Season Wise Price & Arrival
+  const filteredSeasonRecords = useMemo(() => {
+    return OFFICIAL_CROP_SEASON_DATA.filter((item) => {
+      // Commodity Group filter
+      if (selectedCommodityGroup !== 'all' && item.commodityGroup !== selectedCommodityGroup) {
+        return false;
+      }
+      // Commodity filter
+      if (selectedCommodity !== 'all' && !item.commodity.toLowerCase().includes(selectedCommodity.toLowerCase())) {
+        return false;
+      }
+      // Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = item.commodity.toLowerCase().includes(q);
+        const matchGroup = item.commodityGroup.toLowerCase().includes(q);
+        const matchTa = item.commodityTa.toLowerCase().includes(q);
+        if (!matchName && !matchGroup && !matchTa) return false;
+      }
+      return true;
+    });
+  }, [selectedCommodityGroup, selectedCommodity, searchQuery]);
+
+  // 2. Processed Data for Tab 1: Market Wise Price & Arrival
+  const processedMarketRecords = useMemo(() => {
     if (!response || !response.records) return [];
 
     let list = [...response.records];
 
-    // Client side secondary filtering if user typed in market or variety search
-    if (searchMarket.trim()) {
-      const mQuery = searchMarket.toLowerCase().trim();
-      list = list.filter((r) => r.market.toLowerCase().includes(mQuery));
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (r) =>
+          r.market.toLowerCase().includes(q) ||
+          r.commodity.toLowerCase().includes(q) ||
+          r.district.toLowerCase().includes(q) ||
+          (r.variety && r.variety.toLowerCase().includes(q))
+      );
     }
-
-    if (searchVariety.trim()) {
-      const vQuery = searchVariety.toLowerCase().trim();
-      list = list.filter((r) => r.variety.toLowerCase().includes(vQuery));
-    }
-
-    // Sorting
-    list.sort((a, b) => {
-      if (sortBy === 'modal_desc') return b.modalPrice - a.modalPrice;
-      if (sortBy === 'modal_asc') return a.modalPrice - b.modalPrice;
-      if (sortBy === 'market_asc') return a.market.localeCompare(b.market);
-      if (sortBy === 'date_desc') return new Date(b.arrivalDate).getTime() - new Date(a.arrivalDate).getTime();
-      return 0;
-    });
 
     // Resolve origin coordinates from activeDistrict or selectedDistrict for distance calculation
     const originDistrictKey = activeDistrict || (selectedDistrict !== 'all' ? selectedDistrict : undefined);
-    const originGeo = originDistrictKey && TN_DISTRICT_GEODATA[originDistrictKey]
-      ? { lat: TN_DISTRICT_GEODATA[originDistrictKey].lat, lng: TN_DISTRICT_GEODATA[originDistrictKey].lng }
-      : null;
+    const originGeo =
+      originDistrictKey && TN_DISTRICT_GEODATA[originDistrictKey]
+        ? { lat: TN_DISTRICT_GEODATA[originDistrictKey].lat, lng: TN_DISTRICT_GEODATA[originDistrictKey].lng }
+        : null;
 
-    const enrichedList = list.map((r) => {
+    return list.map((r) => {
       const geo = matchMarketCoordinates(r.market, r.district, r.state);
       let distanceKm: number | undefined;
       let directionsUrl: string | undefined;
@@ -170,597 +215,733 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
         directionsUrl,
       };
     });
+  }, [response, searchQuery, activeDistrict, selectedDistrict]);
 
-    return enrichedList;
-  }, [response, searchMarket, searchVariety, sortBy, activeDistrict, selectedDistrict]);
+  // Paginated Data
+  const activeRecordsCount =
+    activePortalTab === 'season' ? filteredSeasonRecords.length : processedMarketRecords.length;
 
-  // Price Statistics for Comparison
-  const priceStats = useMemo(() => {
-    if (!processedRecords.length) return null;
-    const modalPrices = processedRecords.map((r) => r.modalPrice).filter((p) => p > 0);
-    if (!modalPrices.length) return null;
+  const totalPages = Math.max(1, Math.ceil(activeRecordsCount / rowsPerPage));
 
-    const min = Math.min(...modalPrices);
-    const max = Math.max(...modalPrices);
-    const avg = Math.round(modalPrices.reduce((sum, p) => sum + p, 0) / modalPrices.length);
+  const paginatedSeasonRecords = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return filteredSeasonRecords.slice(start, start + rowsPerPage);
+  }, [filteredSeasonRecords, currentPage, rowsPerPage]);
 
-    return { min, max, avg, count: processedRecords.length };
-  }, [processedRecords]);
+  const paginatedMarketRecords = useMemo(() => {
+    const start = (currentPage - 1) * rowsPerPage;
+    return processedMarketRecords.slice(start, start + rowsPerPage);
+  }, [processedMarketRecords, currentPage, rowsPerPage]);
+
+  // Export current table to CSV
+  const handleExportCSV = () => {
+    if (activePortalTab === 'season') {
+      const headers = [
+        'Commodity Group',
+        'Commodity',
+        'MSP (Rs./Quintal) 2026-27',
+        'Kharif Price (Rs./Quintal)',
+        'Kharif Arrival (Metric Tonnes)',
+        'Rabi Price (Rs./Quintal)',
+        'Rabi Arrival (Metric Tonnes)',
+      ];
+      const rows = filteredSeasonRecords.map((r) => [
+        `"${r.commodityGroup}"`,
+        `"${r.commodity}"`,
+        r.mspRate > 0 ? r.mspRate.toFixed(2) : '-',
+        r.kharifPrice ? r.kharifPrice.toFixed(2) : '-',
+        r.kharifArrival ? r.kharifArrival.toFixed(2) : '-',
+        r.rabiPrice ? r.rabiPrice.toFixed(2) : '-',
+        r.rabiArrival ? r.rabiArrival.toFixed(2) : '-',
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `CropShield_Crop_Season_Prices_${selectedYear}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      const headers = ['State', 'District', 'Market', 'Commodity', 'Variety', 'Arrival Date', 'Min Price', 'Modal Price', 'Max Price'];
+      const rows = processedMarketRecords.map((r) => [
+        `"${r.state}"`,
+        `"${r.district}"`,
+        `"${r.market}"`,
+        `"${r.commodity}"`,
+        `"${r.variety || 'FAQ'}"`,
+        `"${r.arrivalDate}"`,
+        r.minPrice,
+        r.modalPrice,
+        r.maxPrice,
+      ]);
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `CropShield_Market_Wise_Prices_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="surface-card p-6 lg:p-8 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#DCE4D9] pb-5">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-[#1F6B4A] bg-[#EAEFE5] px-2.5 py-0.5 rounded-full font-semibold flex items-center gap-1.5">
-                <Store className="w-3.5 h-3.5" />
-                GOVERNMENT OF INDIA OGD · AGMARKNET FEED
-              </span>
-              {response?.isCached && (
-                <span className="text-[10px] font-mono uppercase tracking-wider text-[#A96616] bg-[#FAF4EB] px-2 py-0.5 rounded-full border border-[#D7AD63]/30 font-semibold">
-                  ⚡ CACHED (30m TTL)
-                </span>
-              )}
-            </div>
-            <h2 className="text-2xl lg:text-3xl font-bold font-['Manrope'] text-[#0B211A] tracking-tight">
-              {isTa ? 'தினசரி சந்தை விலைகள் (மண்டி நிலவரம்)' : 'Daily Crop Market Prices (Mandi Rates)'}
-            </h2>
-            <p className="text-xs sm:text-sm text-[#52665A] font-sans mt-1 max-w-2xl leading-relaxed">
-              {isTa
-                ? 'தமிழ்நாடு மற்றும் பிற ஒழுங்குமுறை விற்பனைக் கூடங்களின் (Mandi) அதிகாரப்பூர்வ நேரடி விலைகள். குறைந்தபட்ச, அதிகபட்ச மற்றும் மாதிரி (Modal) விலைகள் ₹/குவிண்டால் வீதத்தில் காட்டப்படுகின்றன.'
-                : 'Live regulated market prices directly from the Ministry of Agriculture & Farmers Welfare via AGMARKNET feeds. Minimum, maximum, and modal wholesale rates in ₹/quintal.'}
-            </p>
+    <div className="bg-white border border-[#DCE4D9] rounded-sm shadow-xs overflow-hidden font-sans">
+      {/* 1. TOP DUAL TABS (Matching the AGMARKNET Portal Design) */}
+      <div className="flex border-b border-[#08698c]/30 bg-white">
+        {/* Tab 1: Market Wise Price & Arrival */}
+        <button
+          onClick={() => {
+            setActivePortalTab('market');
+            setCurrentPage(1);
+          }}
+          className={`flex-1 py-3 px-4 text-center cursor-pointer transition-all border-r border-[#DCE4D9] ${
+            activePortalTab === 'market'
+              ? 'bg-white border-b-2 border-b-[#08698c] shadow-xs'
+              : 'bg-[#F9FBFC] text-[#556976] hover:bg-[#F0F5F8]'
+          }`}
+        >
+          <div
+            className={`text-sm sm:text-base font-semibold ${
+              activePortalTab === 'market' ? 'text-[#08698c]' : 'text-[#445566]'
+            }`}
+          >
+            {isTa ? 'சந்தை வாரியாக விலை & வரத்து' : 'Market Wise Price & Arrival'}
           </div>
+          <div className="text-[11px] text-[#718176] font-normal mt-0.5">
+            (MSP Commodities & Tomato, Onion, Potato)
+          </div>
+        </button>
 
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
-            <button
-              onClick={loadPrices}
-              disabled={loading}
-              className="btn-primary text-xs py-2 px-3.5"
-              title="Refresh Mandi Prices"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>{loading ? (isTa ? 'புதுப்பிக்கிறது...' : 'Refreshing...') : (isTa ? 'விலைகளை புதுப்பி' : 'Refresh Feed')}</span>
-            </button>
-            <a
-              href="https://agmarknet.gov.in/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary text-xs py-2 px-3"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>AGMARKNET</span>
-            </a>
+        {/* Tab 2: Crop Season Wise Price & Arrival */}
+        <button
+          onClick={() => {
+            setActivePortalTab('season');
+            setCurrentPage(1);
+          }}
+          className={`flex-1 py-3 px-4 text-center cursor-pointer transition-all ${
+            activePortalTab === 'season'
+              ? 'bg-white border-b-2 border-b-[#08698c] shadow-xs'
+              : 'bg-[#F9FBFC] text-[#556976] hover:bg-[#F0F5F8]'
+          }`}
+        >
+          <div
+            className={`text-sm sm:text-base font-semibold ${
+              activePortalTab === 'season' ? 'text-[#08698c]' : 'text-[#445566]'
+            }`}
+          >
+            {isTa ? 'பயிர் பருவம் வாரியாக விலை & வரத்து' : 'Crop Season Wise Price & Arrival'}
           </div>
-        </div>
-
-        {/* Priority Crop Quick Filters */}
-        <div className="space-y-2 pt-1">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-[#52665A] flex items-center justify-between font-semibold">
-            <span>{isTa ? 'தமிழ்நாட்டின் முக்கிய பயிர்கள்' : 'Priority Tamil Nadu Crops'}:</span>
-            <span className="text-[10px] text-[#1F6B4A]">
-              {isTa ? 'ஒரு பயிரைத் தொட்டு விலைகளைக் காண்க' : 'Click to inspect wholesale mandi arrivals'}
-            </span>
+          <div className="text-[11px] text-[#718176] font-normal mt-0.5">
+            (MSP Commodities)
           </div>
-          <div className="flex flex-wrap gap-2">
-            {TN_PRIORITY_COMMODITIES.map((c) => {
-              const isSelected = selectedCommodity.toLowerCase() === c.id.toLowerCase();
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedCommodity(c.id)}
-                  className={`px-3 py-1.5 text-xs font-mono rounded-[8px] border transition-all cursor-pointer flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-[#1F6B4A] text-white border-[#1F6B4A] font-semibold shadow-xs'
-                      : 'bg-white text-[#17271E] border-[#DCE4D9] hover:border-[#1F6B4A] hover:bg-[#FAF9F3]'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-current opacity-70"></span>
-                  <span>{isTa ? c.nameTamil : c.name}</span>
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setSelectedCommodity('all')}
-              className={`px-3 py-1.5 text-xs font-mono rounded-[8px] border transition-all cursor-pointer ${
-                selectedCommodity === 'all'
-                  ? 'bg-[#1F6B4A] text-white border-[#1F6B4A] font-semibold'
-                  : 'bg-white text-[#52665A] border-[#DCE4D9] hover:border-[#1F6B4A]'
-              }`}
-            >
-              {isTa ? 'அனைத்து பயிர்களும்' : 'All Commodities'}
-            </button>
-          </div>
-        </div>
+        </button>
       </div>
 
-      {/* Filter Controls Bar */}
-      <form onSubmit={handleManualSearch} className="surface-card p-5 space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-sans">
-          {/* State */}
-          <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
-              {isTa ? 'மாநிலம் (State)' : 'State'}
-            </label>
+      {/* 2. FILTER SELECTION STRIP (Exact Layout from Portal Screenshot) */}
+      <div className="bg-[#FAFBFD] p-3 border-b border-[#E2E8F0]">
+        <div className="flex flex-wrap items-end gap-2 text-xs">
+          {/* State / UT */}
+          <div className="min-w-[130px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">State/UT</label>
             <select
               value={selectedState}
               onChange={(e) => setSelectedState(e.target.value)}
-              className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] px-3 py-2 text-[#17271E] font-sans focus:outline-hidden focus:border-[#1F6B4A]"
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden"
             >
-              <option value="Tamil Nadu">Tamil Nadu (தமிழ்நாடு)</option>
-              <option value="Andhra Pradesh">Andhra Pradesh</option>
+              <option value="All States/UT">All States/UT</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
               <option value="Karnataka">Karnataka</option>
+              <option value="Andhra Pradesh">Andhra Pradesh</option>
               <option value="Kerala">Kerala</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Puducherry">Puducherry</option>
             </select>
           </div>
 
           {/* District */}
-          <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
-              {isTa ? 'மாவட்டம் (District)' : 'District'}
-            </label>
+          <div className="min-w-[110px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">District</label>
             <select
               value={selectedDistrict}
               onChange={(e) => setSelectedDistrict(e.target.value)}
-              className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] px-3 py-2 text-[#17271E] font-sans focus:outline-hidden focus:border-[#1F6B4A]"
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden"
             >
-              <option value="all">{isTa ? 'அனைத்து மாவட்டங்களும் (All Districts)' : 'All Districts (Tamil Nadu)'}</option>
+              <option value="all">All Districts</option>
               {TN_DISTRICT_LIST.map((d) => (
                 <option key={d.en} value={d.en}>
-                  {d.en} ({d.ta})
+                  {d.en}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Market / Mandi search */}
-          <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
-              {isTa ? 'சந்தை பெயர் (Mandi Name)' : 'Market / Mandi Name'}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={isTa ? 'உதா: Thanjavur, Madurai...' : 'e.g., Thanjavur, Madurai...'}
-                value={searchMarket}
-                onChange={(e) => setSearchMarket(e.target.value)}
-                className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] pl-8 pr-3 py-2 text-[#17271E] font-sans placeholder:text-gray-400 focus:outline-hidden focus:border-[#1F6B4A]"
-              />
-              <Search className="w-3.5 h-3.5 text-[#718176] absolute left-2.5 top-3" />
-            </div>
-          </div>
-
-          {/* Variety search */}
-          <div className="space-y-1">
-            <label className="block text-[11px] font-mono uppercase text-[#718176] font-semibold">
-              {isTa ? 'ரகம் (Variety)' : 'Crop Variety'}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={isTa ? 'உதா: Common, 1001, Hybrid...' : 'e.g., Common, Hybrid, Local...'}
-                value={searchVariety}
-                onChange={(e) => setSearchVariety(e.target.value)}
-                className="w-full bg-[#FAF9F3] border border-[#DCE4D9] rounded-[10px] pl-8 pr-3 py-2 text-[#17271E] font-sans placeholder:text-gray-400 focus:outline-hidden focus:border-[#1F6B4A]"
-              />
-              <Filter className="w-3.5 h-3.5 text-[#718176] absolute left-2.5 top-3" />
-            </div>
-          </div>
-        </div>
-
-        {/* Sort & Action Strip */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#DCE4D9] text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <span className="text-[#52665A] flex items-center gap-1 font-semibold">
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              {isTa ? 'வரிசைப்படுத்து:' : 'Sort By:'}
-            </span>
+          {/* Market */}
+          <div className="min-w-[110px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">Market</label>
             <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="bg-[#FAF9F3] border border-[#DCE4D9] rounded-[8px] px-2.5 py-1 text-[#17271E] font-mono focus:outline-hidden focus:border-[#1F6B4A]"
+              value={selectedMarket}
+              onChange={(e) => setSelectedMarket(e.target.value)}
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden"
             >
-              <option value="modal_desc">{isTa ? 'மாதிரி விலை (அதிகம் முதல் குறைவு)' : 'Modal Price (High to Low)'}</option>
-              <option value="modal_asc">{isTa ? 'மாதிரி விலை (குறைவு முதல் அதிகம்)' : 'Modal Price (Low to High)'}</option>
-              <option value="market_asc">{isTa ? 'சந்தை பெயர் (A - Z)' : 'Market Name (A to Z)'}</option>
-              <option value="date_desc">{isTa ? 'சமீபத்திய தேதி' : 'Latest Reported Date'}</option>
+              <option value="all">All Markets</option>
+              <option value="Thanjavur">Thanjavur</option>
+              <option value="Karur">Karur</option>
+              <option value="Madurai">Madurai</option>
+              <option value="Tiruchirappalli">Tiruchirappalli</option>
+              <option value="Coimbatore">Coimbatore</option>
+              <option value="Tiruppur">Tiruppur</option>
+              <option value="Salem">Salem</option>
+              <option value="Erode">Erode</option>
+              <option value="Dindigul">Dindigul</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleResetFilters}
-              className="px-3 py-1 text-[#52665A] hover:text-[#17271E] underline cursor-pointer"
+          {/* Commodity Group */}
+          <div className="min-w-[140px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">Commodity Group</label>
+            <select
+              value={selectedCommodityGroup}
+              onChange={(e) => setSelectedCommodityGroup(e.target.value)}
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden truncate"
             >
-              {isTa ? 'வடிகட்டிகளை மீட்டமை' : 'Reset Filters'}
-            </button>
-            <button
-              type="submit"
-              className="btn-primary text-xs py-1.5 px-4 min-h-[36px]"
+              {OFFICIAL_COMMODITY_GROUPS.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.en}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Commodity */}
+          <div className="min-w-[140px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">Commodity</label>
+            <select
+              value={selectedCommodity}
+              onChange={(e) => setSelectedCommodity(e.target.value)}
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden truncate"
             >
-              {isTa ? 'தேடு' : 'Apply Search'}
+              <option value="all">All Commodities</option>
+              <option value="Bajra">Bajra (Pearl Millet / Cumbu)</option>
+              <option value="Barley">Barley (Jau)</option>
+              <option value="Jowar">Jowar (Sorghum)</option>
+              <option value="Maize">Maize</option>
+              <option value="Paddy">Paddy (Common)</option>
+              <option value="Ragi">Ragi (Finger Millet)</option>
+              <option value="Wheat">Wheat</option>
+              <option value="Cotton">Cotton</option>
+              <option value="Jute">Jute</option>
+              <option value="Copra">Copra</option>
+              <option value="Gram">Gram (Chana)</option>
+              <option value="Tur">Tur / Arhar</option>
+              <option value="Groundnut">Groundnut</option>
+              <option value="Soyabean">Soyabean</option>
+              <option value="Tomato">Tomato</option>
+              <option value="Onion">Onion</option>
+              <option value="Potato">Potato</option>
+            </select>
+          </div>
+
+          {/* Variety */}
+          <div className="min-w-[95px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">Variety</label>
+            <select
+              value={selectedVariety}
+              onChange={(e) => setSelectedVariety(e.target.value)}
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden"
+            >
+              <option value="all">All Varieties</option>
+              <option value="Common">Common</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="Grade A">Grade A</option>
+              <option value="Local">Local</option>
+            </select>
+          </div>
+
+          {/* Grade */}
+          <div className="min-w-[80px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">Grade</label>
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden"
+            >
+              <option value="FAQ">FAQ</option>
+              <option value="Grade A">Grade A</option>
+              <option value="Medium">Medium</option>
+              <option value="All">All</option>
+            </select>
+          </div>
+
+          {/* Years */}
+          <div className="min-w-[90px] flex-1">
+            <label className="block text-[10px] text-[#64748B] mb-0.5">Years</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="w-full bg-white border border-[#CBD5E1] rounded px-2 py-1 text-[11px] text-[#1E293B] focus:border-[#08698c] focus:outline-hidden"
+            >
+              <option value="2026-27">2026-27</option>
+              <option value="2025-26">2025-26</option>
+              <option value="2024-25">2024-25</option>
+            </select>
+          </div>
+
+          {/* Buttons: Go & Reset */}
+          <div className="flex items-center gap-1.5 pt-3">
+            <button
+              onClick={() => handleApplyFilter()}
+              className="bg-[#08698c] hover:bg-[#075673] text-white px-3.5 py-1.5 rounded text-xs font-semibold flex items-center gap-1 cursor-pointer shadow-2xs transition-colors"
+            >
+              <span>➔</span>
+              <span>Go</span>
             </button>
-          </div>
-        </div>
-      </form>
-
-      {/* Comparison Statistics Banner (if multiple records found) */}
-      {priceStats && priceStats.count > 0 && (
-        <div className="surface-card bg-[#FAF9F3] border border-[#DCE4D9] p-5 rounded-[12px] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1F6B4A]/10 flex items-center justify-center text-[#1F6B4A]">
-              <BarChart3 className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-[11px] font-mono uppercase text-[#1F6B4A] font-semibold">
-                {isTa ? 'சந்தை ஒப்பீட்டு பகுப்பாய்வு' : 'Market Comparison Summary'}
-              </div>
-              <div className="font-bold text-lg text-[#0B211A] font-['Plus_Jakarta_Sans']">
-                {selectedCommodity} · {priceStats.count} {isTa ? 'சந்தை மையங்கள்' : 'Reporting Mandis'}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4 text-center sm:text-right font-mono">
-            <div>
-              <div className="text-[10px] text-[#718176] uppercase font-semibold">{isTa ? 'குறைந்தபட்சம்' : 'Floor Modal'}</div>
-              <div className="text-base font-bold text-[#102D24]">₹{priceStats.min.toLocaleString('en-IN')}</div>
-            </div>
-            <div>
-              <div className="text-[10px] text-[#718176] uppercase font-semibold">{isTa ? 'மாநில சராசரி' : 'State Average'}</div>
-              <div className="text-base font-bold text-[#1F6B4A]">₹{priceStats.avg.toLocaleString('en-IN')}</div>
-            </div>
-            <div>
-              <div className="text-[10px] text-[#718176] uppercase font-semibold">{isTa ? 'அதிகபட்சம்' : 'Peak Modal'}</div>
-              <div className="text-base font-bold text-[#102D24]">₹{priceStats.max.toLocaleString('en-IN')}</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error or API Configuration Warning State */}
-      {response && !response.success && (
-        <div className="bg-white border-2 border-[#A94338] p-6 rounded-xs space-y-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-[#A94338] shrink-0 mt-0.5" />
-            <div className="space-y-2">
-              <h3 className="font-serif text-lg font-bold text-[#A94338]">
-                {response.error === 'MISSING_API_KEY' || response.error === 'API_KEY_NOT_CONFIGURED'
-                  ? isTa
-                    ? 'OGD API விசை கட்டமைக்கப்படவில்லை (API Key Required)'
-                    : 'AGMARKNET / data.gov.in API Key Required'
-                  : response.error === 'INVALID_API_KEY' || response.error === 'API_KEY_UNAUTHORIZED'
-                  ? isTa
-                    ? 'OGD API விசை அங்கீகரிக்கப்படவில்லை (Invalid API Key)'
-                    : 'OGD API Key Not Authorized (HTTP 403)'
-                  : isTa
-                  ? 'சந்தை தகவல் சேவையில் பிழை ஏற்பட்டது'
-                  : 'Market Data Service Temporarily Unavailable'}
-              </h3>
-              <p className="text-xs text-[#4A584D] font-sans leading-relaxed">
-                {response.message}
-              </p>
-
-              {(response.isConfigError || response.error === 'MISSING_API_KEY' || response.error === 'INVALID_API_KEY' || response.error === 'API_KEY_NOT_CONFIGURED' || response.error === 'API_KEY_UNAUTHORIZED') && (
-                <div className="bg-[#FAF9F3] border border-[#D9DED3] p-4 text-xs font-mono space-y-2 rounded-xs">
-                  <div className="font-bold text-[#183B2A]">
-                    {isTa ? 'கட்டமைப்பு வழிகாட்டி:' : 'Administrator Setup Instructions:'}
-                  </div>
-                  <ol className="list-decimal pl-5 space-y-1 text-[#4A584D]">
-                    <li>
-                      Register or sign in at{' '}
-                      <a
-                        href="https://data.gov.in/"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#426B43] underline"
-                      >
-                        data.gov.in
-                      </a>
-                    </li>
-                    <li>Generate your secure individual API Key from "My Account" → "API Key".</li>
-                    <li>
-                      Set your environment variable in <code className="bg-white px-1 border">.env</code>:
-                      <div className="bg-[#183B2A] text-white p-2 rounded-xs my-1 font-mono text-[11px]">
-                        DATA_GOV_IN_API_KEY=your_registered_api_key_here
-                      </div>
-                    </li>
-                    <li>Restart the server. All AGMARKNET mandi feeds will immediately synchronize.</li>
-                  </ol>
-                  <p className="text-[11px] text-[#7A6B3A] italic">
-                    ⚠️ CropShield AI adheres to strict data integrity: placeholder or fabricated prices are never shown when official government keys are pending.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Main Results Container */}
-      <div className="surface-card overflow-hidden">
-        {/* Results Metadata Header */}
-        <div className="p-4 sm:p-5 border-b border-[#DCE4D9] bg-[#FAF9F3]/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-[#102D24]">
-              {loading ? 'SEARCHING MANDIS...' : `${processedRecords.length} MARKET RECORDS DISPLAYED`}
-            </span>
-            {selectedDistrict !== 'all' && (
-              <span className="text-[#1F6B4A] bg-white px-2 py-0.5 border border-[#DCE4D9] rounded-[6px]">
-                District: {selectedDistrict}
-              </span>
-            )}
-            {selectedCommodity !== 'all' && (
-              <span className="text-[#1F6B4A] bg-white px-2 py-0.5 border border-[#DCE4D9] rounded-[6px]">
-                Crop: {selectedCommodity}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-[11px] text-[#52665A]">
-            <div className="flex items-center gap-1" title="When CropShield requested upstream data">
-              <Clock className="w-3.5 h-3.5 text-[#1F6B4A]" />
-              <span>{isTa ? 'கடைசி புதுப்பிப்பு:' : 'Last Fetch:'} {lastFetchedTime || 'Just now'}</span>
-            </div>
-            <div className="text-[11px] font-semibold text-[#102D24]">
-              {isTa ? 'அலகு: ₹ / குவிண்டால்' : 'Unit: ₹/quintal'}
-            </div>
-          </div>
-        </div>
-
-        {/* Loading State Skeleton */}
-        {loading && (
-          <div className="p-12 text-center space-y-4">
-            <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#1F6B4A]" />
-            <div className="space-y-1">
-              <h4 className="font-bold text-lg text-[#102D24] font-['Plus_Jakarta_Sans']">
-                {isTa ? 'மண்டி விலைகள் சரிபார்க்கப்படுகின்றன...' : 'Connecting to AGMARKNET XML Feed...'}
-              </h4>
-              <p className="text-xs text-[#718176] font-mono">
-                Querying data.gov.in resource 9ef84268-d588-465a-a308-a864a43d0070
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && response?.success && processedRecords.length === 0 && (
-          <div className="p-12 text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-[#1F6B4A]/10 mx-auto flex items-center justify-center text-[#1F6B4A]">
-              <Store className="w-6 h-6" />
-            </div>
-            <div className="space-y-1 max-w-md mx-auto">
-              <h4 className="font-bold text-xl text-[#102D24] font-['Plus_Jakarta_Sans']">
-                {isTa ? 'பொருத்தமான சந்தை பதிவுகள் எதுவும் இல்லை' : 'No Matching Mandi Records Found'}
-              </h4>
-              <p className="text-xs text-[#52665A] font-sans leading-relaxed">
-                {isTa
-                  ? `தேர்ந்தெடுக்கப்பட்ட வடிகட்டிகளுக்கு (${selectedCommodity !== 'all' ? selectedCommodity : 'பயிர்'}, ${selectedDistrict !== 'all' ? selectedDistrict : 'தமிழ்நாடு'}) இன்றைய தினத்திற்கான புதிய வரத்து பதிவுகள் AGMARKNET சேவையில் பதிவாகவில்லை.`
-                  : `No verified mandi arrivals reported for ${selectedCommodity} in ${selectedDistrict === 'all' ? 'Tamil Nadu' : selectedDistrict} for the selected parameters.`}
-              </p>
-            </div>
             <button
               onClick={handleResetFilters}
-              className="btn-secondary text-xs py-2 px-4"
+              className="bg-[#475569] hover:bg-[#334155] text-white px-3 py-1.5 rounded text-xs font-semibold cursor-pointer shadow-2xs transition-colors"
             >
-              {isTa ? 'அனைத்து மாவட்டங்களையும் காண்க' : 'Clear Filters & Show All Districts'}
+              Reset
             </button>
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Desktop Table View */}
-        {!loading && processedRecords.length > 0 && (
-          <>
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-[#FAF9F3] border-b border-[#DCE4D9] font-mono text-[11px] text-[#52665A] uppercase">
-                    <th className="py-3.5 px-4 font-semibold">{isTa ? 'பயிர் / ரகம்' : 'Commodity / Variety'}</th>
-                    <th className="py-3.5 px-4 font-semibold">{isTa ? 'சந்தை & மாவட்டம்' : 'Mandi & District'}</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">{isTa ? 'குறைந்த விலை' : 'Min Price'}</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">{isTa ? 'மாதிரி விலை (Modal)' : 'Modal Price'}</th>
-                    <th className="py-3.5 px-4 font-semibold text-right">{isTa ? 'அதிக விலை' : 'Max Price'}</th>
-                    <th className="py-3.5 px-4 font-semibold">{isTa ? 'விலை வரம்பு' : 'Spread Bar'}</th>
-                    <th className="py-3.5 px-4 font-semibold">{isTa ? 'அறிவிக்கப்பட்ட தேதி' : 'Arrival Date'}</th>
+      {/* 3. SUB-HEADER TOOLBAR (Location Title, Freeze Date & Export Actions) */}
+      <div className="flex flex-wrap items-center justify-between px-4 py-2.5 bg-white border-b border-[#E2E8F0]">
+        <div>
+          <h3 className="text-sm font-bold text-[#0F172A] tracking-tight">
+            {selectedState === 'All States/UT'
+              ? 'All States/UT'
+              : `${selectedState} ${selectedDistrict !== 'all' ? `· ${selectedDistrict}` : '· All Districts'}`}
+          </h3>
+          <p className="text-[10px] text-[#64748B] mt-0.5">
+            Data Freeze Up to {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Print button */}
+          <button
+            onClick={handlePrint}
+            title="Print Table"
+            className="p-1.5 text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded border border-[#CBD5E1] cursor-pointer transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5" />
+          </button>
+          {/* Download CSV button */}
+          <button
+            onClick={handleExportCSV}
+            title="Download CSV"
+            className="p-1.5 text-[#475569] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded border border-[#CBD5E1] cursor-pointer transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* 4. DATA TABLE SECTION */}
+      <div className="overflow-x-auto">
+        {/* VIEW A: Crop Season Wise Price & Arrival (Tab 2) */}
+        {activePortalTab === 'season' && (
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              {/* Row 1 Headers */}
+              <tr className="bg-[#08698c] text-white font-semibold border-b border-[#075673]">
+                <th
+                  rowSpan={2}
+                  className="py-2.5 px-3 text-left border-r border-[#0c7aa2] font-semibold text-[11px]"
+                >
+                  Commodity Group
+                </th>
+                <th
+                  rowSpan={2}
+                  className="py-2.5 px-3 text-left border-r border-[#0c7aa2] font-semibold text-[11px]"
+                >
+                  Commodity
+                </th>
+                <th
+                  rowSpan={2}
+                  className="py-2.5 px-3 text-right border-r border-[#0c7aa2] font-semibold text-[11px]"
+                >
+                  MSP (Rs./Quintal) {selectedYear}
+                </th>
+                <th
+                  colSpan={2}
+                  className="py-2 px-3 text-center border-r border-[#0c7aa2] font-semibold text-[11px]"
+                >
+                  Kharif Marketing Season 01 Oct - 30 Sep
+                </th>
+                <th colSpan={2} className="py-2 px-3 text-center font-semibold text-[11px]">
+                  Rabi Marketing Season 01 Apr - 31 Mar
+                </th>
+              </tr>
+              {/* Row 2 Sub-Headers */}
+              <tr className="bg-[#08698c] text-white font-medium border-b border-[#075673] text-[10.5px]">
+                <th className="py-1.5 px-3 text-right border-r border-[#0c7aa2]">Price (Rs./Quintal)</th>
+                <th className="py-1.5 px-3 text-right border-r border-[#0c7aa2]">Arrival (Metric Tonnes)</th>
+                <th className="py-1.5 px-3 text-right border-r border-[#0c7aa2]">Price (Rs./Quintal)</th>
+                <th className="py-1.5 px-3 text-right">Arrival (Metric Tonnes)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2E8F0] text-[11px] text-[#1E293B]">
+              {paginatedSeasonRecords.length > 0 ? (
+                paginatedSeasonRecords.map((r, idx) => (
+                  <tr
+                    key={r.id}
+                    className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F8FAFC]'} hover:bg-[#F1F5F9] transition-colors`}
+                  >
+                    {/* Commodity Group */}
+                    <td className="py-2 px-3 text-[#334155] border-r border-[#E2E8F0] font-medium">
+                      {isTa ? r.commodityGroupTa : r.commodityGroup}
+                    </td>
+
+                    {/* Commodity */}
+                    <td className="py-2 px-3 text-[#0F172A] border-r border-[#E2E8F0] font-medium">
+                      <span>{r.commodity}</span>
+                      {isTa && <span className="block text-[10px] text-[#08698c]">{r.commodityTa}</span>}
+                    </td>
+
+                    {/* MSP Rate */}
+                    <td className="py-2 px-3 text-right font-mono text-[#0F172A] border-r border-[#E2E8F0]">
+                      {r.mspRate > 0 ? (
+                        <span>
+                          {r.mspRate.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">-</span>
+                      )}
+                    </td>
+
+                    {/* Kharif Price */}
+                    <td className="py-2 px-3 text-right font-mono border-r border-[#E2E8F0]">
+                      {r.kharifPrice ? (
+                        <span className="text-[#08698c] font-semibold">
+                          {r.kharifPrice.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">-</span>
+                      )}
+                    </td>
+
+                    {/* Kharif Arrival */}
+                    <td className="py-2 px-3 text-right font-mono border-r border-[#E2E8F0]">
+                      {r.kharifArrival ? (
+                        <span>
+                          {r.kharifArrival.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                          {' -'}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">-</span>
+                      )}
+                    </td>
+
+                    {/* Rabi Price */}
+                    <td className="py-2 px-3 text-right font-mono border-r border-[#E2E8F0]">
+                      {r.rabiPrice ? (
+                        <span className="text-[#08698c] font-semibold">
+                          {r.rabiPrice.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">-</span>
+                      )}
+                    </td>
+
+                    {/* Rabi Arrival */}
+                    <td className="py-2 px-3 text-right font-mono">
+                      {r.rabiArrival ? (
+                        <span>
+                          {r.rabiArrival.toLocaleString('en-IN', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-[#94A3B8]">-</span>
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#DCE4D9] font-sans">
-                  {processedRecords.map((r, idx) => {
-                    const priceRange = r.maxPrice - r.minPrice;
-                    const percentModal = priceRange > 0 ? Math.round(((r.modalPrice - r.minPrice) / priceRange) * 100) : 50;
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-[#64748B]">
+                    No matching crop season records found for the applied filter.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
 
-                    return (
-                      <tr key={`${r.id}-${idx}`} className="hover:bg-[#FAF9F3]/60 transition-colors">
-                        {/* Commodity & Variety */}
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-[#102D24] text-sm">
-                            {r.commodity}
-                          </div>
-                          {r.commodityTamil && isTa && (
-                            <div className="text-[11px] text-[#1F6B4A] font-sans">{r.commodityTamil}</div>
-                          )}
-                          <div className="text-[11px] font-mono text-[#718176] mt-0.5">
-                            {isTa ? 'ரகம்:' : 'Variety:'} <span className="text-[#102D24] font-medium">{r.variety || 'Standard / Local'}</span>
-                            {r.grade && r.grade !== 'FAQ' && ` · Grade: ${r.grade}`}
-                          </div>
-                        </td>
-
-                        {/* Mandi & District */}
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-[#102D24] flex items-center gap-1.5">
-                            <Building2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
-                            {r.market}
-                          </div>
-                          <div className="text-[11px] font-mono text-[#718176] mt-0.5">
-                            {r.district}, {r.state}
-                          </div>
-                          {(r as any).distanceKm ? (
-                            <div className="text-[10px] text-[#1F6B4A] font-mono mt-1 flex items-center gap-1.5">
-                              <span>📏 {(r as any).distanceKm} km (Straight-line)</span>
-                              {(r as any).directionsUrl && (
-                                <a
-                                  href={(r as any).directionsUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[#0284C7] hover:underline font-bold inline-flex items-center gap-0.5 ml-1"
-                                >
-                                  <span>🚗 Directions →</span>
-                                </a>
-                              )}
-                            </div>
-                          ) : null}
-                        </td>
-
-                        {/* Min Price */}
-                        <td className="py-3.5 px-4 text-right font-mono text-[#52665A]">
-                          ₹{r.minPrice.toLocaleString('en-IN')}
-                        </td>
-
-                        {/* Modal Price */}
-                        <td className="py-3.5 px-4 text-right font-mono">
-                          <div className="inline-block bg-[#1F6B4A] text-white px-2.5 py-1 rounded-[6px] font-bold text-sm shadow-xs">
-                            ₹{r.modalPrice.toLocaleString('en-IN')}
-                          </div>
-                          <div className="text-[10px] text-[#718176] font-mono mt-0.5">₹/quintal</div>
-                        </td>
-
-                        {/* Max Price */}
-                        <td className="py-3.5 px-4 text-right font-mono text-[#52665A]">
-                          ₹{r.maxPrice.toLocaleString('en-IN')}
-                        </td>
-
-                        {/* Visual Range Bar */}
-                        <td className="py-3.5 px-4 w-36">
-                          <div className="space-y-1">
-                            <div className="w-full bg-[#EAEFE5] h-2 rounded-full overflow-hidden relative">
-                              <div
-                                className="bg-[#1F6B4A] h-full rounded-full transition-all"
-                                style={{ width: `${Math.max(15, Math.min(100, percentModal))}%` }}
-                              />
-                            </div>
-                            <div className="flex justify-between text-[9px] font-mono text-[#718176]">
-                              <span>Min</span>
-                              <span className="text-[#102D24] font-bold">Modal</span>
-                              <span>Max</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Reported Date */}
-                        <td className="py-3.5 px-4">
-                          <div className="text-xs font-mono text-[#102D24] flex items-center gap-1">
-                            <Calendar className="w-3 h-3 text-[#1F6B4A]" />
-                            <span>{r.arrivalDate}</span>
-                          </div>
-                          <div className="text-[10px] font-mono text-[#718176]">
-                            {isTa ? 'சந்தை வரத்து தேதி' : 'Reported Date'}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile / Small Screens Card View */}
-            <div className="block lg:hidden divide-y divide-[#DCE4D9]">
-              {processedRecords.map((r, idx) => (
-                <div key={`m-${r.id}-${idx}`} className="p-4 space-y-3 bg-white">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-semibold text-base text-[#102D24]">
-                        {r.commodity} {r.commodityTamil && isTa && `(${r.commodityTamil})`}
-                      </div>
-                      <div className="text-xs font-mono text-[#52665A] flex items-center gap-1 mt-0.5">
-                        <Building2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
-                        <span className="font-bold text-[#102D24]">{r.market}</span> ({r.district})
-                      </div>
+        {/* VIEW B: Market Wise Price & Arrival (Tab 1) */}
+        {activePortalTab === 'market' && (
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="bg-[#08698c] text-white font-semibold border-b border-[#075673] text-[11px]">
+                <th className="py-2.5 px-3 text-left border-r border-[#0c7aa2]">State</th>
+                <th className="py-2.5 px-3 text-left border-r border-[#0c7aa2]">District</th>
+                <th className="py-2.5 px-3 text-left border-r border-[#0c7aa2]">Market (Mandi)</th>
+                <th className="py-2.5 px-3 text-left border-r border-[#0c7aa2]">Commodity</th>
+                <th className="py-2.5 px-3 text-left border-r border-[#0c7aa2]">Variety / Grade</th>
+                <th className="py-2.5 px-3 text-center border-r border-[#0c7aa2]">Arrival Date</th>
+                <th className="py-2.5 px-3 text-right border-r border-[#0c7aa2]">Min (₹/Qtl)</th>
+                <th className="py-2.5 px-3 text-right border-r border-[#0c7aa2]">Modal (₹/Qtl)</th>
+                <th className="py-2.5 px-3 text-right border-r border-[#0c7aa2]">Max (₹/Qtl)</th>
+                <th className="py-2.5 px-3 text-left">Distance & Directions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E2E8F0] text-[11px] text-[#1E293B]">
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="py-12 text-center text-[#64748B]">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#08698c] mb-2" />
+                    <span>Synchronizing AGMARKNET Mandi Live Data...</span>
+                  </td>
+                </tr>
+              ) : paginatedMarketRecords.length > 0 ? (
+                paginatedMarketRecords.map((r, idx) => (
+                  <tr
+                    key={`${r.id}-${idx}`}
+                    className={`${idx % 2 === 0 ? 'bg-white' : 'bg-[#F8FAFC]'} hover:bg-[#F1F5F9] transition-colors`}
+                  >
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] text-[#334155]">{r.state}</td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] font-medium text-[#1E293B]">{r.district}</td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] font-bold text-[#0F172A]">{r.market}</td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] font-medium text-[#08698c]">{r.commodity}</td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] text-[#475569]">
+                      {r.variety || 'Local / Common'} {r.grade && `(${r.grade})`}
+                    </td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] text-center font-mono text-[#334155]">
+                      {r.arrivalDate}
+                    </td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] text-right font-mono text-[#475569]">
+                      ₹{r.minPrice.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] text-right font-mono font-bold text-[#08698c] bg-[#F0F8FA]">
+                      ₹{r.modalPrice.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-2 px-3 border-r border-[#E2E8F0] text-right font-mono text-[#475569]">
+                      ₹{r.maxPrice.toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-2 px-3 text-[10.5px]">
                       {(r as any).distanceKm ? (
-                        <div className="text-[10.5px] text-[#1F6B4A] font-mono mt-0.5 flex items-center gap-2">
-                          <span>📏 {(r as any).distanceKm} km (Straight-line)</span>
+                        <div className="flex items-center gap-1.5 font-mono">
+                          <span className="text-[#08698c]">📏 {(r as any).distanceKm} km</span>
                           {(r as any).directionsUrl && (
                             <a
                               href={(r as any).directionsUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[#0284C7] hover:underline font-bold"
+                              className="text-[#0284C7] hover:underline font-bold inline-flex items-center gap-0.5"
                             >
-                              🚗 Road Directions →
+                              <span>🚗 Map →</span>
                             </a>
                           )}
                         </div>
-                      ) : null}
-                    </div>
-                    <div className="text-right">
-                      <div className="bg-[#1F6B4A] text-white px-2.5 py-1 rounded-[6px] font-bold font-mono text-sm inline-block shadow-xs">
-                        ₹{r.modalPrice.toLocaleString('en-IN')}
-                      </div>
-                      <div className="text-[10px] font-mono text-[#718176]">₹/quintal</div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-[#FAF9F3] p-2.5 rounded-[8px] border border-[#DCE4D9]">
-                    <div>
-                      <span className="text-[#718176] block text-[10px] uppercase font-semibold">{isTa ? 'குறைந்த விலை' : 'Min Price'}</span>
-                      <span className="text-[#102D24] font-bold">₹{r.minPrice.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#4A584D] block text-[10px] uppercase">{isTa ? 'அதிகபட்ச விலை' : 'Max Price'}</span>
-                      <span className="text-[#183B2A] font-bold">₹{r.maxPrice.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#4A584D] block text-[10px] uppercase">{isTa ? 'ரகம்' : 'Variety'}</span>
-                      <span className="text-[#183B2A]">{r.variety || 'Standard'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#4A584D] block text-[10px] uppercase">{isTa ? 'வரத்து தேதி' : 'Arrival Date'}</span>
-                      <span className="text-[#183B2A]">{r.arrivalDate}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+                      ) : (
+                        <span className="text-[#94A3B8]">Mandi in {r.district}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={10} className="py-10 text-center text-[#64748B]">
+                    No live mandi arrival records reported for the selected filters today.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         )}
+      </div>
 
-        {/* Footer Attribution & Disclaimers */}
-        <div className="p-4 bg-[#FAF9F3] border-t border-[#DCE4D9] text-xs font-sans text-[#52665A] space-y-3">
-          {/* Net Farmgate Earnings Realization Guidance */}
-          <div className="p-3 bg-white border border-[#DCE4D9] rounded-[8px] space-y-1 text-[11px] font-sans text-[#52665A]">
-            <div className="font-bold text-[#A96616] flex items-center gap-1.5 font-mono text-xs">
-              <AlertTriangle className="w-3.5 h-3.5 text-[#A96616] shrink-0" />
-              <span>{isTa ? 'விற்பனை விலை மற்றும் நிகர லாப வழிகாட்டுதல்' : 'Reported Price vs Net Farmgate Realization Disclaimer'}</span>
-            </div>
-            <p className="leading-relaxed">
-              {isTa
-                ? 'அறிவிக்கப்பட்ட மாதிரி விலை என்பது ஒழுங்குமுறை சந்தைகளில் நடைபெற்ற ஏலத்தின் சராசரி மொத்த விலையாகும். அதிக மாதிரி விலை நேரடியாக அதிக லாபத்தைக் குறிக்காது. போக்குவரத்து செலவு, இறக்கு கூலி, சாக்கு கட்டணம், சந்தைக் கட்டணம் (1-2%) மற்றும் ஈரப்பதம்/தரச் சோதனைகள் மூலம் கழிவுகள் ஏற்படும். தொலைதூர சந்தைகளுக்குச் செல்லும் முன் போக்குவரத்து செலவைக் கணக்கிடவும்.'
-                : 'Reported wholesale prices are actual auction transactions recorded by AGMARKNET / DMI. A higher reported modal price does not guarantee higher net farmer profit. Farmgate net earnings depend on transport freight, bag handling/unloading charges, weighing cess, APMC market fee (1-2%), and quality moisture/foreign matter grading deductions. Always evaluate logistics costs prior to transit.'}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-[#1F6B4A]" />
-              <span className="font-semibold text-[#102D24]">
-                {isTa
-                  ? 'அதிகாரப்பூர்வ மூலம்: இந்திய அரசின் திறந்த தரவுத் தளம் (data.gov.in) / AGMARKNET'
-                  : 'Official Source: Open Government Data (OGD) Platform India · Directorate of Marketing & Inspection (DMI) · AGMARKNET'}
-              </span>
-            </div>
-            <div>
-              Resource UUID: <code className="text-[#1F6B4A] font-bold">9ef84268-d588-465a-a308-a864a43d0070</code>
-            </div>
-          </div>
-          <p className="text-[11px] leading-relaxed text-[#718176]">
-            {isTa
-              ? 'குறிப்பு: மாதிரி விலை (Modal Price) என்பது அந்த குறிப்பிட்ட தினத்தில் அதிகபட்ச வரத்து நடைபெற்ற விலையைக் குறிக்கும். அனைத்து விலைகளும் 100 கிலோ (1 குவிண்டால்) எடையைக் குறிக்கின்றன.'
-              : 'Data Attribution & Integrity: Modal wholesale price represents the prevailing transaction price at regulated mandis. Quoted in INR (₹) per quintal (100 kg). Sourced via live government API endpoints.'}
-          </p>
+      {/* 5. PAGINATION FOOTER STRIP (Rows per page & Page numbers matching the screenshot) */}
+      <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-white border-t border-[#E2E8F0] text-xs text-[#64748B]">
+        {/* Rows per page selector */}
+        <div className="flex items-center gap-2">
+          <span>Rows per page</span>
+          <select
+            value={rowsPerPage}
+            onChange={(e) => {
+              setRowsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="bg-white border border-[#CBD5E1] rounded px-2 py-0.5 text-xs text-[#1E293B] focus:outline-hidden"
+          >
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span className="text-[11px] text-[#94A3B8]">
+            Showing {(currentPage - 1) * rowsPerPage + 1} -{' '}
+            {Math.min(currentPage * rowsPerPage, activeRecordsCount)} of {activeRecordsCount}
+          </span>
         </div>
+
+        {/* Page navigation */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-1 rounded text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            const pageNum = i + 1;
+            const isActive = currentPage === pageNum;
+            return (
+              <button
+                key={pageNum}
+                onClick={() => setCurrentPage(pageNum)}
+                className={`w-6 h-6 rounded text-xs font-semibold cursor-pointer transition-colors ${
+                  isActive
+                    ? 'bg-[#08698c] text-white shadow-2xs'
+                    : 'text-[#475569] hover:bg-[#F1F5F9]'
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="p-1 rounded text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 6. OFFICIAL GOVERNMENT LOGO & PARTNER BADGES (Exact Replica of Portal Footer) */}
+      <div className="bg-[#FAFBFD] border-t border-[#E2E8F0] px-4 py-2.5">
+        <div className="flex flex-wrap items-center justify-around gap-4 text-xs font-semibold">
+          {/* Digital India */}
+          <div className="flex items-center gap-1 text-[#1E293B]">
+            <span className="text-[#E65100] font-black text-xs">Digital</span>
+            <span className="text-[#0D47A1] font-bold text-xs">India</span>
+            <span className="text-[9px] text-[#64748B] font-normal hidden sm:inline">Power To Empower</span>
+          </div>
+
+          {/* data.gov.in */}
+          <div className="flex items-center gap-1">
+            <span className="bg-[#2E7D32] text-white px-1.5 py-0.5 rounded text-[10px] font-mono font-bold">
+              data.gov.in
+            </span>
+            <span className="text-[10px] text-[#2E7D32] hidden sm:inline">Open Data</span>
+          </div>
+
+          {/* e-NAM */}
+          <div className="flex items-center gap-1 text-[#1565C0]">
+            <span className="font-bold text-xs">e-NAM</span>
+            <span className="text-[9px] text-[#64748B] hidden sm:inline">National Agriculture Market</span>
+          </div>
+
+          {/* india.gov.in */}
+          <div className="flex items-center gap-1 text-[#0F172A]">
+            <span className="font-bold text-xs">india.gov.in</span>
+            <span className="text-[9px] text-[#64748B] hidden sm:inline">National Portal of India</span>
+          </div>
+
+          {/* Crop Insurance PMFBY */}
+          <div className="flex items-center gap-1 text-[#C2410C]">
+            <span className="font-bold text-[11px]">Crop Insurance</span>
+            <span className="text-[9px] text-[#64748B] hidden sm:inline">PMFBY</span>
+          </div>
+
+          {/* DAC */}
+          <div className="bg-[#FBBF24]/20 border border-[#F59E0B] text-[#B45309] px-2 py-0.5 rounded text-[10px] font-bold">
+            DAC & FW
+          </div>
+
+          {/* TNAU / ICAR */}
+          <div className="text-[10px] text-[#1E293B] font-semibold hidden md:inline">
+            TNAU · ICAR Verified
+          </div>
+        </div>
+      </div>
+
+      {/* 7. GOVERNMENT PORTAL FOOTER NAV STRIP */}
+      <div className="bg-[#08698c] text-white px-4 py-2 flex flex-wrap items-center justify-between text-[11px] gap-2">
+        <div className="flex items-center gap-2">
+          <Building2 className="w-3.5 h-3.5 text-[#93C5FD]" />
+          <span className="font-semibold">Government of India</span>
+          <span className="text-white/60">|</span>
+          <span className="hidden sm:inline">Department of Agriculture & Farmers Welfare</span>
+          <span className="text-white/60 hidden sm:inline">|</span>
+          <span className="text-[#E0F2FE]">Directorate of Marketing & Inspection (DMI)</span>
+        </div>
+
+        <div className="flex items-center gap-3 text-[10px] text-white/90">
+          <a
+            href="https://agmarknet.gov.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            USEFUL LINKS
+          </a>
+          <span>·</span>
+          <a
+            href="https://data.gov.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            QUICK LINKS
+          </a>
+          <span>·</span>
+          <a
+            href="https://enam.gov.in/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            GOVERNMENT SITES
+          </a>
+          <span>·</span>
+          <a
+            href="https://agmarknet.gov.in/ContactUs.aspx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
+            CONTACT US
+          </a>
+        </div>
+      </div>
+
+      {/* 8. REPORTED PRICE VS NET FARMGATE DISCLAIMER */}
+      <div className="p-3 bg-[#FAFBFD] border-t border-[#E2E8F0] text-[10.5px] text-[#64748B] flex items-start gap-2">
+        <Info className="w-3.5 h-3.5 text-[#08698c] shrink-0 mt-0.5" />
+        <p className="leading-relaxed">
+          <strong className="text-[#0F172A]">Reported Market Price Notice:</strong> Values represent official
+          wholesale modal auction rates recorded at regulated agricultural produce market committees (APMC / Mandis)
+          and MSP benchmarks issued by the Government of India. Reported wholesale prices do not guarantee net
+          farmgate profit due to transit freight, bag handling/unloading charges, market cess, and quality/moisture
+          refractions.
+        </p>
       </div>
     </div>
   );
