@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
-import { useAuth } from '../../context/AuthContext';
 import { Home, Camera, TrendingUp, Layers } from 'lucide-react';
+import { motion } from 'motion/react';
 
 export type MainDestination = 'home' | 'diagnose' | 'market-weather' | 'my-farm';
 
@@ -65,15 +65,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
           if (item.isPrimary) {
             return (
-              <button
+              <motion.button
                 key={item.id}
+                whileTap={{ scale: 0.9 }}
+                whileHover={{ scale: 1.05 }}
                 onClick={() => onNavigate(item.id)}
                 className="flex flex-col items-center justify-center -mt-3.5 group cursor-pointer focus-visible:outline-hidden min-h-[48px]"
                 aria-label={isTa ? item.labelTa : item.labelEn}
                 aria-current={isActive ? 'page' : undefined}
               >
                 <div
-                  className={`w-13 h-13 rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(31,107,74,0.3)] transition-transform active:scale-95 border-2 ${
+                  className={`w-13 h-13 rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(31,107,74,0.3)] border-2 transition-colors ${
                     isActive
                       ? 'bg-[#1F6B4A] text-white border-white'
                       : 'bg-[#1F6B4A] text-[#F5F7F1] border-[#EAEFE5]'
@@ -88,15 +90,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 >
                   {isTa ? item.labelTa : item.labelEn}
                 </span>
-              </button>
+              </motion.button>
             );
           }
 
           return (
-            <button
+            <motion.button
               key={item.id}
+              whileTap={{ scale: 0.92 }}
               onClick={() => onNavigate(item.id)}
-              className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-2 py-1 transition-colors cursor-pointer rounded-[8px] ${
+              className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] px-2 py-1 transition-colors cursor-pointer rounded-[8px] relative ${
                 isActive
                   ? 'text-[#1F6B4A]'
                   : 'text-[#718176] hover:text-[#17271E]'
@@ -112,7 +115,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
               >
                 {isTa ? item.labelTa : item.labelEn}
               </span>
-            </button>
+              {isActive && (
+                <motion.div
+                  layoutId="activeMobileIndicator"
+                  className="absolute bottom-0 w-3 h-0.5 bg-[#1F6B4A] rounded-full"
+                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                />
+              )}
+            </motion.button>
           );
         })}
       </div>

@@ -1,12 +1,27 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { FileText, UserCheck, BellRing, ArrowRight } from 'lucide-react';
+import { motion } from 'motion/react';
+import {
+  sectionVariants,
+  staggerContainer,
+  itemVariants,
+  buttonHoverTap,
+  cardHoverTap,
+  defaultViewport,
+} from '../../lib/motion';
 
 export const SectionNetwork: React.FC<{ onOpenAlerts: () => void }> = ({ onOpenAlerts }) => {
   const { language, t } = useLanguage();
 
   return (
-    <section className="py-20 border-b border-[#DCE4D9] bg-[#F5F3E9]">
+    <motion.section
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+      className="py-20 border-b border-[#DCE4D9] bg-[#F5F3E9] overflow-hidden"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="max-w-2xl mb-14">
@@ -22,9 +37,19 @@ export const SectionNetwork: React.FC<{ onOpenAlerts: () => void }> = ({ onOpenA
         </div>
 
         {/* 3-Tier Verification Architecture */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={defaultViewport}
+          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
+        >
           {/* Stage 1 */}
-          <div className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 relative flex flex-col justify-between shadow-sm">
+          <motion.div
+            variants={itemVariants}
+            {...cardHoverTap}
+            className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 relative flex flex-col justify-between shadow-sm"
+          >
             <div>
               <div className="text-[11px] font-mono text-[#52665A] mb-3 font-semibold">
                 TIER 1 · IN-FIELD LOGGING
@@ -44,10 +69,14 @@ export const SectionNetwork: React.FC<{ onOpenAlerts: () => void }> = ({ onOpenA
             <div className="mt-6 pt-4 border-t border-[#DCE4D9] text-xs font-mono text-[#718176]">
               FAST MOBILE SUBMISSION
             </div>
-          </div>
+          </motion.div>
 
           {/* Stage 2 */}
-          <div className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 relative flex flex-col justify-between shadow-sm">
+          <motion.div
+            variants={itemVariants}
+            {...cardHoverTap}
+            className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 relative flex flex-col justify-between shadow-sm"
+          >
             <div>
               <div className="text-[11px] font-mono text-[#52665A] mb-3 font-semibold">
                 TIER 2 · EXPERT SCRUTINY
@@ -67,10 +96,14 @@ export const SectionNetwork: React.FC<{ onOpenAlerts: () => void }> = ({ onOpenA
             <div className="mt-6 pt-4 border-t border-[#DCE4D9] text-xs font-mono text-[#718176]">
               OFFICER CONFIRMATION
             </div>
-          </div>
+          </motion.div>
 
           {/* Stage 3 */}
-          <div className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 relative flex flex-col justify-between shadow-sm">
+          <motion.div
+            variants={itemVariants}
+            {...cardHoverTap}
+            className="bg-white border border-[#DCE4D9] rounded-[16px] p-6 relative flex flex-col justify-between shadow-sm"
+          >
             <div>
               <div className="text-[11px] font-mono text-[#52665A] mb-3 font-semibold">
                 TIER 3 · REGIONAL CONTAINMENT
@@ -90,26 +123,31 @@ export const SectionNetwork: React.FC<{ onOpenAlerts: () => void }> = ({ onOpenA
             <div className="mt-6 pt-4 border-t border-[#DCE4D9] text-xs font-mono text-[#718176]">
               CONTAINMENT BULLETINS
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* Incident Summary Bar */}
-        <div className="p-5 sm:p-6 bg-white border border-[#DCE4D9] rounded-[14px] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <motion.div
+          whileHover={{ y: -2 }}
+          transition={{ duration: 0.2 }}
+          className="p-5 sm:p-6 bg-white border border-[#DCE4D9] rounded-[14px] flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
+        >
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 bg-[#1F6B4A] rounded-full shrink-0 animate-pulse"></div>
             <div className="text-xs sm:text-sm font-mono text-[#102D24]">
               <span className="font-semibold text-[#1F6B4A]">DELTA REGISTRY:</span> 5 Verified Incidents logged for Samba Season
             </div>
           </div>
-          <button
+          <motion.button
+            {...buttonHoverTap}
             onClick={onOpenAlerts}
-            className="btn-secondary px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-mono flex items-center justify-center gap-2 self-start sm:self-auto"
+            className="btn-secondary px-5 py-2.5 min-h-[44px] rounded-[10px] text-xs font-mono flex items-center justify-center gap-2 self-start sm:self-auto cursor-pointer shadow-2xs"
           >
             <span>{language === 'ta' ? 'அனைத்து எச்சரிக்கைகளையும் காண்க' : 'View Verified Registry'}</span>
             <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 };

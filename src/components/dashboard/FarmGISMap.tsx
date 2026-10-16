@@ -2,6 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as turf from '@turf/turf';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  mapPanelSlideRight,
+  mapPanelSlideBottom,
+  mapBadgeVariants,
+  buttonHoverTap,
+  forestEase,
+} from '../../lib/motion';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 import {
   FarmRecord,
   FarmBoundary,
@@ -2593,50 +2602,66 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         )}
 
         {/* Floating Drawing Status & Instruction Pill */}
-        {isDrawing && (
-          <div className="absolute top-4 left-4 z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#00E5FF]/40 text-[#F5F4EA] px-3.5 py-2 rounded-[10px] text-xs font-mono shadow-lg flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00E5FF] animate-pulse" />
-            <span>
-              {polygonCoords.length === 0
-                ? isTa
-                  ? 'வரைபடத்தில் கிளிக் செய்து முதல் புள்ளியை வைக்கவும்'
-                  : 'Click anywhere on satellite map to place 1st boundary corner'
-                : isTa
-                ? `${polygonCoords.length} புள்ளிகள் வைக்கப்பட்டன. முடிக்க முதல் புள்ளியை கிளிக் செய்யவும்.`
-                : `${polygonCoords.length} vertices placed. Click 1st corner to close boundary.`}
-            </span>
-          </div>
-        )}
+        <AnimatePresence>
+          {isDrawing && (
+            <motion.div
+              initial={{ opacity: 0, y: -12, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.96 }}
+              transition={{ duration: 0.25, ease: forestEase }}
+              className="absolute top-4 left-4 z-20 bg-[#0B241B]/95 backdrop-blur-md border border-[#00E5FF]/40 text-[#F5F4EA] px-3.5 py-2 rounded-[10px] text-xs font-mono shadow-lg flex items-center gap-2"
+            >
+              <span className="w-2.5 h-2.5 rounded-full bg-[#00E5FF] animate-pulse" />
+              <span>
+                {polygonCoords.length === 0
+                  ? isTa
+                    ? 'வரைபடத்தில் கிளிக் செய்து முதல் புள்ளியை வைக்கவும்'
+                    : 'Click anywhere on satellite map to place 1st boundary corner'
+                  : isTa
+                  ? `${polygonCoords.length} புள்ளிகள் வைக்கப்பட்டன. முடிக்க முதல் புள்ளியை கிளிக் செய்யவும்.`
+                  : `${polygonCoords.length} vertices placed. Click 1st corner to close boundary.`}
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Floating Boundary Provenance Tag */}
-        {polygonCoords.length >= 3 && !isDrawing && (
-          <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-            {boundaryStatus === 'official_source' ? (
-              <div className="bg-[#F59E0B]/90 backdrop-blur-md border border-[#F59E0B] text-[#183B2A] font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
-                <Landmark className="w-3.5 h-3.5 text-[#183B2A]" />
-                <span>
-                  OFFICIAL CADASTRE · {sourceMetadata?.surveyNumber ? `Survey ${sourceMetadata.surveyNumber}` : 'Verified'}
-                </span>
-              </div>
-            ) : boundaryStatus === 'imported' ? (
-              <div className="bg-[#A855F7]/90 backdrop-blur-md border border-[#A855F7] text-white font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
-                <FileUp className="w-3.5 h-3.5 text-white" />
-                <span>IMPORTED SURVEY · {sourceMetadata?.fileName || 'File'}</span>
-              </div>
-            ) : (
-              <div className="bg-[#0B241B]/90 backdrop-blur-md border border-[#00E5FF]/40 text-[#00E5FF] font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
-                <Compass className="w-3.5 h-3.5 text-[#00E5FF]" />
-                <span>FARMER-MAPPED (UNVERIFIED)</span>
-              </div>
-            )}
+        <AnimatePresence>
+          {polygonCoords.length >= 3 && !isDrawing && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: -6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: -6 }}
+              transition={{ duration: 0.25, ease: forestEase }}
+              className="absolute top-4 left-4 z-20 flex items-center gap-2"
+            >
+              {boundaryStatus === 'official_source' ? (
+                <div className="bg-[#F59E0B]/90 backdrop-blur-md border border-[#F59E0B] text-[#183B2A] font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
+                  <Landmark className="w-3.5 h-3.5 text-[#183B2A]" />
+                  <span>
+                    OFFICIAL CADASTRE · {sourceMetadata?.surveyNumber ? `Survey ${sourceMetadata.surveyNumber}` : 'Verified'}
+                  </span>
+                </div>
+              ) : boundaryStatus === 'imported' ? (
+                <div className="bg-[#A855F7]/90 backdrop-blur-md border border-[#A855F7] text-white font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
+                  <FileUp className="w-3.5 h-3.5 text-white" />
+                  <span>IMPORTED SURVEY · {sourceMetadata?.fileName || 'File'}</span>
+                </div>
+              ) : (
+                <div className="bg-[#0B241B]/90 backdrop-blur-md border border-[#00E5FF]/40 text-[#00E5FF] font-bold px-3 py-1.5 rounded-[8px] text-xs font-mono shadow-lg flex items-center gap-1.5">
+                  <Compass className="w-3.5 h-3.5 text-[#00E5FF]" />
+                  <span>FARMER-MAPPED (UNVERIFIED)</span>
+                </div>
+              )}
 
-            {isProposedEdit && (
-              <div className="bg-[#B8423A]/90 text-white font-mono text-[11px] px-2.5 py-1 rounded-[6px] shadow-sm">
-                Proposed User Adjustment
-              </div>
-            )}
-          </div>
-        )}
+              {isProposedEdit && (
+                <div className="bg-[#B8423A]/90 text-white font-mono text-[11px] px-2.5 py-1 rounded-[6px] shadow-sm">
+                  Proposed User Adjustment
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Floating Search Bar */}
         <div className="absolute top-4 right-14 z-20 hidden md:block">
@@ -2659,10 +2684,16 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
         {/* Floating Drawing Action Panel (Bottom-Center of Map) */}
         {!readOnly && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-2 bg-[#0B241B]/95 backdrop-blur-md border border-white/15 p-2 rounded-[12px] shadow-xl max-w-[95%]">
+          <motion.div
+            variants={mapPanelSlideBottom}
+            initial="hidden"
+            animate="visible"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-wrap items-center justify-center gap-2 bg-[#0B241B]/95 backdrop-blur-md border border-white/15 p-2 rounded-[12px] shadow-xl max-w-[95%]"
+          >
             {!isDrawing ? (
               <>
-                <button
+                <motion.button
+                  {...buttonHoverTap}
                   onClick={handleStartDrawing}
                   className="px-4 py-2 bg-[#00E5FF] hover:bg-[#00cce6] text-[#0B241B] text-xs font-mono font-bold rounded-[8px] flex items-center gap-2 cursor-pointer transition-colors shadow-sm min-h-[38px]"
                 >
@@ -2676,60 +2707,65 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
                       ? 'எல்லை வரைக'
                       : 'Draw Farm Boundary'}
                   </span>
-                </button>
+                </motion.button>
 
                 {initialCoords.length >= 3 && isProposedEdit && (
-                  <button
+                  <motion.button
+                    {...buttonHoverTap}
                     onClick={handleRevertEdits}
                     className="px-3 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono text-white rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[38px]"
                     title="Revert to original loaded geometry"
                   >
                     <RotateCcw className="w-3.5 h-3.5 text-[#F59E0B]" />
                     <span>{isTa ? 'மீட்டமை' : 'Revert Edits'}</span>
-                  </button>
+                  </motion.button>
                 )}
 
                 {polygonCoords.length >= 3 && (
-                  <button
+                  <motion.button
+                    {...buttonHoverTap}
                     onClick={handleClearBoundary}
                     className="px-3 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono text-white/90 rounded-[8px] flex items-center gap-1.5 cursor-pointer transition-colors min-h-[38px]"
                     title="Clear current boundary"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-[#B8423A]" />
                     <span>{isTa ? 'நீக்கு' : 'Clear'}</span>
-                  </button>
+                  </motion.button>
                 )}
               </>
             ) : (
               <>
-                <button
+                <motion.button
+                  {...buttonHoverTap}
                   onClick={handleUndoPoint}
                   disabled={polygonCoords.length === 0}
                   className="px-3 py-2 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-xs font-mono text-white rounded-[8px] flex items-center gap-1.5 cursor-pointer min-h-[38px]"
                 >
                   <Undo2 className="w-3.5 h-3.5" />
                   <span>{isTa ? 'முந்தைய புள்ளி' : 'Undo Point'}</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  {...buttonHoverTap}
                   onClick={handleFinishDrawing}
                   disabled={polygonCoords.length < 3}
                   className="px-4 py-2 bg-[#70B77E] hover:bg-[#83c690] disabled:opacity-40 text-[#0B241B] text-xs font-mono font-bold rounded-[8px] flex items-center gap-1.5 cursor-pointer transition-colors min-h-[38px]"
                 >
                   <Check className="w-4 h-4" />
                   <span>{isTa ? 'எல்லையை முடி' : 'Finish Boundary'}</span>
-                </button>
+                </motion.button>
 
-                <button
+                <motion.button
+                  {...buttonHoverTap}
                   onClick={handleClearBoundary}
                   className="px-3 py-2 bg-white/10 hover:bg-white/20 text-xs font-mono text-white/80 rounded-[8px] flex items-center gap-1 cursor-pointer min-h-[38px]"
                 >
                   <X className="w-3.5 h-3.5" />
                   <span>{isTa ? 'ரத்து' : 'Cancel'}</span>
-                </button>
+                </motion.button>
               </>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Floating NDVI Color Ramp Legend */}
@@ -3975,57 +4011,77 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           </div>
         )}
 
-        {/* Live Metrics Grid */}
+        {/* Live Metrics Grid with Smooth Motion Cards and Rollups */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
+          <motion.div variants={mapBadgeVariants} initial="hidden" animate="visible" className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 shadow-xs hover:border-[#70B77E]/40 transition-colors">
             <div className="text-[10px] font-mono uppercase text-[#70B77E] font-bold">
               {isTa ? 'ஏக்கர் பரப்பளவு' : 'CALCULATED ACRES'}
             </div>
             <div className="text-xl sm:text-2xl font-bold font-['Plus_Jakarta_Sans'] text-white">
-              {polygonCoords.length >= 3 ? measurements.acres.toFixed(2) : '—'}
+              {polygonCoords.length >= 3 ? (
+                <AnimatedCounter value={measurements.acres} decimals={2} />
+              ) : (
+                '—'
+              )}
               <span className="text-xs font-normal text-white/60 ml-1">Acres</span>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
+          <motion.div variants={mapBadgeVariants} initial="hidden" animate="visible" className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 shadow-xs hover:border-[#00E5FF]/40 transition-colors">
             <div className="text-[10px] font-mono uppercase text-[#00E5FF] font-bold">
               {isTa ? 'சென்ட் பரப்பளவு' : 'TAMIL NADU CENTS'}
             </div>
             <div className="text-xl sm:text-2xl font-bold font-['Plus_Jakarta_Sans'] text-white">
-              {polygonCoords.length >= 3 ? measurements.cents.toFixed(1) : '—'}
+              {polygonCoords.length >= 3 ? (
+                <AnimatedCounter value={measurements.cents} decimals={1} />
+              ) : (
+                '—'
+              )}
               <span className="text-xs font-normal text-white/60 ml-1">Cents</span>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
+          <motion.div variants={mapBadgeVariants} initial="hidden" animate="visible" className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 shadow-xs">
             <div className="text-[10px] font-mono uppercase text-white/60 font-semibold">
               {isTa ? 'சதுர மீட்டர்கள்' : 'SQUARE METRES'}
             </div>
             <div className="text-lg sm:text-xl font-bold font-mono text-white">
-              {polygonCoords.length >= 3 ? measurements.areaSqMeters.toLocaleString('en-IN') : '—'}
+              {polygonCoords.length >= 3 ? (
+                <AnimatedCounter value={measurements.areaSqMeters} decimals={0} formatter={(v) => Math.round(v).toLocaleString('en-IN')} />
+              ) : (
+                '—'
+              )}
               <span className="text-xs font-normal text-white/60 ml-1">m²</span>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1">
+          <motion.div variants={mapBadgeVariants} initial="hidden" animate="visible" className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 shadow-xs">
             <div className="text-[10px] font-mono uppercase text-white/60 font-semibold">
               {isTa ? 'ஹெக்டேர்' : 'HECTARES'}
             </div>
             <div className="text-lg sm:text-xl font-bold font-mono text-white">
-              {polygonCoords.length >= 3 ? measurements.hectares.toFixed(3) : '—'}
+              {polygonCoords.length >= 3 ? (
+                <AnimatedCounter value={measurements.hectares} decimals={3} />
+              ) : (
+                '—'
+              )}
               <span className="text-xs font-normal text-white/60 ml-1">ha</span>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 col-span-2 sm:col-span-1">
+          <motion.div variants={mapBadgeVariants} initial="hidden" animate="visible" className="bg-[#0B241B] border border-white/10 p-3 rounded-[10px] space-y-1 col-span-2 sm:col-span-1 shadow-xs">
             <div className="text-[10px] font-mono uppercase text-white/60 font-semibold">
               {isTa ? 'சுற்றளவு' : 'PERIMETER'}
             </div>
             <div className="text-lg sm:text-xl font-bold font-mono text-white">
-              {polygonCoords.length >= 3 ? measurements.perimeterMeters.toLocaleString('en-IN') : '—'}
+              {polygonCoords.length >= 3 ? (
+                <AnimatedCounter value={measurements.perimeterMeters} decimals={0} formatter={(v) => Math.round(v).toLocaleString('en-IN')} />
+              ) : (
+                '—'
+              )}
               <span className="text-xs font-normal text-white/60 ml-1">m</span>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Cadastral Extent Comparison */}

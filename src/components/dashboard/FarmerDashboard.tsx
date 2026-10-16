@@ -32,6 +32,7 @@ import {
   buttonHoverTap,
   backdropVariants,
   drawerVariants,
+  tabContentVariants,
   defaultViewport,
 } from '../../lib/motion';
 import {
@@ -819,13 +820,22 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
 
         {/* Main Content Workspace Body */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-8">
-          {/* ========================================================
-              TAB: OVERVIEW (Calm Agricultural Intelligence Workspace)
-              ======================================================== */}
-          {/* ========================================================
-              TAB: OVERVIEW (Forest Intelligence Vertical Section System)
-              ======================================================== */}
-          {activeTab === 'overview' && (
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              variants={tabContentVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              className="space-y-8"
+            >
+              {/* ========================================================
+                  TAB: OVERVIEW (Calm Agricultural Intelligence Workspace)
+                  ======================================================== */}
+              {/* ========================================================
+                  TAB: OVERVIEW (Forest Intelligence Vertical Section System)
+                  ======================================================== */}
+              {activeTab === 'overview' && (
             <OverviewView
               farmerName={farmerName}
               activeDistrict={activeDistrict}
@@ -1160,7 +1170,9 @@ export const FarmerDashboard: React.FC<FarmerDashboardProps> = ({
               }}
             />
           )}
-        </main>
+        </motion.div>
+      </AnimatePresence>
+    </main>
       </div>
 
       {/* ========================================================

@@ -34,7 +34,20 @@ import {
 import { ContextualHelpModal, ScanContextHelp } from './ContextualHelpModal';
 import { apiFetch } from '../../lib/apiClient';
 import { motion, AnimatePresence } from 'motion/react';
-import { imagePreviewVariants, resultRevealVariants, buttonHoverTap } from '../../lib/motion';
+import {
+  imagePreviewVariants,
+  resultRevealVariants,
+  buttonHoverTap,
+  cardHoverTap,
+  scanLaserVariants,
+  scanGridPulseVariants,
+  scanReticleVariants,
+  scanTargetBoxVariants,
+  staggerContainer,
+  itemVariants,
+  meterBarVariants,
+} from '../../lib/motion';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 
 interface DiseaseFinderProps {
   onSaveToLog: (result: AnalysisResult, imagePreview: string, file?: File | null, farmId?: string) => void;
@@ -729,14 +742,112 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                     <img
                       src={imagePreview}
                       alt={`${selectedCropId} leaf inspection specimen`}
-                      className="max-h-full max-w-full object-contain"
+                      className={`max-h-full max-w-full object-contain transition-all duration-300 ${
+                        isLoading ? 'scale-[1.02] filter contrast-105' : ''
+                      }`}
                     />
-                    {/* Viewfinder Target Reticle */}
-                    <div className="absolute inset-0 pointer-events-none border border-[#0B241B]/15 flex items-center justify-center">
-                      <div className="w-10 h-10 border border-[#B87922]/70 rounded-full flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-[#B87922] rounded-full" />
+
+                    {/* Viewfinder Target Reticle / Ambient HUD */}
+                    {!isLoading && (
+                      <div className="absolute inset-0 pointer-events-none border border-[#0B241B]/15 flex items-center justify-center">
+                        <div className="w-10 h-10 border border-[#B87922]/70 rounded-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 bg-[#B87922] rounded-full" />
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {/* SOPHISTICATED LEAF PATHOLOGY SCANNING HUD OVERLAY */}
+                    <AnimatePresence>
+                      {isLoading && (
+                        <motion.div
+                          key="scanning-hud"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="absolute inset-0 pointer-events-none overflow-hidden"
+                        >
+                          {/* 1. Subtle Botanical Coordinate Grid */}
+                          <motion.div
+                            variants={scanGridPulseVariants}
+                            initial="initial"
+                            animate="animate"
+                            className="absolute inset-0 bg-[radial-gradient(#217451_1.5px,transparent_1.5px)] [background-size:22px_22px] z-10"
+                          />
+
+                          {/* 2. Sweeping Laser Beam & Trailing Gradient Aura */}
+                          <motion.div
+                            variants={scanLaserVariants}
+                            initial="initial"
+                            animate="animate"
+                            className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#70B77E] to-transparent shadow-[0_0_20px_4px_rgba(112,183,126,0.95)] z-20"
+                          />
+
+                          {/* 3. Corner Viewfinder Brackets */}
+                          <div className="absolute top-3 left-3 w-6 h-6 border-t-2 border-l-2 border-[#70B77E] z-25" />
+                          <div className="absolute top-3 right-3 w-6 h-6 border-t-2 border-r-2 border-[#70B77E] z-25" />
+                          <div className="absolute bottom-12 left-3 w-6 h-6 border-b-2 border-l-2 border-[#70B77E] z-25" />
+                          <div className="absolute bottom-12 right-3 w-6 h-6 border-b-2 border-r-2 border-[#70B77E] z-25" />
+
+                          {/* 4. Lesion Pattern Acquisition Boxes */}
+                          <motion.div
+                            variants={scanTargetBoxVariants}
+                            initial="hidden"
+                            animate={['visible', 'pulse']}
+                            className="absolute top-[28%] left-[36%] w-28 h-18 border border-[#70B77E] rounded-[4px] z-25 flex flex-col justify-between p-1 bg-[#217451]/15 backdrop-blur-[1px]"
+                          >
+                            <div className="flex items-center justify-between text-[8px] font-mono font-bold text-[#70B77E] bg-[#0B241B]/90 px-1 py-0.5 rounded-[2px] leading-tight">
+                              <span>FOLIAR LESION</span>
+                              <span>ROI #01</span>
+                            </div>
+                            <div className="text-[7.5px] font-mono text-white/90 bg-[#0B241B]/80 px-1 rounded-[2px] self-end">
+                              NECROSIS MARGIN
+                            </div>
+                          </motion.div>
+
+                          <motion.div
+                            variants={scanTargetBoxVariants}
+                            initial="hidden"
+                            animate={['visible', 'pulse']}
+                            transition={{ delay: 0.35 }}
+                            className="absolute bottom-[28%] right-[18%] w-24 h-14 border border-[#D7AD63] rounded-[4px] z-25 flex flex-col justify-between p-1 bg-[#D7AD63]/10 backdrop-blur-[1px]"
+                          >
+                            <div className="flex items-center justify-between text-[8px] font-mono font-bold text-[#D7AD63] bg-[#0B241B]/90 px-1 py-0.5 rounded-[2px] leading-tight">
+                              <span>CHLOROSIS</span>
+                              <span>ROI #02</span>
+                            </div>
+                            <div className="text-[7.5px] font-mono text-white/90 bg-[#0B241B]/80 px-1 rounded-[2px] self-end">
+                              COLOR TRANSITION
+                            </div>
+                          </motion.div>
+
+                          {/* 5. Top Status HUD Bar */}
+                          <div className="absolute top-3.5 inset-x-3.5 flex items-center justify-between z-30">
+                            <div className="inline-flex items-center gap-2 bg-[#0B241B]/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[11px] font-mono text-[#70B77E] border border-[#70B77E]/30 shadow-md">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#70B77E] opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#70B77E]" />
+                              </span>
+                              <span className="font-semibold tracking-wider">
+                                {isTa ? 'இலை நோயியல் ஆய்வு ஸ்கேன்...' : 'DIGITAL PATHOLOGY SCAN'}
+                              </span>
+                            </div>
+
+                            <div className="bg-[#0B241B]/90 backdrop-blur-md px-2.5 py-1 rounded-[6px] text-[10px] font-mono text-white/80 border border-white/10 shadow-md">
+                              TNAU ENGINE
+                            </div>
+                          </div>
+
+                          {/* 6. Bottom Step Progress HUD Banner */}
+                          <div className="absolute bottom-3 inset-x-3 bg-[#0B241B]/90 backdrop-blur-md p-2 rounded-[8px] border border-[#217451]/50 z-30 flex items-center gap-2.5 text-xs font-mono text-[#70B77E] shadow-lg">
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0 text-[#70B77E]" />
+                            <span className="truncate">
+                              {loadingStep || (isTa ? 'இலை மாதிரி பகுப்பாய்வு செய்யப்படுகிறது...' : 'Evaluating leaf specimen focus & pathology...')}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Specimen Info & Replace / Remove Controls */}
@@ -1026,9 +1137,14 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              >
                 {/* 1. Specialist Model */}
-                <div className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
+                <motion.div variants={itemVariants} className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
                   <div className="text-[10px] font-mono uppercase text-[#217451] font-semibold flex items-center gap-1 mb-1">
                     <Microscope className="w-3.5 h-3.5 text-[#0B241B]" />
                     <span>{isTa ? 'சிறப்பு மாதிரி' : 'Specialist Model'}</span>
@@ -1039,10 +1155,10 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                         ? 'Trained specialist CNN weights (Paddy Doctor ResNet50)'
                         : 'Multimodal vision screening (Specialist weights host fallback)')}
                   </p>
-                </div>
+                </motion.div>
 
                 {/* 2. Multimodal AI Reasoning */}
-                <div className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
+                <motion.div variants={itemVariants} className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
                   <div className="text-[10px] font-mono uppercase text-[#0B241B] font-semibold flex items-center gap-1 mb-1">
                     <FileCheck className="w-3.5 h-3.5 text-[#217451]" />
                     <span>{isTa ? 'பார்வை பகுப்பாய்வு' : 'Vision Reasoning'}</span>
@@ -1051,10 +1167,10 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                     {analysisResult.evidenceDistinction?.multimodalReasoning ||
                       'Visual foliar lesion geometry evaluated against botanical symptom boundaries.'}
                   </p>
-                </div>
+                </motion.div>
 
                 {/* 3. Weather Indicators */}
-                <div className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
+                <motion.div variants={itemVariants} className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
                   <div className="text-[10px] font-mono uppercase text-[#B87922] font-semibold flex items-center gap-1 mb-1">
                     <MapPin className="w-3.5 h-3.5 text-[#B87922]" />
                     <span>{isTa ? 'வானிலை இடர் சூழல்' : 'Weather Risk Context'}</span>
@@ -1063,10 +1179,10 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                     {analysisResult.evidenceDistinction?.weatherRiskIndicators ||
                       `District microclimate risk evaluated for ${selectedDistrict}.`}
                   </p>
-                </div>
+                </motion.div>
 
                 {/* 4. Verified Agronomic Guidance */}
-                <div className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
+                <motion.div variants={itemVariants} className="p-3 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[8px]">
                   <div className="text-[10px] font-mono uppercase text-[#0B241B] font-semibold flex items-center gap-1 mb-1">
                     <Sprout className="w-3.5 h-3.5 text-[#0B241B]" />
                     <span>{isTa ? 'TNAU சரிபார்த்த நெறிமுறை' : 'Verified Agronomy'}</span>
@@ -1075,8 +1191,8 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                     {analysisResult.evidenceDistinction?.verifiedAgronomicGuidance ||
                       'Strictly adheres to certified TNAU IPM non-chemical priority.'}
                   </p>
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
 
               {/* Confidence Calibration Disclaimer */}
               <div className="p-2.5 bg-[#FAF4EB] border border-[#DFE6DB] text-[11px] font-mono text-[#64766B] flex items-start gap-2 rounded-[6px]">
@@ -1090,7 +1206,12 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
             </div>
 
             {/* Condition Identification Header Card */}
-            <div className="p-5 sm:p-6 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[12px]">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="p-5 sm:p-6 bg-[#F5F4EA] border border-[#DFE6DB] rounded-[12px] space-y-3"
+            >
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                 <div className="md:col-span-8 space-y-1">
                   <div className="text-xs font-mono uppercase text-[#64766B] font-semibold">
@@ -1116,17 +1237,46 @@ export const DiseaseFinder: React.FC<DiseaseFinderProps> = ({
                   <span
                     className={
                       analysisResult.severity === 'high'
-                        ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold font-mono uppercase bg-[#FAF2F1] text-[#B8423A] border border-[#B8423A]/30'
+                        ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold font-mono uppercase bg-[#FAF2F1] text-[#B8423A] border border-[#B8423A]/30 shadow-2xs'
                         : analysisResult.severity === 'moderate'
-                        ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold font-mono uppercase bg-[#FAF4EB] text-[#B87922] border border-[#B87922]/30'
-                        : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold font-mono uppercase bg-[#E5F1E8] text-[#217451] border border-[#B8DCC1]'
+                        ? 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold font-mono uppercase bg-[#FAF4EB] text-[#B87922] border border-[#B87922]/30 shadow-2xs'
+                        : 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-xs font-bold font-mono uppercase bg-[#E5F1E8] text-[#217451] border border-[#B8DCC1] shadow-2xs'
                     }
                   >
                     {analysisResult.severity.toUpperCase()} PRIORITY
                   </span>
                 </div>
               </div>
-            </div>
+
+              {/* Genuine Confidence Meter (only rendered if actual confidence value was returned) */}
+              {(typeof (analysisResult as any).confidenceScore === 'number' || typeof (analysisResult as any).confidence === 'number') && (
+                <div className="pt-3 border-t border-[#DFE6DB]">
+                  {(() => {
+                    const rawScore = (analysisResult as any).confidenceScore ?? (analysisResult as any).confidence;
+                    const percent = rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore);
+                    return (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs font-mono text-[#64766B]">
+                          <span>{isTa ? 'அறிகுறி பொருந்தும் அளவு (உண்மையான மாதிரித் தரவு):' : 'SYMPTOM CONGRUENCE (GENUINE INFERENCE SCORE):'}</span>
+                          <span className="font-bold text-[#217451]">
+                            <AnimatedCounter value={percent} />%
+                          </span>
+                        </div>
+                        <div className="h-2 w-full bg-[#DFE6DB] rounded-full overflow-hidden">
+                          <motion.div
+                            variants={meterBarVariants}
+                            initial="hidden"
+                            animate="visible"
+                            custom={percent}
+                            className="h-full bg-gradient-to-r from-[#217451] to-[#70B77E] rounded-full"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </motion.div>
 
             {/* Differential / Alternative Possibilities */}
             {analysisResult.alternativeConditions && analysisResult.alternativeConditions.length > 0 && (

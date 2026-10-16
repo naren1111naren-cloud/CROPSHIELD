@@ -10,8 +10,10 @@ import {
   staggerContainer,
   itemVariants,
   buttonHoverTap,
+  cardHoverTap,
   defaultViewport,
 } from '../../lib/motion';
+import { AnimatedCounter } from '../common/AnimatedCounter';
 import {
   Compass,
   Sprout,
@@ -500,7 +502,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 min-w-0"
         >
           {/* 1. Registered Farms */}
-          <motion.div variants={itemVariants} className="bg-white border border-[#DFE6DB] rounded-[12px] p-5 space-y-2 shadow-xs hover:border-[#217451]/50 transition-colors">
+          <motion.div variants={itemVariants} {...cardHoverTap} className="bg-white border border-[#DCE4D9] rounded-[12px] p-5 space-y-2 shadow-xs hover:border-[#217451] transition-colors cursor-pointer">
             <div className="text-xs font-mono text-[#64766B] uppercase tracking-wider flex items-center justify-between font-medium">
               <span>{isTa ? 'பதிவு செய்யப்பட்ட பண்ணைகள்' : 'REGISTERED FARMS'}</span>
               <Layers className="w-4 h-4 text-[#217451]" />
@@ -509,7 +511,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <div className="h-9 w-16 bg-[#E5F1E8] animate-pulse rounded-[6px]" />
             ) : (
               <div className="text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#0B241B]">
-                {farms.length}
+                <AnimatedCounter value={farms.length} />
               </div>
             )}
             <div className="text-xs text-[#64766B] font-sans flex items-center justify-between">
@@ -526,7 +528,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
           </motion.div>
 
           {/* 2. Recorded Crop Scans */}
-          <motion.div variants={itemVariants} className="bg-white border border-[#DFE6DB] rounded-[12px] p-5 space-y-2 shadow-xs hover:border-[#217451]/50 transition-colors">
+          <motion.div variants={itemVariants} {...cardHoverTap} className="bg-white border border-[#DCE4D9] rounded-[12px] p-5 space-y-2 shadow-xs hover:border-[#217451] transition-colors cursor-pointer">
             <div className="text-xs font-mono text-[#64766B] uppercase tracking-wider flex items-center justify-between font-medium">
               <span>{isTa ? 'ஆய்வுப் பதிவுகள்' : 'SCANS RECORDED'}</span>
               <Clock className="w-4 h-4 text-[#217451]" />
@@ -535,7 +537,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               <div className="h-9 w-16 bg-[#E5F1E8] animate-pulse rounded-[6px]" />
             ) : (
               <div className="text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#0B241B]">
-                {scans.length}
+                <AnimatedCounter value={scans.length} />
               </div>
             )}
             <div className="text-xs text-[#64766B] font-sans flex items-center justify-between">

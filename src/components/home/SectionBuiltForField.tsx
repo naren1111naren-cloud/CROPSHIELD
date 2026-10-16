@@ -1,6 +1,14 @@
 import React from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { Languages, WifiOff, Smartphone, ShieldCheck } from 'lucide-react';
+import { motion } from 'motion/react';
+import {
+  sectionVariants,
+  staggerContainer,
+  itemVariants,
+  cardHoverTap,
+  defaultViewport,
+} from '../../lib/motion';
 
 export const SectionBuiltForField: React.FC = () => {
   const { t } = useLanguage();
@@ -29,7 +37,14 @@ export const SectionBuiltForField: React.FC = () => {
   ];
 
   return (
-    <section id="about-system" className="py-20 border-b border-[#DCE4D9] bg-white">
+    <motion.section
+      id="about-system"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+      className="py-20 border-b border-[#DCE4D9] bg-white overflow-hidden"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mb-14">
           <span className="text-xs font-mono tracking-wider text-[#1F6B4A] uppercase block mb-3 font-semibold">
@@ -40,15 +55,30 @@ export const SectionBuiltForField: React.FC = () => {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={defaultViewport}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+        >
           {features.map((f, i) => {
             const Icon = f.icon;
             return (
-              <div key={i} className="p-6 bg-[#F5F3E9]/50 border border-[#DCE4D9] rounded-[14px] flex flex-col justify-between shadow-sm hover:border-[#1F6B4A] transition-all">
+              <motion.div
+                key={i}
+                variants={itemVariants}
+                {...cardHoverTap}
+                className="p-6 bg-[#F5F3E9]/50 border border-[#DCE4D9] rounded-[14px] flex flex-col justify-between shadow-2xs hover:border-[#1F6B4A] transition-all cursor-pointer"
+              >
                 <div>
-                  <div className="w-10 h-10 rounded-[10px] bg-[#EAEFE5] flex items-center justify-center text-[#1F6B4A] mb-5">
+                  <motion.div
+                    whileHover={{ scale: 1.15, rotate: 6 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    className="w-10 h-10 rounded-[10px] bg-[#EAEFE5] flex items-center justify-center text-[#1F6B4A] mb-5 shadow-2xs"
+                  >
                     <Icon className="w-5 h-5" />
-                  </div>
+                  </motion.div>
                   <h3 className="text-lg font-bold text-[#102D24] mb-2.5">
                     {f.title}
                   </h3>
@@ -59,11 +89,11 @@ export const SectionBuiltForField: React.FC = () => {
                 <div className="mt-6 pt-4 border-t border-[#DCE4D9] text-xs font-mono text-[#718176]">
                   FIELD FEATURE 0{i + 1}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 };

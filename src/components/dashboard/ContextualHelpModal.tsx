@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { backdropVariants, modalVariants, buttonHoverTap } from '../../lib/motion';
 
 export interface ScanContextHelp {
   scanId?: string;
@@ -68,9 +70,25 @@ export const ContextualHelpModal: React.FC<ContextualHelpModalProps> = ({
   }).slice(0, 3);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-3xl bg-white border border-[#D9DED3] shadow-2xl my-8 rounded-xs overflow-hidden">
-        {/* Top Banner */}
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-[#0B211A]/65 backdrop-blur-xs"
+            onClick={onClose}
+          />
+          <motion.div
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="relative z-10 w-full max-w-3xl bg-white border border-[#D9DED3] shadow-2xl my-8 rounded-[12px] overflow-hidden"
+          >
+            {/* Top Banner */}
         <div className="bg-[#FAF9F3] border-b border-[#D9DED3] p-5 sm:p-6 flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#426B43] uppercase tracking-wider mb-1 font-semibold">
@@ -266,7 +284,9 @@ export const ContextualHelpModal: React.FC<ContextualHelpModalProps> = ({
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
-  );
+  )}
+</AnimatePresence>
+);
 };

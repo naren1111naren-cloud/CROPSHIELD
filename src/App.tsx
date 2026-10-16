@@ -17,6 +17,8 @@ import { AuthModal } from './components/auth/AuthModal';
 import { FarmerProfileModal } from './components/auth/FarmerProfileModal';
 import { SignInPage } from './components/auth/SignInPage';
 import { checkBackendHealth } from './lib/apiClient';
+import { motion, AnimatePresence } from 'motion/react';
+import { viewTransitionVariants, pageVariants } from './lib/motion';
 
 function MainApp() {
   const { user, profile, isLoading, isProfileComplete } = useAuth();
@@ -94,9 +96,14 @@ function MainApp() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#F7F6EF] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col items-center gap-4"
+        >
           <svg
-            className="w-8 h-8 animate-spin text-[#183B2A]"
+            className="w-9 h-9 animate-spin text-[#183B2A]"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
@@ -105,166 +112,155 @@ function MainApp() {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
           <span className="text-xs font-mono text-[#4A584D] tracking-wider uppercase">Loading CropShield...</span>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
-  if (currentView === 'signin') {
-    return (
-      <>
-        <SignInPage
-          onSuccess={() => {
-            setCurrentView('diagnose');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onExploreGuest={() => {
-            setCurrentView('home');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-          onOpenRegister={() => {
-            setAuthModalMode('register');
-            setAuthModalOpen(true);
-          }}
-        />
-
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          initialMode={authModalMode}
-          onSuccess={() => {
-            setCurrentView('diagnose');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
-        />
-
-        <FarmerProfileModal
-          isOpen={profileModalOpen}
-          onClose={() => setProfileModalOpen(false)}
-          isInitialSetup={!isProfileComplete}
-        />
-      </>
-    );
-  }
-
-  if (currentView === 'home') {
-    return (
-      <div className="min-h-screen flex flex-col bg-[#F5F3E9] text-[#17271E] overflow-x-hidden pb-16 md:pb-0">
-        <Header
-          currentView={currentView}
-          onNavigate={handleNavigate}
-          onOpenAuth={handleOpenAuth}
-          onOpenProfile={handleOpenProfile}
-        />
-
-        <main className="flex-1">
-          {/* 1. Hero with Clear Primary Action: Check Your Crop Health */}
-          <HeroSection
-            onScanCrop={() => handleNavigate('diagnose')}
-            onExplore={() => {
-              const el = document.getElementById('how-it-works');
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          />
-
-          {/* 2. 4-step protocol for field action */}
-          <SectionProcess />
-
-          {/* 3. The field, observed: Why early observation matters */}
-          <SectionObserved />
-
-          {/* 4. Disease intelligence: Tamil Nadu rice and cash crops */}
-          <SectionDiseaseIntelligence
-            onLaunchScanner={() => handleNavigate('diagnose')}
-          />
-
-          {/* 5. Local field intelligence: District weather & risk registry */}
-          <SectionLocalRisk
-            onOpenDashboard={() => handleNavigate('market-weather')}
-          />
-
-          {/* 6. A network of field observations: Verified community alerts */}
-          <SectionNetwork
-            onOpenAlerts={() => handleNavigate('market-weather')}
-          />
-
-          {/* 7. Built for the field: Tamil, mobile ergonomics, offline resilience */}
-          <SectionBuiltForField />
-
-          {/* 8. Closing call to action: Deep forest green canvas */}
-          <SectionCTA
-            onGetStarted={() => handleNavigate('diagnose')}
-            onExplore={() => {
-              const el = document.getElementById('disease-intelligence');
-              el?.scrollIntoView({ behavior: 'smooth' });
-            }}
-          />
-        </main>
-
-        {/* Footer */}
-        <Footer onNavigate={handleNavigate} />
-
-        {/* Accessible Mobile Bottom Navigation Bar (Android smartphone friendly) */}
-        <MobileBottomNav
-          currentView={currentView}
-          onNavigate={(dest: MainDestination) => handleNavigate(dest)}
-        />
-
-        {/* Auth Modal */}
-        <AuthModal
-          isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
-          initialMode={authModalMode}
-          onSuccess={() => {
-            setAuthModalOpen(false);
-          }}
-        />
-
-        {/* Farmer Profile Modal */}
-        <FarmerProfileModal
-          isOpen={profileModalOpen}
-          onClose={() => setProfileModalOpen(false)}
-          isInitialSetup={!isProfileComplete}
-        />
-      </div>
-    );
-  }
-
-  // Application Workspace Shell (Dark Forest Sidebar + Warm Ivory Content)
   return (
-    <div className="min-h-screen bg-[#F5F3E9] text-[#17271E]">
-      <FarmerDashboard
-        initialTab={
-          currentView === 'diagnose'
-            ? 'scan'
-            : currentView === 'market-weather'
-            ? 'prices'
-            : currentView === 'my-farm'
-            ? (user ? 'farms' : 'history')
-            : 'overview'
-        }
-        onBackToHome={() => handleNavigate('home')}
-        onOpenProfile={handleOpenProfile}
-        onOpenAuth={handleOpenAuth}
-      />
+    <div className="min-h-screen bg-[#F5F3E9] text-[#17271E] overflow-x-hidden">
+      <AnimatePresence mode="wait">
+        {currentView === 'signin' && (
+          <motion.div
+            key="signin-view"
+            variants={viewTransitionVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <SignInPage
+              onSuccess={() => {
+                setCurrentView('diagnose');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onExploreGuest={() => {
+                setCurrentView('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              onOpenRegister={() => {
+                setAuthModalMode('register');
+                setAuthModalOpen(true);
+              }}
+            />
+          </motion.div>
+        )}
 
-      {/* Accessible Mobile Bottom Navigation Bar in Workspace */}
-      <MobileBottomNav
-        currentView={currentView}
-        onNavigate={(dest: MainDestination) => handleNavigate(dest)}
-      />
+        {currentView === 'home' && (
+          <motion.div
+            key="home-view"
+            variants={viewTransitionVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex flex-col min-h-screen pb-16 md:pb-0"
+          >
+            <Header
+              currentView={currentView}
+              onNavigate={handleNavigate}
+              onOpenAuth={handleOpenAuth}
+              onOpenProfile={handleOpenProfile}
+            />
 
-      {/* Auth Modal */}
+            <main className="flex-1">
+              {/* 1. Hero with Clear Primary Action: Check Your Crop Health */}
+              <HeroSection
+                onScanCrop={() => handleNavigate('diagnose')}
+                onExplore={() => {
+                  const el = document.getElementById('how-it-works');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              />
+
+              {/* 2. 4-step protocol for field action */}
+              <SectionProcess />
+
+              {/* 3. The field, observed: Why early observation matters */}
+              <SectionObserved />
+
+              {/* 4. Disease intelligence: Tamil Nadu rice and cash crops */}
+              <SectionDiseaseIntelligence
+                onLaunchScanner={() => handleNavigate('diagnose')}
+              />
+
+              {/* 5. Local field intelligence: District weather & risk registry */}
+              <SectionLocalRisk
+                onOpenDashboard={() => handleNavigate('market-weather')}
+              />
+
+              {/* 6. A network of field observations: Verified community alerts */}
+              <SectionNetwork
+                onOpenAlerts={() => handleNavigate('market-weather')}
+              />
+
+              {/* 7. Built for the field: Tamil, mobile ergonomics, offline resilience */}
+              <SectionBuiltForField />
+
+              {/* 8. Closing call to action: Deep forest green canvas */}
+              <SectionCTA
+                onGetStarted={() => handleNavigate('diagnose')}
+                onExplore={() => {
+                  const el = document.getElementById('disease-intelligence');
+                  el?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              />
+            </main>
+
+            {/* Footer */}
+            <Footer onNavigate={handleNavigate} />
+
+            {/* Accessible Mobile Bottom Navigation Bar (Android smartphone friendly) */}
+            <MobileBottomNav
+              currentView={currentView}
+              onNavigate={(dest: MainDestination) => handleNavigate(dest)}
+            />
+          </motion.div>
+        )}
+
+        {currentView !== 'signin' && currentView !== 'home' && (
+          <motion.div
+            key={`dashboard-${currentView}`}
+            variants={viewTransitionVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <FarmerDashboard
+              initialTab={
+                currentView === 'diagnose'
+                  ? 'scan'
+                  : currentView === 'market-weather'
+                  ? 'prices'
+                  : currentView === 'my-farm'
+                  ? (user ? 'farms' : 'history')
+                  : 'overview'
+              }
+              onBackToHome={() => handleNavigate('home')}
+              onOpenProfile={handleOpenProfile}
+              onOpenAuth={handleOpenAuth}
+            />
+
+            {/* Accessible Mobile Bottom Navigation Bar in Workspace */}
+            <MobileBottomNav
+              currentView={currentView}
+              onNavigate={(dest: MainDestination) => handleNavigate(dest)}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Global Modals (rendered outside view transitions for uninterrupted presence) */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         initialMode={authModalMode}
         onSuccess={() => {
           setAuthModalOpen(false);
+          if (currentView === 'signin') {
+            setCurrentView('diagnose');
+          }
         }}
       />
 
-      {/* Farmer Profile Modal */}
       <FarmerProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}

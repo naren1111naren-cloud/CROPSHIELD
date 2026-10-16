@@ -17,6 +17,8 @@ import {
   Layers,
   FileText
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { backdropVariants, modalVariants, buttonHoverTap } from '../../lib/motion';
 
 interface FarmerProfileModalProps {
   isOpen: boolean;
@@ -260,14 +262,30 @@ export const FarmerProfileModal: React.FC<FarmerProfileModalProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="profile-modal-title"
-    >
-      <div className="bg-[#FAF9F3] border-2 border-[#183B2A] max-w-2xl w-full p-6 sm:p-8 shadow-2xl my-6 max-h-[92vh] overflow-y-auto">
-        {/* Header */}
+    <AnimatePresence>
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="profile-modal-title"
+        >
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-[#0B211A]/65 backdrop-blur-xs"
+            onClick={!isInitialSetup ? onClose : undefined}
+          />
+          <motion.div
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="relative z-10 bg-[#FAF9F3] border-2 border-[#183B2A] max-w-2xl w-full p-6 sm:p-8 shadow-2xl my-6 max-h-[92vh] overflow-y-auto rounded-[14px]"
+          >
+            {/* Header */}
         <div className="flex items-start justify-between border-b border-[#D9DED3] pb-4 mb-6">
           <div>
             <div className="flex items-center gap-2 text-xs font-mono text-[#426B43] uppercase tracking-wider font-semibold">
@@ -682,7 +700,9 @@ export const FarmerProfileModal: React.FC<FarmerProfileModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
+  )}
+</AnimatePresence>
   );
 };

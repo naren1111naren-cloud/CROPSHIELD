@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import { CloudRain, Wind, Thermometer, MapPin, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  sectionVariants,
+  tabContentVariants,
+  buttonHoverTap,
+  defaultViewport,
+} from '../../lib/motion';
 
 export const SectionLocalRisk: React.FC<{ onOpenDashboard: () => void }> = ({ onOpenDashboard }) => {
   const { language, t } = useLanguage();
@@ -51,7 +58,14 @@ export const SectionLocalRisk: React.FC<{ onOpenDashboard: () => void }> = ({ on
   const curr = districtData[selectedDistrict];
 
   return (
-    <section id="field-alerts" className="py-20 border-b border-[#DCE4D9] bg-[#F5F3E9]">
+    <motion.section
+      id="field-alerts"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+      className="py-20 border-b border-[#DCE4D9] bg-[#F5F3E9] overflow-hidden"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="max-w-2xl mb-12">
@@ -81,15 +95,24 @@ export const SectionLocalRisk: React.FC<{ onOpenDashboard: () => void }> = ({ on
                 const isSelected = selectedDistrict === dist;
                 const d = districtData[dist];
                 return (
-                  <button
+                  <motion.button
                     key={dist}
+                    whileHover={{ x: 3, transition: { duration: 0.15 } }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedDistrict(dist)}
-                    className={`w-full p-4 text-left border flex items-center justify-between transition-all cursor-pointer rounded-[12px] ${
+                    className={`w-full p-4 text-left border flex items-center justify-between transition-all cursor-pointer rounded-[12px] relative overflow-hidden ${
                       isSelected
                         ? 'bg-[#EAEFE5] border-[#1F6B4A] shadow-xs'
                         : 'bg-transparent border-[#DCE4D9] hover:bg-[#F5F3E9]/60 text-[#52665A]'
                     }`}
                   >
+                    {isSelected && (
+                      <motion.div
+                        layoutId="activeDistrictPill"
+                        className="absolute left-0 top-0 bottom-0 w-1 bg-[#1F6B4A]"
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                      />
+                    )}
                     <div>
                       <div className={`text-base sm:text-lg font-bold ${isSelected ? 'text-[#102D24]' : 'text-[#17271E]'}`}>
                         {language === 'ta' ? d.nameTamil : d.name}
@@ -101,13 +124,17 @@ export const SectionLocalRisk: React.FC<{ onOpenDashboard: () => void }> = ({ on
                         {d.riskLevel}
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
 
             {/* Stylized Basin Contour Grid */}
-            <div className="relative aspect-16/9 bg-[#F5F3E9]/60 border border-[#DCE4D9] rounded-[12px] p-3.5 flex flex-col justify-between overflow-hidden">
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              transition={{ duration: 0.2 }}
+              className="relative aspect-16/9 bg-[#F5F3E9]/60 border border-[#DCE4D9] rounded-[12px] p-3.5 flex flex-col justify-between overflow-hidden shadow-2xs"
+            >
               <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-25" xmlns="http://www.w3.org/2000/svg">
                 <path d="M 0 40 Q 100 20 200 45 T 400 30" stroke="#1F6B4A" strokeWidth="1.2" fill="none" />
                 <path d="M 0 80 Q 150 90 250 70 T 400 95" stroke="#1F6B4A" strokeWidth="1.2" fill="none" />
@@ -123,97 +150,123 @@ export const SectionLocalRisk: React.FC<{ onOpenDashboard: () => void }> = ({ on
               <div className="relative z-10 text-[11px] font-mono text-[#718176]">
                 THANJAVUR · TIRUVARUR · MAYILADUTHURAI
               </div>
-            </div>
+            </motion.div>
           </div>
 
-          {/* Right: Selected District Weather & Agro-meteorological Advisory */}
+          {/* Right: Selected District Weather & Agro-meteorological Advisory (AnimatePresence) */}
           <div className="lg:col-span-7 bg-white border border-[#DCE4D9] rounded-[16px] p-6 lg:p-8 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="border-b border-[#DCE4D9] pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <span className="text-xs font-mono text-[#1F6B4A] uppercase tracking-wider block font-semibold">
-                    REGIONAL AGRO-CLIMATIC DOSSIER
-                  </span>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[#102D24] mt-1">
-                    {language === 'ta' ? curr.nameTamil : curr.name} · {curr.zone}
-                  </h3>
-                </div>
-                <div className="text-xs font-mono font-semibold bg-[#A96616]/10 text-[#A96616] px-2.5 py-1 rounded-[6px] self-start sm:self-auto">
-                  RISK: {curr.riskLevel.toUpperCase()}
-                </div>
-              </div>
-
-              {/* Environmental Factors Grid */}
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-                <div className="bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-3.5 text-center">
-                  <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#52665A] uppercase mb-1">
-                    <CloudRain className="w-3.5 h-3.5 text-[#1F6B4A]" />
-                    <span>Canopy RH</span>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={curr.name}
+                variants={tabContentVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <div className="border-b border-[#DCE4D9] pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-xs font-mono text-[#1F6B4A] uppercase tracking-wider block font-semibold">
+                      REGIONAL AGRO-CLIMATIC DOSSIER
+                    </span>
+                    <h3 className="text-2xl sm:text-3xl font-bold text-[#102D24] mt-1">
+                      {language === 'ta' ? curr.nameTamil : curr.name} · {curr.zone}
+                    </h3>
                   </div>
-                  <div className="text-2xl font-mono font-semibold text-[#102D24] tabular-nums">
-                    {curr.rh}%
+                  <div className="text-xs font-mono font-semibold bg-[#A96616]/10 text-[#A96616] px-2.5 py-1 rounded-[6px] self-start sm:self-auto">
+                    RISK: {curr.riskLevel.toUpperCase()}
                   </div>
                 </div>
 
-                <div className="bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-3.5 text-center">
-                  <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#52665A] uppercase mb-1">
-                    <Wind className="w-3.5 h-3.5 text-[#1F6B4A]" />
-                    <span>Overnight Dew</span>
-                  </div>
-                  <div className="text-2xl font-mono font-semibold text-[#102D24] tabular-nums">
-                    {curr.dewHours} <span className="text-xs font-normal text-[#52665A]">hrs</span>
-                  </div>
+                {/* Environmental Factors Grid with Micro-Stagger */}
+                <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.15 }}
+                    className="bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-3.5 text-center shadow-2xs"
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#52665A] uppercase mb-1">
+                      <CloudRain className="w-3.5 h-3.5 text-[#1F6B4A]" />
+                      <span>Canopy RH</span>
+                    </div>
+                    <div className="text-2xl font-mono font-semibold text-[#102D24] tabular-nums">
+                      {curr.rh}%
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.15 }}
+                    className="bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-3.5 text-center shadow-2xs"
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#52665A] uppercase mb-1">
+                      <Wind className="w-3.5 h-3.5 text-[#1F6B4A]" />
+                      <span>Overnight Dew</span>
+                    </div>
+                    <div className="text-2xl font-mono font-semibold text-[#102D24] tabular-nums">
+                      {curr.dewHours} <span className="text-xs font-normal text-[#52665A]">hrs</span>
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.15 }}
+                    className="bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-3.5 text-center shadow-2xs"
+                  >
+                    <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#52665A] uppercase mb-1">
+                      <Thermometer className="w-3.5 h-3.5 text-[#1F6B4A]" />
+                      <span>Temperature</span>
+                    </div>
+                    <div className="text-2xl font-mono font-semibold text-[#102D24] tabular-nums">
+                      {curr.temp}
+                    </div>
+                  </motion.div>
                 </div>
 
-                <div className="bg-[#EAEFE5]/50 border border-[#DCE4D9] rounded-[12px] p-3.5 text-center">
-                  <div className="flex items-center justify-center gap-1 text-xs font-mono text-[#52665A] uppercase mb-1">
-                    <Thermometer className="w-3.5 h-3.5 text-[#1F6B4A]" />
-                    <span>Temperature</span>
+                {/* Official Advisory Text */}
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-4 bg-[#F5F3E9] border-l-4 border-[#1F6B4A] rounded-r-[10px] mb-6 shadow-2xs"
+                >
+                  <div className="text-xs font-mono font-semibold text-[#102D24] uppercase mb-1">
+                    Official Meteorological Advisory
                   </div>
-                  <div className="text-2xl font-mono font-semibold text-[#102D24] tabular-nums">
-                    {curr.temp}
+                  <p className="text-sm sm:text-base text-[#17271E] font-sans leading-relaxed">
+                    {language === 'ta' ? curr.advisoryTa : curr.advisoryEn}
+                  </p>
+                </motion.div>
+
+                {/* Disease Risk Vectors */}
+                <div className="grid grid-cols-2 gap-3 text-xs font-mono mb-6">
+                  <div className="p-3 bg-[#FAF3F2] border border-[#B8423A]/30 rounded-[10px] flex justify-between items-center shadow-2xs">
+                    <span className="text-[#52665A]">LEAF BLAST RISK:</span>
+                    <span className="font-semibold text-[#B8423A]">{curr.blastRisk}</span>
+                  </div>
+                  <div className="p-3 bg-[#FEF9EE] border border-[#A96616]/30 rounded-[10px] flex justify-between items-center shadow-2xs">
+                    <span className="text-[#52665A]">BACTERIAL BLIGHT:</span>
+                    <span className="font-semibold text-[#A96616]">{curr.blbRisk}</span>
                   </div>
                 </div>
-              </div>
-
-              {/* Official Advisory Text */}
-              <div className="p-4 bg-[#F5F3E9] border-l-4 border-[#1F6B4A] rounded-r-[10px] mb-6">
-                <div className="text-xs font-mono font-semibold text-[#102D24] uppercase mb-1">
-                  Official Meteorological Advisory
-                </div>
-                <p className="text-sm sm:text-base text-[#17271E] font-sans leading-relaxed">
-                  {language === 'ta' ? curr.advisoryTa : curr.advisoryEn}
-                </p>
-              </div>
-
-              {/* Disease Risk Vectors */}
-              <div className="grid grid-cols-2 gap-3 text-xs font-mono mb-6">
-                <div className="p-3 bg-[#FAF3F2] border border-[#B8423A]/30 rounded-[10px] flex justify-between items-center">
-                  <span className="text-[#52665A]">LEAF BLAST RISK:</span>
-                  <span className="font-semibold text-[#B8423A]">{curr.blastRisk}</span>
-                </div>
-                <div className="p-3 bg-[#FEF9EE] border border-[#A96616]/30 rounded-[10px] flex justify-between items-center">
-                  <span className="text-[#52665A]">BACTERIAL BLIGHT:</span>
-                  <span className="font-semibold text-[#A96616]">{curr.blbRisk}</span>
-                </div>
-              </div>
-            </div>
+              </motion.div>
+            </AnimatePresence>
 
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-[#DCE4D9] pt-4">
               <span className="text-xs font-mono text-[#718176]">
                 SOURCE: IMD Agromet Advisory & TNAU Portal
               </span>
-              <button
+              <motion.button
+                {...buttonHoverTap}
                 onClick={onOpenDashboard}
-                className="btn-secondary px-4 py-2 min-h-[44px] rounded-[10px] text-xs font-mono flex items-center justify-center gap-1.5 self-start sm:self-auto"
+                className="btn-secondary px-4 py-2 min-h-[44px] rounded-[10px] text-xs font-mono flex items-center justify-center gap-1.5 self-start sm:self-auto cursor-pointer shadow-2xs"
               >
                 <span>{t('secD_viewRiskDetails')}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              </motion.button>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };

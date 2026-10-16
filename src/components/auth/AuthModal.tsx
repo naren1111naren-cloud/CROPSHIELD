@@ -3,6 +3,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { formatAuthError } from '../../services/authService';
 import { X, Lock, Mail, User, MapPin, ArrowRight, RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { backdropVariants, modalVariants, buttonHoverTap } from '../../lib/motion';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -35,8 +37,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -180,9 +180,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0B211A]/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white border border-[#DCE4D9] rounded-[16px] max-w-lg w-full p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto">
-        {/* Header */}
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 bg-[#0B211A]/60 backdrop-blur-xs"
+            onClick={onClose}
+          />
+          <motion.div
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="relative z-10 bg-white border border-[#DCE4D9] rounded-[16px] max-w-lg w-full p-6 sm:p-8 shadow-2xl max-h-[92vh] overflow-y-auto"
+          >
+            {/* Header */}
         <div className="flex items-center justify-between border-b border-[#DCE4D9] pb-4 mb-6">
           <div>
             <span className="text-xs font-mono text-[#1F6B4A] uppercase tracking-wider block font-semibold">
@@ -510,7 +526,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </span>
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
+  )}
+</AnimatePresence>
   );
 };

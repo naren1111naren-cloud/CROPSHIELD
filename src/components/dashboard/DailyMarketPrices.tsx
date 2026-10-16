@@ -40,6 +40,13 @@ import {
   generateGoogleMapsDirectionsUrl,
 } from '../../services/nearbyServicesDirectory';
 import { TN_DISTRICT_GEODATA } from '../../config/tamilNaduDistricts';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  tabContentVariants,
+  buttonHoverTap,
+  chipHoverTap,
+  cardHoverTap,
+} from '../../lib/motion';
 
 interface DailyMarketPricesProps {
   activeDistrict?: string;
@@ -295,17 +302,25 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
       {/* 1. TOP DUAL TABS (Matching the AGMARKNET Portal Design) */}
       <div className="flex border-b border-[#08698c]/30 bg-white">
         {/* Tab 1: Market Wise Price & Arrival */}
-        <button
+        <motion.button
+          whileTap={{ scale: 0.99 }}
           onClick={() => {
             setActivePortalTab('market');
             setCurrentPage(1);
           }}
-          className={`flex-1 py-3 px-4 text-center cursor-pointer transition-all border-r border-[#DCE4D9] ${
+          className={`flex-1 py-3 px-4 text-center cursor-pointer transition-all border-r border-[#DCE4D9] relative ${
             activePortalTab === 'market'
-              ? 'bg-white border-b-2 border-b-[#08698c] shadow-xs'
+              ? 'bg-white shadow-xs'
               : 'bg-[#F9FBFC] text-[#556976] hover:bg-[#F0F5F8]'
           }`}
         >
+          {activePortalTab === 'market' && (
+            <motion.div
+              layoutId="activeMarketTabPill"
+              className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#08698c]"
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+            />
+          )}
           <div
             className={`text-sm sm:text-base font-semibold ${
               activePortalTab === 'market' ? 'text-[#08698c]' : 'text-[#445566]'
@@ -316,20 +331,28 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
           <div className="text-[11px] text-[#718176] font-normal mt-0.5">
             (MSP Commodities & Tomato, Onion, Potato)
           </div>
-        </button>
+        </motion.button>
 
         {/* Tab 2: Crop Season Wise Price & Arrival */}
-        <button
+        <motion.button
+          whileTap={{ scale: 0.99 }}
           onClick={() => {
             setActivePortalTab('season');
             setCurrentPage(1);
           }}
-          className={`flex-1 py-3 px-4 text-center cursor-pointer transition-all ${
+          className={`flex-1 py-3 px-4 text-center cursor-pointer transition-all relative ${
             activePortalTab === 'season'
-              ? 'bg-white border-b-2 border-b-[#08698c] shadow-xs'
+              ? 'bg-white shadow-xs'
               : 'bg-[#F9FBFC] text-[#556976] hover:bg-[#F0F5F8]'
           }`}
         >
+          {activePortalTab === 'season' && (
+            <motion.div
+              layoutId="activeMarketTabPill"
+              className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#08698c]"
+              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+            />
+          )}
           <div
             className={`text-sm sm:text-base font-semibold ${
               activePortalTab === 'season' ? 'text-[#08698c]' : 'text-[#445566]'
@@ -340,7 +363,7 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
           <div className="text-[11px] text-[#718176] font-normal mt-0.5">
             (MSP Commodities)
           </div>
-        </button>
+        </motion.button>
       </div>
 
       {/* 2. FILTER SELECTION STRIP (Exact Layout from Portal Screenshot) */}
@@ -546,8 +569,16 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
 
       {/* 4. DATA TABLE SECTION */}
       <div className="overflow-x-auto">
-        {/* VIEW A: Crop Season Wise Price & Arrival (Tab 2) */}
-        {activePortalTab === 'season' && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePortalTab}
+            variants={tabContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            {/* VIEW A: Crop Season Wise Price & Arrival (Tab 2) */}
+            {activePortalTab === 'season' && (
           <table className="w-full text-xs border-collapse">
             <thead>
               {/* Row 1 Headers */}
@@ -770,7 +801,9 @@ export const DailyMarketPrices: React.FC<DailyMarketPricesProps> = ({
             </tbody>
           </table>
         )}
-      </div>
+      </motion.div>
+    </AnimatePresence>
+  </div>
 
       {/* 5. PAGINATION FOOTER STRIP (Rows per page & Page numbers matching the screenshot) */}
       <div className="flex flex-wrap items-center justify-between px-4 py-2 bg-white border-t border-[#E2E8F0] text-xs text-[#64748B]">
