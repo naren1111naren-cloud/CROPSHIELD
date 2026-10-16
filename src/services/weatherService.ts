@@ -1,5 +1,14 @@
 import { TN_DISTRICT_GEODATA, getDistrictGeo, DistrictGeo } from '../config/tamilNaduDistricts';
 import { apiFetch } from '../lib/apiClient';
+import {
+  AgriculturalRiskReport,
+  FarmWeatherReport,
+  getWindCompass,
+  calculateAgriculturalRisks,
+} from '../../server/weatherIntelligenceService';
+
+export type { AgriculturalRiskReport, FarmWeatherReport };
+export { getWindCompass, calculateAgriculturalRisks };
 
 export interface CurrentWeatherState {
   time: string;
@@ -13,6 +22,8 @@ export interface CurrentWeatherState {
   weatherDescriptionTamil: string;
   cloudCover: number;
   windSpeed: number;
+  windDirection?: number;
+  windDirectionCompass?: string;
   isDay: boolean;
 }
 
@@ -28,6 +39,7 @@ export interface DailyForecastDay {
   precipitationSum: number;
   precipitationProbabilityMax: number;
   windSpeedMax: number;
+  windDirectionDominant?: number;
 }
 
 export interface RealWeatherData {
@@ -46,6 +58,10 @@ export interface RealWeatherData {
   isStale: boolean;
   source: string;
   attribution: string;
+  isFarmCoordinate?: boolean;
+  locationName?: string;
+  forecastPeriod?: string;
+  risks?: AgriculturalRiskReport;
 }
 
 // WMO Weather Interpretation Codes according to WMO Code 4677 standard
@@ -211,6 +227,11 @@ export function parseOpenMeteoResponse(raw: any, geo: DistrictGeo): RealWeatherD
     timeStyle: 'short',
   });
 
+  const windDir = current.wind_direction_10m ?? 90;
+  const windDirCompass = getWindCompass(windDir);
+
+  const risks = calculateAgriculturalRisks(current, forecastDays);
+
   return {
     district: geo.name,
     districtTamil: geo.nameTamil,
@@ -232,6 +253,8 @@ export function parseOpenMeteoResponse(raw: any, geo: DistrictGeo): RealWeatherD
       weatherDescriptionTamil: currentWmo.ta,
       cloudCover: current.cloud_cover ?? 50,
       windSpeed: Math.round((current.wind_speed_10m ?? 12) * 10) / 10,
+      windDirection: windDir,
+      windDirectionCompass: windDirCompass,
       isDay: Boolean(current.is_day ?? 1),
     },
     daily: forecastDays,
@@ -240,5 +263,153 @@ export function parseOpenMeteoResponse(raw: any, geo: DistrictGeo): RealWeatherD
     isStale: false,
     source: 'Open-Meteo High-Resolution Numerical Weather Prediction API',
     attribution: 'Weather data provided by Open-Meteo.com under Creative Commons Attribution 4.0 International (CC BY 4.0)',
+    isFarmCoordinate: false,
+    locationName: `${geo.name} District`,
+    forecastPeriod: `${forecastDays[0]?.date || 'Today'} to ${forecastDays[forecastDays.length - 1]?.date || '5 Days'}`,
+    risks,
+  };
+}
+
+/**
+ * Fetch farm-specific meteorological and agricultural risk intelligence.
+ * Uses exact parcel coordinates when available, falling back to district centroid.
+ */
+export async function getFarmWeatherIntelligence(options: {
+  latitude?: number;
+  longitude?: number;
+  district?: string;
+  locationName?: string;
+  cropType?: string;
+  cropStage?: string;
+}): Promise<FarmWeatherReport> {
+  const params = new URLSearchParams();
+  if (options.latitude !== undefined && options.longitude !== undefined) {
+    params.set('lat', String(options.latitude));
+    params.set('lng', String(options.longitude));
+  }
+  if (options.district) params.set('district', options.district);
+  if (options.locationName) params.set('locationName', options.locationName);
+  if (options.cropType) params.set('cropType', options.cropType);
+  if (options.cropStage) params.set('cropStage', options.cropStage);
+
+  try {
+    const res = await apiFetch(`/api/weather?${params.toString()}`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && (json.data || json.report)) {
+        return json.data || json.report;
+      }
+    }
+  } catch (err) {
+    console.warn('[CropShield] Server /api/weather call failed, falling back to direct computation:', err);
+  }
+
+  // Direct client-side fallback
+  const lat = options.latitude ?? 10.96;
+  const lng = options.longitude ?? 78.08;
+  const isFarm = options.latitude !== undefined && options.longitude !== undefined;
+  const locName = options.locationName || (options.district ? `${options.district} District` : 'Tamil Nadu');
+
+  const directUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&hourly=temperature_2m,relative_humidity_2m,precipitation,precipitation_probability,wind_speed_10m&timezone=Asia%2FKolkata&forecast_days=7`;
+
+  const resp = await fetch(directUrl);
+  if (!resp.ok) {
+    throw new Error(`Open-Meteo direct API returned status ${resp.status}`);
+  }
+
+  const raw = await resp.json();
+  const current = raw.current || {};
+  const dailyRaw = raw.daily || {};
+  const hourlyRaw = raw.hourly || {};
+
+  const currentWmo = decodeWmoWeather(current.weather_code ?? 0);
+  const windDirCompass = getWindCompass(current.wind_direction_10m ?? 90);
+
+  const dailyForecast: FarmWeatherReport['daily'] = [];
+  const times: string[] = dailyRaw.time || [];
+
+  for (let i = 0; i < times.length; i++) {
+    const dateStr = times[i];
+    const dateObj = new Date(dateStr);
+    const dayIndex = dateObj.getDay();
+    const dayName = DAY_NAMES[dayIndex] || { en: 'Day', ta: 'நாள்' };
+
+    const code = dailyRaw.weather_code?.[i] ?? 0;
+    const wmo = decodeWmoWeather(code);
+
+    dailyForecast.push({
+      date: dateStr,
+      dayOfWeek: dayName.en,
+      dayOfWeekTamil: dayName.ta,
+      weatherCode: code,
+      weatherDescription: wmo.en,
+      weatherDescriptionTamil: wmo.ta,
+      tempMax: Math.round((dailyRaw.temperature_2m_max?.[i] ?? 30) * 10) / 10,
+      tempMin: Math.round((dailyRaw.temperature_2m_min?.[i] ?? 24) * 10) / 10,
+      precipitationSum: Math.round((dailyRaw.precipitation_sum?.[i] ?? 0) * 10) / 10,
+      precipitationProbabilityMax: dailyRaw.precipitation_probability_max?.[i] ?? 0,
+      windSpeedMax: Math.round((dailyRaw.wind_speed_10m_max?.[i] ?? 10) * 10) / 10,
+      windDirectionDominant: dailyRaw.wind_direction_10m_dominant?.[i] ?? 0,
+    });
+  }
+
+  const hourlyNext24h: FarmWeatherReport['hourlyNext24h'] = [];
+  const hourlyTimes: string[] = hourlyRaw.time || [];
+  const currentIso = new Date().toISOString();
+  let count = 0;
+
+  for (let j = 0; j < hourlyTimes.length && count < 24; j++) {
+    const t = hourlyTimes[j];
+    if (t >= currentIso.slice(0, 13)) {
+      hourlyNext24h.push({
+        time: t,
+        temperature: Math.round((hourlyRaw.temperature_2m?.[j] ?? 28) * 10) / 10,
+        precipitationProbability: hourlyRaw.precipitation_probability?.[j] ?? 0,
+        precipitation: Math.round((hourlyRaw.precipitation?.[j] ?? 0) * 10) / 10,
+        windSpeed: Math.round((hourlyRaw.wind_speed_10m?.[j] ?? 10) * 10) / 10,
+        relativeHumidity: hourlyRaw.relative_humidity_2m?.[j] ?? 70,
+      });
+      count++;
+    }
+  }
+
+  const risks = calculateAgriculturalRisks(current, dailyForecast, options.cropType, options.cropStage);
+
+  const nowIst = new Date().toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+
+  return {
+    locationName: locName,
+    isFarmCoordinate: isFarm,
+    latitude: lat,
+    longitude: lng,
+    elevation: raw.elevation ?? 0,
+    timezone: raw.timezone || 'Asia/Kolkata',
+    current: {
+      time: current.time || new Date().toISOString(),
+      temperature: Math.round((current.temperature_2m ?? 28) * 10) / 10,
+      apparentTemperature: Math.round((current.apparent_temperature ?? 30) * 10) / 10,
+      relativeHumidity: current.relative_humidity_2m ?? 75,
+      precipitation: Math.round((current.precipitation ?? 0) * 10) / 10,
+      rain: Math.round((current.rain ?? 0) * 10) / 10,
+      weatherCode: current.weather_code ?? 0,
+      weatherDescription: currentWmo.en,
+      weatherDescriptionTamil: currentWmo.ta,
+      cloudCover: current.cloud_cover ?? 50,
+      windSpeed: Math.round((current.wind_speed_10m ?? 12) * 10) / 10,
+      windDirection: current.wind_direction_10m ?? 0,
+      windDirectionCompass: windDirCompass,
+      isDay: Boolean(current.is_day ?? 1),
+    },
+    daily: dailyForecast,
+    hourlyNext24h,
+    risks,
+    lastUpdated: nowIst,
+    forecastPeriod: `${dailyForecast[0]?.date || 'Today'} to ${dailyForecast[dailyForecast.length - 1]?.date || '7 Days'}`,
+    source: 'Open-Meteo High-Resolution Numerical Weather Prediction API',
+    attribution: 'Weather data provided by Open-Meteo.com under CC BY 4.0. Calibrated with TNAU agro-climatic standards.',
   };
 }

@@ -31,6 +31,11 @@ import {
   categorizeNdvi,
   getCropStageNdviExpectation,
 } from '../../services/satelliteVegetationService';
+import {
+  getFarmWeatherIntelligence,
+  FarmWeatherReport,
+  AgriculturalRiskReport,
+} from '../../services/weatherService';
 import { useLanguage } from '../../context/LanguageContext';
 import {
   Compass,
@@ -62,6 +67,14 @@ import {
   CloudRain,
   ChevronDown,
   ChevronUp,
+  Cloud,
+  Sun,
+  Wind,
+  Droplets,
+  Thermometer,
+  CloudLightning,
+  Umbrella,
+  AlertCircle,
 } from 'lucide-react';
 
 interface FarmGISMapProps {
@@ -128,8 +141,12 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       ''
   );
 
-  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend
-  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history'>('satellite');
+  // GIS Intelligence Layer Mode: Satellite Base vs Crop Health NDVI vs Cadastre vs Historical Trend vs Weather & Ag-Risk
+  const [activeMapMode, setActiveMapMode] = useState<'satellite' | 'ndvi' | 'cadastre' | 'history' | 'weather'>('satellite');
+  const [weatherSubLayer, setWeatherSubLayer] = useState<'conditions' | 'rainfall' | 'heat_risk' | 'waterlog_risk' | 'spray_window'>('conditions');
+  const [weatherReport, setWeatherReport] = useState<FarmWeatherReport | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState<boolean>(false);
+  const [isWeatherDetailsOpen, setIsWeatherDetailsOpen] = useState<boolean>(true);
   const [vegetationReport, setVegetationReport] = useState<SatelliteVegetationReport | null>(null);
   const [vegetationLoading, setVegetationLoading] = useState<boolean>(false);
   const [selectedObsDate, setSelectedObsDate] = useState<string | null>(null);
@@ -195,6 +212,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
   const vertexMarkersLayerRef = useRef<L.LayerGroup | null>(null);
   const savedFarmsLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const userGpsMarkerRef = useRef<L.Marker | null>(null);
+  const weatherOverlayLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Re-resolve location whenever selectedFarm or farmerProfile updates
   useEffect(() => {
@@ -235,6 +253,191 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
       setSelectedObsDate(null);
     }
   }, [selectedFarm]);
+
+  // Fetch real farm-specific or district weather intelligence
+  useEffect(() => {
+    let lat: number | undefined;
+    let lng: number | undefined;
+
+    if (selectedFarm?.boundary?.centroid) {
+      [lat, lng] = selectedFarm.boundary.centroid;
+    } else if (selectedFarm?.latitude && selectedFarm?.longitude) {
+      lat = selectedFarm.latitude;
+      lng = selectedFarm.longitude;
+    } else if (resolvedLocation.isExactField && resolvedLocation.coordinates) {
+      [lat, lng] = resolvedLocation.coordinates;
+    } else {
+      [lat, lng] = resolvedLocation.coordinates;
+    }
+
+    const dist = selectedFarm?.district || resolvedLocation.hierarchy.district || selectedDistrict || 'Karur';
+    const locName = selectedFarm ? selectedFarm.farmName : (resolvedLocation.hierarchy.district ? `${resolvedLocation.hierarchy.district} District` : undefined);
+
+    setWeatherLoading(true);
+    getFarmWeatherIntelligence({
+      latitude: lat,
+      longitude: lng,
+      district: dist,
+      locationName: locName,
+      cropType: selectedFarm?.cropType,
+      cropStage: selectedFarm?.cropStage,
+    })
+      .then((rep) => setWeatherReport(rep))
+      .catch((err) => console.warn('[CropShield] Failed to fetch weather intelligence:', err))
+      .finally(() => setWeatherLoading(false));
+  }, [selectedFarm, resolvedLocation, selectedDistrict]);
+
+  // Render Weather & Agricultural Risk Overlay onto Leaflet Map
+  useEffect(() => {
+    if (!mapInstanceRef.current || !weatherOverlayLayerRef.current) return;
+    weatherOverlayLayerRef.current.clearLayers();
+
+    if (activeMapMode !== 'weather' || !weatherReport) return;
+
+    const centerLat = weatherReport.latitude;
+    const centerLng = weatherReport.longitude;
+    const temp = weatherReport.current.temperature;
+    const desc = weatherReport.current.weatherDescription;
+    const windKmh = weatherReport.current.windSpeed;
+    const windDir = weatherReport.current.windDirectionCompass;
+
+    // 1. Point Weather Station / Farm Marker
+    const weatherIconHtml = `
+      <div class="weather-station-marker flex items-center gap-1.5 bg-[#0B241B]/95 text-white border border-[#00E5FF]/60 px-2.5 py-1 rounded-full shadow-2xl backdrop-blur-md font-mono text-[11px] whitespace-nowrap cursor-pointer">
+        <span class="text-xs font-bold text-[#00E5FF]">${temp}°C</span>
+        <span class="text-white/60">·</span>
+        <span class="text-white/90 font-sans text-[11px] font-semibold">${desc}</span>
+        <span class="text-white/60">·</span>
+        <span class="text-[#70B77E] flex items-center gap-0.5 text-[10px]">💨 ${windKmh}km/h ${windDir}</span>
+      </div>
+    `;
+
+    const weatherDivIcon = L.divIcon({
+      className: 'custom-weather-marker',
+      html: weatherIconHtml,
+      iconAnchor: [60, 20],
+    });
+
+    const marker = L.marker([centerLat, centerLng], { icon: weatherDivIcon }).addTo(weatherOverlayLayerRef.current);
+    marker.bindPopup(`
+      <div style="font-family: monospace; font-size: 11px; color: #0B241B; min-width: 200px;">
+        <strong style="color: #1F6B4A; font-size: 13px;">${weatherReport.locationName}</strong><br/>
+        <span style="color: #64766B;">${weatherReport.isFarmCoordinate ? 'Micro-Climate Farm Coordinates' : 'District Centroid Forecast'}</span><br/>
+        <strong>Temperature:</strong> ${temp}°C (Feels like ${weatherReport.current.apparentTemperature}°C)<br/>
+        <strong>Humidity:</strong> ${weatherReport.current.relativeHumidity}%<br/>
+        <strong>Wind:</strong> ${windKmh} km/h ${windDir} (${weatherReport.current.windDirection}°)<br/>
+        <strong>72h Rainfall:</strong> ${weatherReport.risks.rainfallRisk.totalPrecip72hMm} mm<br/>
+        <strong>Heat Stress:</strong> <span style="text-transform: uppercase; font-weight: bold;">${weatherReport.risks.heatStress.level}</span><br/>
+        <div style="font-size: 9px; color: #777; margin-top: 4px;">Provider: ${weatherReport.source}</div>
+      </div>
+    `);
+
+    // 2. Risk Layers Visualization
+    if (weatherSubLayer === 'rainfall') {
+      const rainMm = weatherReport.risks.rainfallRisk.totalPrecip72hMm;
+      let rainColor = '#38BDF8';
+      let rainFillOpacity = 0.25;
+      if (rainMm >= 65) {
+        rainColor = '#7C3AED';
+        rainFillOpacity = 0.45;
+      } else if (rainMm >= 35) {
+        rainColor = '#1D4ED8';
+        rainFillOpacity = 0.40;
+      } else if (rainMm >= 10) {
+        rainColor = '#0284C7';
+        rainFillOpacity = 0.30;
+      }
+
+      if (polygonCoords.length >= 3) {
+        const poly = L.polygon(polygonCoords, {
+          color: rainColor,
+          weight: 3,
+          fillColor: rainColor,
+          fillOpacity: rainFillOpacity,
+          dashArray: '4, 4',
+        }).addTo(weatherOverlayLayerRef.current);
+        poly.bindTooltip(`72h Forecast Precipitation: ${rainMm} mm`, { permanent: false, direction: 'center' });
+      } else {
+        const circle = L.circle([centerLat, centerLng], {
+          radius: 1200,
+          color: rainColor,
+          weight: 2,
+          fillColor: rainColor,
+          fillOpacity: rainFillOpacity,
+        }).addTo(weatherOverlayLayerRef.current);
+        circle.bindTooltip(`Regional 72h Precipitation: ${rainMm} mm (${weatherReport.locationName})`, {
+          permanent: false,
+          direction: 'center',
+        });
+      }
+    } else if (weatherSubLayer === 'heat_risk') {
+      const heatLevel = weatherReport.risks.heatStress.level;
+      let heatColor = '#10B981';
+      let heatOpacity = 0.2;
+      if (heatLevel === 'critical') {
+        heatColor = '#EF4444';
+        heatOpacity = 0.45;
+      } else if (heatLevel === 'caution') {
+        heatColor = '#F59E0B';
+        heatOpacity = 0.35;
+      }
+
+      if (polygonCoords.length >= 3) {
+        const poly = L.polygon(polygonCoords, {
+          color: heatColor,
+          weight: 3,
+          fillColor: heatColor,
+          fillOpacity: heatOpacity,
+        }).addTo(weatherOverlayLayerRef.current);
+        poly.bindTooltip(`Max Temp: ${weatherReport.risks.heatStress.maxTempC}°C (${weatherReport.risks.heatStress.title})`, {
+          permanent: false,
+          direction: 'center',
+        });
+      } else {
+        const circle = L.circle([centerLat, centerLng], {
+          radius: 1200,
+          color: heatColor,
+          weight: 2,
+          fillColor: heatColor,
+          fillOpacity: heatOpacity,
+        }).addTo(weatherOverlayLayerRef.current);
+        circle.bindTooltip(`Max Temp: ${weatherReport.risks.heatStress.maxTempC}°C (${weatherReport.risks.heatStress.title})`, {
+          permanent: false,
+          direction: 'center',
+        });
+      }
+    } else if (weatherSubLayer === 'waterlog_risk') {
+      const waterlogLevel = weatherReport.risks.rainfallRisk.waterloggingRisk;
+      let wlColor = '#059669';
+      let wlOpacity = 0.2;
+      if (waterlogLevel === 'high') {
+        wlColor = '#4C1D95';
+        wlOpacity = 0.5;
+      } else if (waterlogLevel === 'moderate') {
+        wlColor = '#2563EB';
+        wlOpacity = 0.35;
+      }
+
+      if (polygonCoords.length >= 3) {
+        const poly = L.polygon(polygonCoords, {
+          color: wlColor,
+          weight: 3,
+          fillColor: wlColor,
+          fillOpacity: wlOpacity,
+        }).addTo(weatherOverlayLayerRef.current);
+        poly.bindTooltip(`Waterlogging Risk: ${waterlogLevel.toUpperCase()}`, { permanent: false, direction: 'center' });
+      } else {
+        const circle = L.circle([centerLat, centerLng], {
+          radius: 1200,
+          color: wlColor,
+          weight: 2,
+          fillColor: wlColor,
+          fillOpacity: wlOpacity,
+        }).addTo(weatherOverlayLayerRef.current);
+        circle.bindTooltip(`Waterlogging Risk: ${waterlogLevel.toUpperCase()}`, { permanent: false, direction: 'center' });
+      }
+    }
+  }, [activeMapMode, weatherSubLayer, weatherReport, polygonCoords]);
 
   // Sync available taluks & villages for selected lookup district
   useEffect(() => {
@@ -439,12 +642,14 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
     vertexMarkersLayerRef.current = L.layerGroup().addTo(map);
     savedFarmsLayerGroupRef.current = L.layerGroup().addTo(map);
+    weatherOverlayLayerRef.current = L.layerGroup().addTo(map);
 
     applyTileLayer(map, 'hybrid');
 
     mapInstanceRef.current = map;
 
     return () => {
+      weatherOverlayLayerRef.current?.clearLayers();
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -1268,11 +1473,30 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
             <Calendar className="w-3.5 h-3.5 text-[#A855F7]" />
             <span>{isTa ? 'காலவரிசை போக்கு' : 'Historical Trend'}</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMapMode('weather')}
+            className={`px-3 py-1.5 rounded-[7px] transition-colors cursor-pointer flex items-center gap-1.5 ${
+              activeMapMode === 'weather'
+                ? 'bg-[#0284C7] border border-[#38BDF8] text-white font-bold shadow-xs'
+                : 'bg-white/5 border border-white/10 text-white/70 hover:text-white'
+            }`}
+          >
+            <CloudRain className="w-3.5 h-3.5 text-[#38BDF8]" />
+            <span>{isTa ? 'வானிலை & இடர் பகுப்பாய்வு' : 'Weather & Ag-Risk'}</span>
+            {weatherLoading && <span className="w-2 h-2 rounded-full bg-[#00E5FF] animate-ping" />}
+          </button>
         </div>
 
         {/* Observation Status / Quick Tag */}
         <div className="flex items-center gap-2">
-          {vegetationReport?.latestObservation ? (
+          {activeMapMode === 'weather' && weatherReport ? (
+            <span className="text-[11px] text-[#38BDF8] bg-[#0284C7]/20 border border-[#38BDF8]/40 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#38BDF8]" />
+              <span>{weatherReport.isFarmCoordinate ? 'Micro-Climate Farm Station' : 'District Centroid Forecast'} · {weatherReport.current.temperature}°C</span>
+            </span>
+          ) : vegetationReport?.latestObservation ? (
             <span className="text-[11px] text-[#70B77E] bg-[#217451]/20 border border-[#70B77E]/30 px-2.5 py-0.5 rounded-[4px] flex items-center gap-1 font-mono">
               <span className="w-1.5 h-1.5 rounded-full bg-[#70B77E]" />
               <span>Sentinel-2 L2A · {vegetationReport.latestObservation.date}</span>
@@ -1289,6 +1513,52 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
           ) : null}
         </div>
       </div>
+
+      {/* Weather Sub-Layer Toggle Bar */}
+      {activeMapMode === 'weather' && (
+        <div className="bg-[#081813] border-b border-white/10 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-white/50 uppercase text-[10px] font-bold">AG-RISK OVERLAYS:</span>
+            <button
+              type="button"
+              onClick={() => setWeatherSubLayer('conditions')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                weatherSubLayer === 'conditions' ? 'bg-[#217451] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              📍 Station & Wind
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeatherSubLayer('rainfall')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                weatherSubLayer === 'rainfall' ? 'bg-[#0284C7] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🌧️ 72h Rainfall Accumulation
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeatherSubLayer('heat_risk')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                weatherSubLayer === 'heat_risk' ? 'bg-[#EF4444] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              ☀️ High-Temperature Exposure
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeatherSubLayer('waterlog_risk')}
+              className={`px-2.5 py-1 rounded-[6px] transition-colors cursor-pointer ${
+                weatherSubLayer === 'waterlog_risk' ? 'bg-[#7C3AED] text-white font-bold' : 'bg-white/5 text-white/70 hover:text-white'
+              }`}
+            >
+              🌊 Waterlogging & Flood Hazard
+            </button>
+          </div>
+          <span className="text-white/40 text-[10px]">Open-Meteo High-Resolution NWP · CC BY 4.0</span>
+        </div>
+      )}
 
       {/* ========================================================
           LOCATION HIERARCHY BREADCRUMB & RESOLUTION BANNER
@@ -1572,7 +1842,7 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
         )}
 
         {/* Floating Sentinel-2 Crop Health & Observation Details Panel */}
-        {(activeMapMode === 'ndvi' || activeMapMode === 'history' || vegetationReport) && (
+        {(activeMapMode === 'ndvi' || activeMapMode === 'history' || (vegetationReport && activeMapMode === 'satellite')) && (
           <div className="absolute top-4 right-4 z-20 max-w-[300px] sm:max-w-xs w-full bg-[#0B241B]/95 backdrop-blur-md border border-[#217451]/60 rounded-[12px] p-3 text-xs font-mono shadow-2xl text-white space-y-2.5">
             <div className="flex items-center justify-between border-b border-white/10 pb-2">
               <div className="flex items-center gap-1.5">
@@ -1686,6 +1956,202 @@ export const FarmGISMap: React.FC<FarmGISMapProps> = ({
 
                 <p className="text-[9px] font-sans text-white/50 leading-tight pt-1 border-t border-white/10">
                   Sentinel-2 (10m) · B08 (NIR) & B04 (Red) · Surface Reflectance · Does not replace physical field inspection.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Floating Farm Weather & Agricultural Risk Intelligence Panel */}
+        {activeMapMode === 'weather' && weatherReport && (
+          <div className="absolute top-4 right-4 z-20 max-w-[320px] sm:max-w-sm w-full bg-[#0B241B]/95 backdrop-blur-md border border-[#0284C7]/60 rounded-[12px] p-3 text-xs font-mono shadow-2xl text-white space-y-2.5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-1.5">
+                <CloudRain className="w-4 h-4 text-[#38BDF8]" />
+                <span className="font-bold text-xs sm:text-sm text-white font-['Plus_Jakarta_Sans']">
+                  {isTa ? 'வானிலை & பயிர் இடர் நுண்ணறிவு' : 'Weather & Ag-Risk Intelligence'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsWeatherDetailsOpen(!isWeatherDetailsOpen)}
+                className="text-white/60 hover:text-white p-0.5 cursor-pointer"
+                title={isWeatherDetailsOpen ? 'Collapse panel' : 'Expand panel'}
+              >
+                {isWeatherDetailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+
+            {isWeatherDetailsOpen && (
+              <>
+                {/* Location Provenance Badge */}
+                <div className="p-2 bg-black/40 border border-white/10 rounded-[6px] space-y-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#38BDF8] font-bold truncate max-w-[170px]">{weatherReport.locationName}</span>
+                    <span className="text-[9px] text-white/50">{weatherReport.lastUpdated}</span>
+                  </div>
+                  <div className="text-[10px] text-white/70">
+                    {weatherReport.isFarmCoordinate ? (
+                      <span className="text-[#70B77E] font-semibold">🎯 Micro-Climate Parcel Coordinates ({weatherReport.latitude.toFixed(4)}, {weatherReport.longitude.toFixed(4)})</span>
+                    ) : (
+                      <span className="text-[#F59E0B] font-semibold">🏛️ District Centroid Forecast · Field boundary unmapped</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Current Meteorological Conditions Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-center">
+                  <div className="bg-[#081813] border border-white/10 p-1.5 rounded-[6px]">
+                    <div className="text-[9px] text-white/50 uppercase">TEMP</div>
+                    <div className="text-sm sm:text-base font-bold text-[#00E5FF]">
+                      {weatherReport.current.temperature}°C
+                    </div>
+                    <div className="text-[8px] text-white/40">Feels {weatherReport.current.apparentTemperature}°C</div>
+                  </div>
+
+                  <div className="bg-[#081813] border border-white/10 p-1.5 rounded-[6px]">
+                    <div className="text-[9px] text-white/50 uppercase">HUMIDITY</div>
+                    <div className="text-sm sm:text-base font-bold text-[#70B77E]">
+                      {weatherReport.current.relativeHumidity}%
+                    </div>
+                    <div className="text-[8px] text-white/40">{weatherReport.current.relativeHumidity >= 80 ? 'High Dew' : 'Optimal'}</div>
+                  </div>
+
+                  <div className="bg-[#081813] border border-white/10 p-1.5 rounded-[6px]">
+                    <div className="text-[9px] text-white/50 uppercase">WIND</div>
+                    <div className="text-sm sm:text-base font-bold text-[#F59E0B]">
+                      {weatherReport.current.windSpeed} <span className="text-[9px]">km/h</span>
+                    </div>
+                    <div className="text-[8px] text-white/40">{weatherReport.current.windDirectionCompass} ({weatherReport.current.windDirection}°)</div>
+                  </div>
+
+                  <div className="bg-[#081813] border border-white/10 p-1.5 rounded-[6px]">
+                    <div className="text-[9px] text-white/50 uppercase">RAIN 72H</div>
+                    <div className="text-sm sm:text-base font-bold text-[#38BDF8]">
+                      {weatherReport.risks.rainfallRisk.totalPrecip72hMm} <span className="text-[9px]">mm</span>
+                    </div>
+                    <div className="text-[8px] text-white/40">Sum 3-Days</div>
+                  </div>
+                </div>
+
+                {/* Agricultural Risk Cards */}
+                <div className="space-y-1.5 text-[10px]">
+                  {/* Heat Stress Alert */}
+                  <div className={`p-2 rounded-[6px] border ${
+                    weatherReport.risks.heatStress.level === 'critical'
+                      ? 'bg-[#EF4444]/15 border-[#EF4444]/40 text-red-200'
+                      : weatherReport.risks.heatStress.level === 'caution'
+                      ? 'bg-[#F59E0B]/15 border-[#F59E0B]/40 text-amber-200'
+                      : 'bg-black/30 border-white/10 text-white/80'
+                  }`}>
+                    <div className="flex items-center justify-between font-bold pb-0.5">
+                      <span className="flex items-center gap-1">
+                        <Sun className="w-3 h-3 text-[#F59E0B]" />
+                        <span>{isTa ? weatherReport.risks.heatStress.titleTamil : weatherReport.risks.heatStress.title}</span>
+                      </span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/10">
+                        {weatherReport.risks.heatStress.level}
+                      </span>
+                    </div>
+                    <p className="font-sans text-[10px] leading-tight text-white/90">
+                      {isTa ? weatherReport.risks.heatStress.advisoryTamil : weatherReport.risks.heatStress.advisory}
+                    </p>
+                    {weatherReport.risks.heatStress.pollenSterilityRisk && (
+                      <div className="mt-1 pt-1 border-t border-red-500/30 text-red-300 font-bold flex items-center gap-1 text-[9px]">
+                        <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />
+                        <span>Flowering Paddy Pollen Sterility Hazard! Maintain standing water to cool root zone.</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Waterlogging & Heavy Rain Alert */}
+                  <div className={`p-2 rounded-[6px] border ${
+                    weatherReport.risks.rainfallRisk.waterloggingRisk === 'high'
+                      ? 'bg-[#7C3AED]/20 border-[#7C3AED]/50 text-purple-200'
+                      : weatherReport.risks.rainfallRisk.waterloggingRisk === 'moderate'
+                      ? 'bg-[#0284C7]/15 border-[#0284C7]/40 text-sky-200'
+                      : 'bg-black/30 border-white/10 text-white/80'
+                  }`}>
+                    <div className="flex items-center justify-between font-bold pb-0.5">
+                      <span className="flex items-center gap-1">
+                        <CloudRain className="w-3 h-3 text-[#38BDF8]" />
+                        <span>{isTa ? weatherReport.risks.rainfallRisk.titleTamil : weatherReport.risks.rainfallRisk.title}</span>
+                      </span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/10">
+                        {weatherReport.risks.rainfallRisk.waterloggingRisk} Risk
+                      </span>
+                    </div>
+                    <p className="font-sans text-[10px] leading-tight text-white/90">
+                      {isTa ? weatherReport.risks.rainfallRisk.advisoryTamil : weatherReport.risks.rainfallRisk.advisory}
+                    </p>
+                    <p className="font-sans text-[8.5px] text-white/50 pt-0.5">
+                      {isTa ? weatherReport.risks.rainfallRisk.hydrologyNoticeTamil : weatherReport.risks.rainfallRisk.hydrologyNotice}
+                    </p>
+                  </div>
+
+                  {/* Spraying Suitability Window */}
+                  <div className={`p-2 rounded-[6px] border ${
+                    weatherReport.risks.sprayingWindow.suitability === 'unfavorable'
+                      ? 'bg-[#B8423A]/15 border-[#B8423A]/40 text-rose-200'
+                      : weatherReport.risks.sprayingWindow.suitability === 'caution'
+                      ? 'bg-[#F59E0B]/15 border-[#F59E0B]/40 text-amber-200'
+                      : 'bg-[#217451]/25 border-[#217451]/50 text-emerald-200'
+                  }`}>
+                    <div className="flex items-center justify-between font-bold pb-0.5">
+                      <span className="flex items-center gap-1">
+                        <Wind className="w-3 h-3 text-[#70B77E]" />
+                        <span>{isTa ? weatherReport.risks.sprayingWindow.titleTamil : weatherReport.risks.sprayingWindow.title}</span>
+                      </span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-white/10 font-bold">
+                        {weatherReport.risks.sprayingWindow.suitability}
+                      </span>
+                    </div>
+                    <p className="font-sans text-[10px] leading-tight text-white/90">
+                      {isTa ? weatherReport.risks.sprayingWindow.guidanceTamil : weatherReport.risks.sprayingWindow.guidance}
+                    </p>
+                  </div>
+
+                  {/* Pathogen Predisposition Caution */}
+                  {weatherReport.risks.pathogenPredisposition.relativeHumidity >= 80 && (
+                    <div className="p-2 bg-black/40 border border-[#A855F7]/30 rounded-[6px] space-y-1 text-white/80">
+                      <div className="flex items-center justify-between text-[#A855F7] font-bold">
+                        <span className="flex items-center gap-1">
+                          <Droplets className="w-3 h-3 text-[#A855F7]" />
+                          <span>Fungal Spore Microclimate Notice</span>
+                        </span>
+                        <span>RH {weatherReport.risks.pathogenPredisposition.relativeHumidity}%</span>
+                      </div>
+                      <p className="font-sans text-[9px] text-white/70 leading-tight">
+                        {isTa ? weatherReport.risks.pathogenPredisposition.cautiousNoticeTamil : weatherReport.risks.pathogenPredisposition.cautiousNotice}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5-Day Daily Forecast Strip */}
+                <div className="space-y-1 pt-1 border-t border-white/10">
+                  <div className="flex items-center justify-between text-[10px] text-white/60">
+                    <span className="uppercase font-bold">5-Day Meteorological Outlook</span>
+                    <span>Valid: {weatherReport.forecastPeriod}</span>
+                  </div>
+                  <div className="grid grid-cols-5 gap-1 text-center font-mono">
+                    {weatherReport.daily.slice(0, 5).map((d) => (
+                      <div key={d.date} className="bg-black/40 border border-white/10 p-1 rounded-[4px] space-y-0.5">
+                        <div className="text-[9px] text-[#00E5FF] font-bold">{isTa ? d.dayOfWeekTamil : d.dayOfWeek}</div>
+                        <div className="text-[10px] font-bold text-white">{Math.round(d.tempMax)}°</div>
+                        <div className="text-[8px] text-white/50">{Math.round(d.tempMin)}°</div>
+                        <div className="text-[9px] text-[#38BDF8]">{d.precipitationSum}mm</div>
+                        {d.precipitationProbabilityMax > 0 && (
+                          <div className="text-[8px] text-[#70B77E]">{d.precipitationProbabilityMax}%</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Attribution & Disclaimer */}
+                <p className="text-[8.5px] font-sans text-white/50 leading-tight pt-1 border-t border-white/10">
+                  {weatherReport.attribution}
                 </p>
               </>
             )}

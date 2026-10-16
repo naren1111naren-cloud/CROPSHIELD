@@ -9,6 +9,7 @@ import { specialistEngine } from './server/specialistService';
 import { evaluateFieldDifferential } from './src/services/differentialEngine';
 import { fetchMandiPrices } from './server/marketPriceService';
 import { getSatelliteCropHealth } from './server/satelliteVegetationService';
+import { fetchFarmWeatherIntelligence } from './server/weatherIntelligenceService';
 
 dotenv.config();
 
@@ -727,6 +728,52 @@ app.get('/api/satellite/provider-status', (_req: Request, res: Response) => {
     atmosphericCorrection: 'Level-2A Bottom-Of-Atmosphere (BOA) Surface Reflectance',
     indices: ['NDVI: (B08 - B04) / (B08 + B04)', 'SCL: Scene Classification Cloud & Shadow Masking'],
   });
+});
+
+// API Route: Farm-Specific & District Weather & Agricultural Risk Intelligence
+app.get('/api/weather', async (req: Request, res: Response) => {
+  try {
+    const { lat, lng, district, locationName, cropType, cropStage } = req.query;
+
+    let latitude = lat ? parseFloat(String(lat)) : NaN;
+    let longitude = lng ? parseFloat(String(lng)) : NaN;
+    let resolvedName = typeof locationName === 'string' && locationName ? locationName : '';
+    let isFarmCoordinate = false;
+
+    if (!isNaN(latitude) && !isNaN(longitude)) {
+      isFarmCoordinate = true;
+      if (!resolvedName) resolvedName = `Farm (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+    } else {
+      const distName = typeof district === 'string' && district ? district : 'Karur';
+      const geo = getDistrictGeo(distName);
+      latitude = geo.latitude;
+      longitude = geo.longitude;
+      resolvedName = `${geo.name} District`;
+      isFarmCoordinate = false;
+    }
+
+    const report = await fetchFarmWeatherIntelligence({
+      latitude,
+      longitude,
+      locationName: resolvedName,
+      isFarmCoordinate,
+      cropType: typeof cropType === 'string' ? cropType : undefined,
+      cropStage: typeof cropStage === 'string' ? cropStage : undefined,
+    });
+
+    return res.json({
+      success: true,
+      data: report,
+      report,
+    });
+  } catch (err: any) {
+    console.error('Error in /api/weather:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'WEATHER_SERVICE_ERROR',
+      message: err.message || 'Failed to retrieve meteorological observation.',
+    });
+  }
 });
 
 // Mount Vite or serve static assets
