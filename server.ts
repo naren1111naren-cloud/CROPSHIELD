@@ -1,18 +1,18 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
-import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 import { getDistrictGeo } from './src/config/tamilNaduDistricts';
 import { parseOpenMeteoResponse, RealWeatherData } from './src/services/weatherService';
-import { specialistEngine } from './server/specialistService';
+import { specialistEngine, getSanitizedApiKey } from './server/specialistService';
 import { evaluateFieldDifferential } from './src/services/differentialEngine';
 import { fetchMandiPrices } from './server/marketPriceService';
 import { getSatelliteCropHealth } from './server/satelliteVegetationService';
 import { fetchFarmWeatherIntelligence } from './server/weatherIntelligenceService';
 import { getFarmSoilIntelligence, rateSoilHealthParameters } from './server/soilIntelligenceService';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,29 +33,33 @@ const ALLOWED_ORIGINS = [
   'http://127.0.0.1:5173',
 ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no Origin header (e.g. curl, server-to-server, same-origin)
-      if (!origin) return callback(null, true);
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no Origin header (e.g. curl, mobile apps, server-to-server, same-origin)
+    if (!origin) return callback(null, true);
 
-      const isAllowed = ALLOWED_ORIGINS.some((allowed) =>
-        typeof allowed === 'string' ? allowed === origin : allowed.test(origin)
-      );
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const isAllowed = ALLOWED_ORIGINS.some((allowed) =>
+      typeof allowed === 'string'
+        ? allowed.replace(/\/$/, '') === normalizedOrigin
+        : allowed.test(normalizedOrigin)
+    );
 
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        console.warn(`[CORS] Blocked request from unauthorised origin: ${origin}`);
-        callback(new Error(`CORS policy: origin ${origin} is not permitted.`));
-      }
-    },
-    methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
-    credentials: false, // No cookie/session auth — Firebase handles auth client-side
-    maxAge: 86400,      // Cache preflight for 24 h
-  })
-);
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS] Request from origin not in whitelist: ${origin}`);
+      callback(null, false);
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization', 'X-Requested-With'],
+  credentials: false, // Firebase Auth is bearer token based via client SDK
+  maxAge: 86400,      // Cache preflight for 24 h
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
@@ -75,18 +79,25 @@ app.get('/health', healthCheckHandler);
 app.get('/api/health', healthCheckHandler);
 
 
-// Server-side Gemini API client
-const apiKey = process.env.GEMINI_API_KEY;
-let aiClient: GoogleGenAI | null = null;
-if (apiKey) {
-  aiClient = new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
+// Server-side Gemini API client (lazily and dynamically resolved with sanitized key)
+let serverAiClientInstance: GoogleGenAI | null = null;
+let lastServerKey: string | null = null;
+
+export function getServerAiClient(): GoogleGenAI | null {
+  const key = getSanitizedApiKey();
+  if (!key) return null;
+  if (!serverAiClientInstance || lastServerKey !== key) {
+    serverAiClientInstance = new GoogleGenAI({
+      apiKey: key,
+      httpOptions: {
+        headers: {
+          'User-Agent': 'cropshield-server/1.0',
+        },
       },
-    },
-  });
+    });
+    lastServerKey = key;
+  }
+  return serverAiClientInstance;
 }
 
 // In-memory community reports store seeded with authentic Tamil Nadu field incidents
@@ -357,23 +368,77 @@ app.post('/api/analyze-crop', async (req: Request, res: Response) => {
       data: result,
     });
   } catch (err: any) {
-    console.error('Server error during crop pathology evaluation:', err);
+    console.error('[CropShield AI] Server error during crop pathology evaluation:', err);
+
+    const isMissingConfig =
+      err.code === 'AI_CONFIG_MISSING' ||
+      err.message?.includes('not configured in server environment') ||
+      err.message?.includes('No crop pathology model provider is available');
+
+    const isModelNotFoundError =
+      err.status === 404 ||
+      err.message?.includes('NOT_FOUND') ||
+      err.message?.includes('is not found for API version') ||
+      err.message?.includes('not supported for generateContent');
+
     const isAuthError =
       err.status === 401 ||
+      err.status === 403 ||
       err.message?.includes('UNAUTHENTICATED') ||
-      err.message?.includes('invalid authentication credentials');
+      err.message?.includes('PERMISSION_DENIED') ||
+      err.message?.includes('ACCESS_TOKEN_TYPE_UNSUPPORTED') ||
+      err.message?.includes('invalid authentication credentials') ||
+      err.message?.includes('API key not valid');
 
-    const message = isAuthError
-      ? 'The AI pathology service requires a valid GEMINI_API_KEY on the backend server. Please configure your Google AI Studio API key in the server environment.'
-      : err.message || 'The disease analysis service encountered an error. Please verify your connection and try again.';
+    const isQuotaError =
+      err.status === 429 ||
+      err.message?.includes('RESOURCE_EXHAUSTED') ||
+      err.message?.includes('Quota exceeded');
 
-    const messageTamil = isAuthError
-      ? 'AI சேவைக்கான சாவி (GEMINI_API_KEY) சர்வரில் சரியாக அமையவில்லை. தயவுசெய்து சர்வர் சூழல் அமைப்புகளைச் சரிபார்க்கவும்.'
-      : 'ஆய்வு சேவை தற்காலிகமாக பதிலளிக்கவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.';
+    const isTimeout =
+      err.status === 504 ||
+      err.name === 'TimeoutError' ||
+      err.message?.includes('timeout') ||
+      err.message?.includes('ETIMEDOUT');
 
-    return res.status(502).json({
+    let httpStatus = 500;
+    let errorCode = 'ANALYSIS_SERVICE_UNAVAILABLE';
+    let message = 'The disease analysis service encountered an unexpected error. Please verify your connection and try again.';
+    let messageTamil = 'ஆய்வு சேவை தற்காலிகமாக பதிலளிக்கவில்லை. தயவுசெய்து சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.';
+
+    if (isMissingConfig) {
+      httpStatus = 503;
+      errorCode = 'AI_CONFIG_MISSING';
+      message = 'The AI pathology service requires GEMINI_API_KEY in the server environment. Please configure your key in Render environment settings.';
+      messageTamil = 'AI சேவைக்கான சாவி (GEMINI_API_KEY) சர்வர் சூழல் அமைப்புகளில் சேர்க்கப்படவில்லை. Render அமைப்புகளைப் பார்க்கவும்.';
+    } else if (isModelNotFoundError) {
+      httpStatus = 502;
+      errorCode = 'AI_MODEL_UNAVAILABLE';
+      message = 'The requested Gemini AI vision model is not supported or deprecated for this API version. The service is configured to use supported Flash models (e.g. gemini-2.5-flash).';
+      messageTamil = 'தேர்ந்தெடுக்கப்பட்ட AI மாதிரி (Gemini Model) கிடைக்கவில்லை அல்லது ஆதரிக்கப்படவில்லை. ஆதரிக்கப்படும் மாதிரிகள் பயன்படுத்தப்படுகின்றன.';
+    } else if (isAuthError) {
+      httpStatus = 502;
+      errorCode = 'AI_AUTH_FAILED';
+      message = 'The GEMINI_API_KEY configured on the server was rejected by Google AI Studio (401/403). Please verify that the API key is active and unrestricted in Google AI Studio.';
+      messageTamil = 'சர்வரில் உள்ள GEMINI_API_KEY கூகுள் சேவையால் ஏற்கப்படவில்லை (401/403). Google AI Studio-வில் உங்கள் சாவி செல்லுபடியாகிறதா என சரிபார்க்கவும்.';
+    } else if (isQuotaError) {
+      httpStatus = 429;
+      errorCode = 'AI_RATE_LIMITED';
+      message = 'The AI pathology service quota limit was reached. Please wait a few moments and retry.';
+      messageTamil = 'AI சேவையின் பயன்பாட்டு வரம்பு நிறைவடைந்தது. சிறிது நேரம் காத்திருந்து மீண்டும் முயற்சிக்கவும்.';
+    } else if (isTimeout) {
+      httpStatus = 504;
+      errorCode = 'UPSTREAM_TIMEOUT';
+      message = 'The AI pathology evaluation timed out waiting for upstream inference. Please retry with a clear crop photograph.';
+      messageTamil = 'AI ஆய்வின் கால அவகாசம் முடிவடைந்தது. தெளிவான இலையின் புகைப்படத்துடன் மீண்டும் முயற்சிக்கவும்.';
+    } else if (err.status && typeof err.status === 'number' && err.status >= 400 && err.status < 600) {
+      httpStatus = err.status;
+      message = err.message || message;
+    }
+
+    return res.status(httpStatus).json({
       success: false,
-      error: isAuthError ? 'AI_CREDENTIALS_INVALID' : 'ANALYSIS_SERVICE_UNAVAILABLE',
+      error: errorCode,
       message,
       messageTamil,
     });
@@ -400,7 +465,8 @@ app.post('/api/field-case/assess', async (req: Request, res: Response) => {
     let imageQuality: 'good' | 'blurry' | 'poor_lighting' | 'off_target' = 'good';
 
     // If Gemini client is active and image supplied, extract factual visual characteristics
-    if (aiClient && imageBase64 && typeof imageBase64 === 'string') {
+    const activeAiClient = getServerAiClient();
+    if (activeAiClient && imageBase64 && typeof imageBase64 === 'string') {
       try {
         const prompt = `You are a crop pathology visual inspection assistant for farmers in Tamil Nadu.
 Analyze this crop leaf photograph strictly for VISUAL SYMPTOM CHARACTERISTICS.
@@ -415,7 +481,7 @@ Answer in JSON with keys:
         
         // Timeout promise to avoid blocking execution if upstream is slow
         const callGemini = async () => {
-          return await aiClient!.models.generateContent({
+          return await activeAiClient.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: [
               {

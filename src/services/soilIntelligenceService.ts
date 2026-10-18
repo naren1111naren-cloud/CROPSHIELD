@@ -7,6 +7,7 @@ import {
   SoilGridsProperties,
   RegionalSoilClassification,
 } from '../types';
+import { apiFetch } from '../lib/apiClient';
 
 export interface SoilIntelligenceResponse {
   latitude: number;
@@ -39,9 +40,6 @@ export async function fetchFarmSoilIntelligence(params: {
   latestSoilTest?: LaboratorySoilTest;
   forecastPrecipitation48hMm?: number;
 }): Promise<SoilIntelligenceResponse | null> {
-  const apiUrl = import.meta.env.VITE_API_URL || '';
-  const endpoint = `${apiUrl}/api/soil/intelligence`;
-
   let lat = params.latitude;
   let lng = params.longitude;
   let district = params.district || 'Karur';
@@ -82,7 +80,7 @@ export async function fetchFarmSoilIntelligence(params: {
   };
 
   try {
-    const res = await fetch(endpoint, {
+    const res = await apiFetch('/api/soil/intelligence', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -95,24 +93,7 @@ export async function fetchFarmSoilIntelligence(params: {
       }
     }
   } catch (err) {
-    console.warn('[CropShield] Direct API call to /api/soil/intelligence failed, trying relative proxy:', err);
-  }
-
-  // Fallback to relative URL
-  try {
-    const fallbackRes = await fetch('/api/soil/intelligence', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (fallbackRes.ok) {
-      const fallbackData = await fallbackRes.json();
-      if (fallbackData.success && fallbackData.report) {
-        return fallbackData.report;
-      }
-    }
-  } catch (err) {
-    console.error('[CropShield] Offline or soil intelligence endpoint unavailable:', err);
+    console.warn('[CropShield] API call to /api/soil/intelligence failed:', err);
   }
 
   // Graceful client fallback
@@ -159,11 +140,8 @@ export async function fetchFarmSoilIntelligence(params: {
  * Rate laboratory soil parameters against GoI Soil Health Card calibration standards
  */
 export async function rateLaboratorySoilTest(test: LaboratorySoilTest): Promise<LaboratorySoilTest> {
-  const apiUrl = import.meta.env.VITE_API_URL || '';
-  const endpoint = `${apiUrl}/api/soil/rate-test`;
-
   try {
-    const res = await fetch(endpoint, {
+    const res = await apiFetch('/api/soil/rate-test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(test),

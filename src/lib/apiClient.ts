@@ -17,9 +17,18 @@ const isVercelHost =
   typeof window !== 'undefined' &&
   (window.location.hostname.includes('vercel.app') || window.location.hostname === 'cropshieldcc.vercel.app');
 
+// Detect if running locally (Express monolith on port 3000 or Vite dev)
+const isLocalHost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' ||
+   window.location.hostname === '127.0.0.1' ||
+   window.location.hostname.endsWith('.local'));
+
 export const API_BASE_URL: string =
-  (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ||
-  (isVercelHost ? 'https://cropshield-cc.onrender.com' : '');
+  isLocalHost
+    ? '' // Local development: talk directly to local Express server
+    : (import.meta.env?.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ||
+      'https://cropshield-cc.onrender.com';
 
 
 export interface ApiFetchOptions extends RequestInit {
@@ -100,7 +109,22 @@ export async function apiFetch(
 
     return response;
   } catch (err: any) {
-    clearTimeout(id);
+    if (isAbsolute) {
+      try {
+        console.warn(`[CropShield API] Remote request failed (${url}), falling back to relative: ${path}`);
+        const fallbackRes = await fetch(path, {
+          ...options,
+          credentials: 'same-origin',
+          headers: {
+            Accept: 'application/json',
+            ...(options.headers ?? {}),
+          },
+        });
+        if (fallbackRes.ok) return fallbackRes;
+      } catch {
+        // ignore fallback failure and proceed to throw
+      }
+    }
 
     const isAborted = err.name === 'AbortError' || signal.aborted;
     const isNetworkError = err instanceof TypeError && err.message.includes('fetch');

@@ -1,4 +1,5 @@
 import { FarmRecord, SatelliteVegetationReport } from '../types';
+import { apiFetch } from '../lib/apiClient';
 
 export { categorizeNdvi, getCropStageNdviExpectation } from '../../server/satelliteVegetationService';
 
@@ -8,9 +9,6 @@ export { categorizeNdvi, getCropStageNdviExpectation } from '../../server/satell
 export async function fetchSatelliteCropHealth(
   farm: FarmRecord
 ): Promise<SatelliteVegetationReport> {
-  const apiUrl = import.meta.env.VITE_API_URL || '';
-  const endpoint = `${apiUrl}/api/satellite/crop-health`;
-
   const payload = {
     farmId: farm.id || 'current_farm',
     farmName: farm.farmName,
@@ -21,7 +19,7 @@ export async function fetchSatelliteCropHealth(
   };
 
   try {
-    const res = await fetch(endpoint, {
+    const res = await apiFetch('/api/satellite/crop-health', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -36,23 +34,8 @@ export async function fetchSatelliteCropHealth(
       }
     }
   } catch (err) {
-    console.warn('[CropShield] Direct API call to /api/satellite/crop-health failed, falling back to local proxy:', err);
+    console.warn('[CropShield] API call to /api/satellite/crop-health failed, using fallback:', err);
   }
-
-  // Fallback to relative endpoint if VITE_API_URL was different
-  try {
-    const fallbackRes = await fetch('/api/satellite/crop-health', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (fallbackRes.ok) {
-      const fallbackData = await fallbackRes.json();
-      if (fallbackData.success && fallbackData.report) {
-        return fallbackData.report;
-      }
-    }
-  } catch {}
 
   // If server is unreachable or offline
   return {

@@ -23,7 +23,7 @@ import {
 export interface InferenceImageMeta {
   width?: number;
   height?: number;
-  format: 'jpeg' | 'png' | 'webp' | 'unknown';
+  format: 'jpeg' | 'png' | 'webp' | 'svg' | 'unknown';
   byteLength: number;
 }
 
@@ -100,7 +100,7 @@ export interface ISpecialistModelProvider {
 
 export function inspectImageBuffer(buffer: Buffer): InferenceImageMeta {
   const byteLength = buffer.length;
-  let format: 'jpeg' | 'png' | 'webp' | 'unknown' = 'unknown';
+  let format: 'jpeg' | 'png' | 'webp' | 'svg' | 'unknown' = 'unknown';
   let width: number | undefined;
   let height: number | undefined;
 
@@ -151,8 +151,42 @@ export function inspectImageBuffer(buffer: Buffer): InferenceImageMeta {
       height = 1 + (((b4 & 0x0f) << 10) | (b3 << 2) | ((b2 & 0xc0) >> 6));
     }
   }
+  // SVG Text check
+  else if (buffer.length >= 4) {
+    const head = buffer.slice(0, 300).toString('utf8');
+    if (head.includes('<svg') || head.includes('<?xml')) {
+      format = 'svg';
+      width = 600;
+      height = 400;
+    }
+  }
 
   return { format, width, height, byteLength };
+}
+
+// --- API Key Resolution & Sanitization ---
+
+/**
+ * Resolves and sanitizes the Gemini API key from environment variables.
+ * Handles common cloud hosting issues:
+ *  - Multiple variable aliases (GEMINI_API_KEY, GOOGLE_API_KEY, GOOGLE_GENAI_API_KEY)
+ *  - Accidental surrounding quotes (e.g. from copy-pasting .env into Render dashboard)
+ *  - Trailing/leading whitespace and carriage returns
+ * Never logs or exposes the key value.
+ */
+export function getSanitizedApiKey(): string | null {
+  const rawKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    null;
+
+  if (!rawKey || typeof rawKey !== 'string') return null;
+
+  // Strip surrounding quotes and whitespace
+  const cleaned = rawKey.trim().replace(/^["']|["']$/g, '').trim();
+  return cleaned.length > 0 ? cleaned : null;
 }
 
 // --- Provider 1: Trained Specialist Model Provider (Microservice / ONNX Endpoint) ---
@@ -201,38 +235,67 @@ export class TrainedSpecialistModelProvider implements ISpecialistModelProvider 
   }
 }
 
-// --- Provider 2: Multimodal Reasoner Provider (Gemini 3.8/3.5 Flash Fallback) ---
+// --- Provider 2: Multimodal Reasoner Provider (Gemini Flash Fallback) ---
 
 export class MultimodalReasonerProvider implements ISpecialistModelProvider {
   readonly name = 'Gemini-Flash-Multimodal-Reasoner';
   readonly isSpecialistTrainedModel = false;
   readonly providerType = 'multimodal_reasoner_fallback' as const;
   private aiClient: GoogleGenAI | null = null;
+  private explicitApiKey?: string;
+  private lastUsedKey?: string;
 
   constructor(apiKey?: string) {
-    const key = apiKey || process.env.GEMINI_API_KEY;
-    if (key) {
-      this.aiClient = new GoogleGenAI({ apiKey: key });
+    if (apiKey) {
+      this.explicitApiKey = apiKey.trim().replace(/^["']|["']$/g, '').trim();
     }
+  }
+
+  getClient(): GoogleGenAI | null {
+    const key = this.explicitApiKey || getSanitizedApiKey();
+    if (!key) return null;
+
+    if (!this.aiClient || this.lastUsedKey !== key) {
+      this.aiClient = new GoogleGenAI({
+        apiKey: key,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'cropshield-specialist-pathology/1.0',
+          },
+        },
+      });
+      this.lastUsedKey = key;
+    }
+    return this.aiClient;
   }
 
   isAvailable(): boolean {
-    if (!this.aiClient && process.env.GEMINI_API_KEY) {
-      this.aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    }
-    return Boolean(this.aiClient);
+    return Boolean(this.getClient());
   }
 
   async predict(request: SpecialistInferenceRequest, meta: InferenceImageMeta): Promise<SpecialistInferenceResult> {
-    if (!this.aiClient && process.env.GEMINI_API_KEY) {
-      this.aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    }
-    if (!this.aiClient) {
-      throw new Error('Gemini API client not initialized. GEMINI_API_KEY required in server environment.');
+    const client = this.getClient();
+    if (!client) {
+      const err: any = new Error(
+        'Gemini API client not configured. GEMINI_API_KEY or GOOGLE_API_KEY is required in server environment.'
+      );
+      err.code = 'AI_CONFIG_MISSING';
+      err.status = 503;
+      throw err;
     }
 
-    const cleanBase64 = request.imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const commaIdx = request.imageBase64.indexOf(',');
+    const rawBase64 = commaIdx !== -1 ? request.imageBase64.slice(commaIdx + 1) : request.imageBase64;
+    const cleanBase64 = rawBase64.replace(/\s+/g, '');
     const normalizedCropId = request.cropId.toLowerCase();
+
+    // Determine reliable MIME type for Gemini
+    let effectiveMime = request.mimeType || 'image/jpeg';
+    if (meta.format === 'png') effectiveMime = 'image/png';
+    else if (meta.format === 'webp') effectiveMime = 'image/webp';
+    else if (meta.format === 'jpeg') effectiveMime = 'image/jpeg';
+    else if (effectiveMime === 'image/jpg') effectiveMime = 'image/jpeg';
+    else if (effectiveMime === 'image/svg+xml') effectiveMime = 'image/png';
 
     // Map crop names
     let cropNameEnglish = 'Rice (Paddy)';
@@ -322,14 +385,24 @@ Return strictly valid JSON conforming to this schema:
   "isHealthy": true | false
 }`;
 
-    const candidateModels = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+    const candidateModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'];
     let response: any = null;
     let selectedModel = 'gemini-2.5-flash';
     let lastError: any = null;
 
     for (const modelName of candidateModels) {
       try {
-        response = await this.aiClient.models.generateContent({
+        let timer: any = null;
+        const timeoutPromise = new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            const err: any = new Error(`Upstream timeout after 15s waiting for Gemini (${modelName})`);
+            err.name = 'TimeoutError';
+            err.status = 504;
+            reject(err);
+          }, 15000);
+        });
+
+        const callPromise = client.models.generateContent({
           model: modelName,
           contents: [
             {
@@ -337,7 +410,7 @@ Return strictly valid JSON conforming to this schema:
               parts: [
                 {
                   inlineData: {
-                    mimeType: request.mimeType,
+                    mimeType: effectiveMime,
                     data: cleanBase64,
                   },
                 },
@@ -352,11 +425,24 @@ Return strictly valid JSON conforming to this schema:
             responseMimeType: 'application/json',
           },
         });
+
+        response = await Promise.race([callPromise, timeoutPromise]);
+        if (timer) clearTimeout(timer);
         selectedModel = modelName;
         break;
       } catch (callErr: any) {
         lastError = callErr;
-        console.warn(`Model ${modelName} returned status ${callErr.status || callErr.message}, trying next...`);
+        console.warn(`[CropShield AI] Model ${modelName} returned status ${callErr.status || callErr.code || 'error'}:`, callErr.message);
+        // If authentication failed or service blocked, trying other models with the same key will not succeed
+        if (
+          callErr.status === 401 ||
+          callErr.status === 403 ||
+          callErr.message?.includes('UNAUTHENTICATED') ||
+          callErr.message?.includes('PERMISSION_DENIED') ||
+          callErr.message?.includes('API key not valid')
+        ) {
+          break;
+        }
       }
     }
 
