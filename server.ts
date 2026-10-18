@@ -482,7 +482,7 @@ Answer in JSON with keys:
         // Timeout promise to avoid blocking execution if upstream is slow
         const callGemini = async () => {
           return await activeAiClient.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3.8-flash',
             contents: [
               {
                 role: 'user',
